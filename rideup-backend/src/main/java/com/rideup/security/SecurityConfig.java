@@ -61,6 +61,12 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration cfg = new CorsConfiguration();
+        // Dev mode: allow mọi localhost port (5173, 5174, 5175, 3000, 8081 Expo web, 19000-19010 Metro)
+        // Production nên dùng setAllowedOrigins với domain cụ thể.
+        cfg.setAllowedOriginPatterns(List.of(
+            "http://localhost:*",
+            "http://127.0.0.1:*"
+        ));
         cfg.setAllowedOrigins(List.of(
             "http://localhost:5173",  // Customer app
             "http://localhost:5174",  // Driver app
