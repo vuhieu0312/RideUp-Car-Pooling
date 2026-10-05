@@ -7,11 +7,14 @@
 ## 1. Chuẩn bị môi trường
 
 Cần cài sẵn trên máy:
-- **Java 21** + **Maven 3.x**
-- **Node.js 20+** + **npm**
+- **Java 21** + **Maven 3.x** (cho backend)
+- **Node.js 20+** + **npm** (cho 3 web app + Expo mobile)
 - **MySQL 8** chạy ở `localhost:3306`, DB `rideup`, user `root` / `root`
 - **Redis 7** chạy ở `localhost:6379`
+- (Optional) **Expo Go app** trên điện thoại để test mobile
 - (Optional) Git Bash / PowerShell / CMD — hướng dẫn dùng Git Bash
+
+> **Không muốn cài Node.js?** Chỉ cần backend — dùng Swagger UI tại `http://localhost:8080/api/swagger-ui.html` để gọi API trực tiếp.
 
 ### 1.1. Check Redis
 
@@ -133,6 +136,31 @@ npm run dev
 ```
 
 Mở browser: **http://localhost:5173**
+
+---
+
+## 4b. Mobile Customer app (Expo + React Native)
+
+Mở **Git Bash / Terminal 2b**:
+
+```bash
+cd D:/OneDrive/Desktop/RideUp/rideup-customer-mobile
+npm install   # chỉ lần đầu
+npx expo start
+```
+
+Sau đó:
+- **Test trên điện thoại thật**: cài app **Expo Go** (iOS/Android), scan QR trong terminal
+- **iOS Simulator**: nhấn `i` trong terminal
+- **Android Emulator**: nhấn `a` trong terminal
+
+API mặc định `http://localhost:8080/api`. Nếu backend ở máy khác, override:
+
+```bash
+EXPO_PUBLIC_API_URL=http://192.168.1.100:8080/api npx expo start
+```
+
+Xem chi tiết stack và structure tại `rideup-customer-mobile/README.md`.
 
 ---
 
@@ -394,7 +422,8 @@ Response: danh sách trip được **sắp xếp theo weighted score** (không p
 | Backend | http://localhost:8080/api |
 | Swagger UI | http://localhost:8080/api/swagger-ui.html |
 | WebSocket | ws://localhost:8080/api/ws |
-| Customer app | http://localhost:5173 |
+| Customer web | http://localhost:5173 |
+| Customer mobile (Expo) | chạy qua Expo Go, scan QR từ `npx expo start` |
 | Driver app | http://localhost:5174 |
 | Admin app | http://localhost:5175 |
 

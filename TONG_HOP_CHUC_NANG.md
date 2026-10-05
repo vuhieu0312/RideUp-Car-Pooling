@@ -28,6 +28,11 @@ RideUp/
 ├── rideup-customer/              React + Vite (port 5173)
 │   └── src/pages/                Login, Register, Home, TripSearch, BookingCreate, MyBookings
 │
+├── rideup-customer-mobile/       Expo + React Native (chạy qua Expo Go)
+│   └── src/screens/              LoginScreen, RegisterScreen, HomeScreen,
+│                                 TripSearchScreen, BookingCreateScreen, MyBookingsScreen
+│                                 (React Native Paper, AsyncStorage, expo-location)
+│
 ├── rideup-driver/                React + Vite (port 5174 — cần config)
 │   └── src/pages/                Login, Register, Status, Home, AllTrips, TripCreate,
 │                                 VehicleList, VehicleRegister
@@ -686,7 +691,7 @@ Generate bcrypt hash tại https://bcrypt-generator.com (rounds=10) — paste pa
 - **14 enums**
 - **11 controllers** (Auth, Admin, Driver, Vehicle, Trip, Location, LocationAdmin, BookingCustomer, BookingDriver, ReviewCustomer, ReviewQuery)
 - **10 services** (Auth, Driver, Vehicle, Trip, Booking, Review, LocationDataSeeder, LocationService, Admin, FileService)
-- **3 frontend apps** riêng biệt (Customer port 5173, Driver port 5174, Admin port 5175)
+- **4 frontend apps** riêng biệt (Customer web 5173, Customer mobile Expo, Driver 5174, Admin 5175)
 - **1 thuật toán ranking** (Weighted Sum với Haversine)
 
 ---

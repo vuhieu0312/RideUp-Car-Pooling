@@ -1,0 +1,29 @@
+{
+  "expo": {
+    "name": "RideUp Customer",
+    "slug": "rideup-customer-mobile",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#10b981"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.rideup.customer"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#10b981"
+      },
+      "package": "com.rideup.customer"
+    },
+    "extra": {
+      "apiUrl": "http://localhost:8080/api"
+    }
+  }
+}

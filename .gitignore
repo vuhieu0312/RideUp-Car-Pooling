@@ -25,12 +25,18 @@
 **/*.war
 
 # ============================================
-# Frontend (Node / React / Vite)
+# Frontend (Node / React / Vite / Expo)
 # ============================================
 **/node_modules/
 **/dist/
 **/.vite/
+**/.expo/
+**/.expo-shared/
+**/web-build/
 **/*.local
+# Expo Router & metro
+**/.metro-health-check*
+**/expo-env.d.ts
 
 # ============================================
 # Env / Secrets
