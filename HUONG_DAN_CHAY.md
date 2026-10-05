@@ -164,6 +164,32 @@ Xem chi tiết stack và structure tại `rideup-customer-mobile/README.md`.
 
 ---
 
+## 5c. Mobile Driver app (Expo + React Native)
+
+```bash
+cd D:/OneDrive/Desktop/RideUp/rideup-driver-mobile
+npm install
+npx expo start
+```
+
+Có thêm `expo-image-picker` để chụp/chọn ảnh CCCD/GPLX. App sẽ xin quyền **Camera**, **Photo Library**, **Location** khi cần.
+
+Xem chi tiết tại `rideup-driver-mobile/README.md`.
+
+## 5d. Mobile Admin app (Expo + React Native)
+
+```bash
+cd D:/OneDrive/Desktop/RideUp/rideup-admin-mobile
+npm install
+npx expo start
+```
+
+Login mặc định `admin@rideup.com` / `admin123`. Dashboard có 3 tab: Tài xế chờ duyệt / Xe chờ duyệt / Thống kê.
+
+Xem chi tiết tại `rideup-admin-mobile/README.md`.
+
+---
+
 ## 5. Frontend Driver (port 5174)
 
 Mở **Git Bash / Terminal 3**:

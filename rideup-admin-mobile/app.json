@@ -1,0 +1,29 @@
+{
+  "expo": {
+    "name": "RideUp Admin",
+    "slug": "rideup-admin-mobile",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1e293b"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.rideup.admin"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#1e293b"
+      },
+      "package": "com.rideup.admin"
+    },
+    "extra": {
+      "apiUrl": "http://localhost:8080/api"
+    }
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "expo": {
+    "name": "RideUp Driver",
+    "slug": "rideup-driver-mobile",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#08b85c"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.rideup.driver",
+      "infoPlist": {
+        "NSCameraUsageDescription": "RideUp cần quyền truy cập camera để chụp ảnh CCCD/GPLX khi đăng ký tài xế.",
+        "NSPhotoLibraryUsageDescription": "RideUp cần quyền truy cập thư viện ảnh để chọn ảnh CCCD/GPLX.",
+        "NSLocationWhenInUseUsageDescription": "RideUp cần quyền truy cập vị trí để lấy tọa độ điểm đón."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#08b85c"
+      },
+      "package": "com.rideup.driver",
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "ACCESS_FINE_LOCATION"
+      ]
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "RideUp cần quyền truy cập thư viện ảnh để chọn ảnh CCCD/GPLX."
+        }
+      ]
+    ],
+    "extra": {
+      "apiUrl": "http://localhost:8080/api"
+    }
+  }
+}

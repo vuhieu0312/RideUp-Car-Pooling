@@ -31,14 +31,21 @@ RideUp/
 ├── rideup-customer-mobile/       Expo + React Native (chạy qua Expo Go)
 │   └── src/screens/              LoginScreen, RegisterScreen, HomeScreen,
 │                                 TripSearchScreen, BookingCreateScreen, MyBookingsScreen
-│                                 (React Native Paper, AsyncStorage, expo-location)
 │
 ├── rideup-driver/                React + Vite (port 5174 — cần config)
 │   └── src/pages/                Login, Register, Status, Home, AllTrips, TripCreate,
 │                                 VehicleList, VehicleRegister
 │
+├── rideup-driver-mobile/         Expo + React Native (expo-image-picker + expo-location)
+│   └── src/screens/              Login, DriverRegister (multipart upload 3 ảnh),
+│                                 DriverStatus, Home, AllTrips, TripCreate,
+│                                 VehicleRegister, VehicleList
+│
 ├── rideup-admin/                 React + Vite (port 5175)
 │   └── src/pages/                Login, Dashboard (duyệt driver + thống kê)
+│
+├── rideup-admin-mobile/          Expo + React Native (AsyncStorage key riêng adminToken)
+│   └── src/screens/              Login, Dashboard (3 tab: Tài xế | Xe | Thống kê)
 │
 ├── docs/                         (empty)
 ├── db/
@@ -691,7 +698,7 @@ Generate bcrypt hash tại https://bcrypt-generator.com (rounds=10) — paste pa
 - **14 enums**
 - **11 controllers** (Auth, Admin, Driver, Vehicle, Trip, Location, LocationAdmin, BookingCustomer, BookingDriver, ReviewCustomer, ReviewQuery)
 - **10 services** (Auth, Driver, Vehicle, Trip, Booking, Review, LocationDataSeeder, LocationService, Admin, FileService)
-- **4 frontend apps** riêng biệt (Customer web 5173, Customer mobile Expo, Driver 5174, Admin 5175)
+- **6 frontend apps** (3 web + 3 mobile Expo): Customer web 5173, Customer mobile, Driver web 5174, Driver mobile, Admin web 5175, Admin mobile
 - **1 thuật toán ranking** (Weighted Sum với Haversine)
 
 ---
