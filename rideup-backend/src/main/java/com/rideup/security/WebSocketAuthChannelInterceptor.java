@@ -19,7 +19,7 @@ import java.util.Map;
  * Set Authentication principal cho STOMP CONNECT dựa trên session attributes
  * mà JwtHandshakeInterceptor đã đặt. Sau đó @SendToUser hoạt động đúng user.
  *
- * Lưu ý: KHÔNG validate lại JWT ở đây — JwtHandshakeInterceptor đã làm rồi.
+ * KHÔNG validate lại JWT — JwtHandshakeInterceptor đã làm.
  */
 @Component
 @Slf4j

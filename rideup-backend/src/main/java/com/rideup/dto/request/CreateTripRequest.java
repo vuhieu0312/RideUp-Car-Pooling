@@ -29,7 +29,7 @@ public class CreateTripRequest {
     /**
      * Danh sách điểm dừng của chuyến (pickup / dropoff).
      * Mỗi item có stopType (PICKUP|DROPOFF), wardId (bắt buộc), addressText (optional).
-     * Backend sẽ tạo 1 TripStop record cho mỗi item.
+     * Backend tạo 1 TripStop record cho mỗi item.
      */
     @Valid
     List<TripStopRequest> stops;

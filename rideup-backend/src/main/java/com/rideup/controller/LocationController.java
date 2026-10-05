@@ -17,8 +17,7 @@ import java.util.List;
 
 /**
  * Public location endpoints — dùng cho driver/customer chọn tỉnh/xã từ dropdown.
- *
- * Public (không cần JWT) vì location là data tĩnh, ai cũng cần xem được.
+ * Không yêu cầu JWT vì location là data tĩnh.
  */
 @RestController
 @RequestMapping("/locations")

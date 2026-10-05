@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 /**
- * Public endpoint — ai cũng có thể xem review của 1 tài xế.
+ * Public endpoint xem review tài xế.
  * GET /api/reviews/drivers/{driverId}
  */
 @RestController

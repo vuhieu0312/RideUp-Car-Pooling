@@ -164,8 +164,7 @@ public class TripService {
 
 /**
      * Tìm chuyến với thuật toán ranking (4 tiêu chí: thời gian + giá + rating + khoảng cách).
-     * Hiện tại chưa implement xếp hạng — fallback về sort theo {@code departureTime}
-     * ASC giống {@link #searchTrips}. Sẽ thay bằng weighted sum khi xong ranking.
+     * Hiện tại trả về kết quả sort theo {@code departureTime} ASC — chờ thay bằng weighted sum.
      */
     @Transactional(readOnly = true)
     public List<TripResponse> searchTripsRanked(SearchTripsRequest req) {

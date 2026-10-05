@@ -4,33 +4,28 @@ import lombok.Getter;
 import org.springframework.http.HttpStatus;
 
 /**
- * Exception chuẩn của hệ thống — wrap {@link ErrorCode}.
+ * Exception chuẩn của hệ thống — wrap {@link ErrorCode} hoặc (status, code, message) tuỳ trường hợp.
  *
- * <p>2 cách dùng:
+ * <p>Cách dùng:</p>
  * <ul>
- *   <li><b>Recommended</b>: truyền ErrorCode enum (code/msg/status từ enum):
+ *   <li>Truyền {@link ErrorCode} enum (code/msg/status từ enum):
  *       <pre>{@code throw new AppException(ErrorCode.USER_NOT_EXISTED);}</pre></li>
- *   <li><b>Legacy</b>: factory method cũ — backward-compat với code hiện có:
+ *   <li>Truyền status/code/message trực tiếp:
  *       <pre>{@code throw AppException.notFound("User not found");}</pre></li>
  * </ul>
- *
- * <p>Nên dùng ErrorCode cho code mới (client biết số lỗi cụ thể để i18n/retry).</p>
  */
 @Getter
 public class AppException extends RuntimeException {
-    private final ErrorCode errorCode;  // null với legacy constructors
+    private final ErrorCode errorCode;
 
     /**
-     * Constructor khuyến nghị - dùng ErrorCode enum.
+     * Constructor dùng ErrorCode enum.
      */
     public AppException(ErrorCode errorCode) {
         super(errorCode.getMessage());
         this.errorCode = errorCode;
     }
 
-    /**
-     * Legacy constructor - giữ để không break code cũ. Ưu tiên dùng constructor trên.
-     */
     public AppException(HttpStatus status, int code, String message) {
         super(message);
         this.errorCode = null;
@@ -38,7 +33,7 @@ public class AppException extends RuntimeException {
         this.code = code;
     }
 
-    // Legacy fields - chỉ dùng khi errorCode == null
+    // Chỉ dùng khi errorCode == null
     private HttpStatus status;
     private int code;
 
@@ -55,7 +50,7 @@ public class AppException extends RuntimeException {
     }
 
     // ============================================================
-    // Backward-compat factory methods
+    // Factory methods
     // ============================================================
     public static AppException badRequest(String message) {
         return new AppException(HttpStatus.BAD_REQUEST, 400, message);

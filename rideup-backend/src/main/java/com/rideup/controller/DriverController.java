@@ -24,16 +24,20 @@ import org.springframework.web.multipart.MultipartFile;
 /**
  * Endpoint cho app tài xế.
  *
- * Public:
- * - POST /api/driver/register — đăng ký hồ sơ (multipart)
+ * <p>Public:</p>
+ * <ul>
+ *   <li>POST /api/driver/register — đăng ký hồ sơ (multipart)</li>
+ * </ul>
  *
- * Cần JWT (driver app sau khi login):
- * - GET  /api/driver/me      — toàn bộ profile + trạng thái duyệt
- * - GET  /api/driver/status  — chỉ status + message (poll nhẹ)
+ * <p>Cần JWT (driver app sau khi login):</p>
+ * <ul>
+ *   <li>GET /api/driver/me — toàn bộ profile + trạng thái duyệt</li>
+ *   <li>GET /api/driver/status — chỉ status + message (poll nhẹ)</li>
+ * </ul>
  *
- * Driver-only (sẽ thêm sau): POST /api/driver/vehicles, PATCH /api/driver/me, ...
- * Các endpoint đó PHẢI gọi driverService.requireApprovedDriver(userId) ở đầu
- * để chặn driver chưa được admin duyệt (cách B).
+ * <p>Driver-only (POST /api/driver/vehicles, PATCH /api/driver/me, ...) PHẢI
+ * gọi {@code driverService.requireApprovedDriver(userId)} ở đầu method để chặn
+ * driver chưa được admin duyệt.</p>
  */
 @RestController
 @RequestMapping("/driver")

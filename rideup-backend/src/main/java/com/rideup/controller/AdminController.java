@@ -27,8 +27,8 @@ import java.util.List;
 /**
  * Admin endpoints — yêu cầu role=ADMIN (class-level @PreAuthorize).
  *
- * Lưu ý: KHÔNG được setUser(driverProfile, approver) khi approve — approver là admin,
- * driverProfile.user phải LUÔN trỏ về driver. Tránh bug từ reference code.
+ * <p>Approve driver: KHÔNG gọi {@code driverProfile.setUser(approver)} —
+ * approver là admin, driverProfile.user phải luôn trỏ về driver.</p>
  */
 @RestController
 @RequestMapping("/admin")

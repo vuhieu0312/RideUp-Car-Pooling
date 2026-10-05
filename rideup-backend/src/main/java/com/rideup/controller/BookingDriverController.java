@@ -22,8 +22,6 @@ import java.util.List;
 /**
  * Booking endpoints dành cho DRIVER (đã APPROVED).
  * Tài xế xem các booking cho chuyến của mình, xác nhận hoặc từ chối.
- *
- * Lưu ý: Tài xế không có endpoint đặt booking (đặt chỗ là CUSTOMER).
  */
 @RestController
 @RequestMapping("/driver/bookings")

@@ -19,7 +19,7 @@ import java.util.Map;
 /**
  * Admin endpoints cho Location (Province/Ward):
  * - POST /api/admin/locations/seed — trigger cào dữ liệu từ Overpass API
- * - GET  /api/admin/locations/stats — xem trạng thái DB (đếm province/ward)
+ * - GET  /api/admin/locations/stats — xem số lượng province/ward trong DB
  */
 @RestController
 @RequestMapping("/admin/locations")

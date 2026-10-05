@@ -126,12 +126,9 @@ public class DriverService {
         }
     }
 
-    // ========== Driver tự xem thông tin ==========
-
     /**
      * Trả về toàn bộ DriverProfile của user hiện tại (kèm status duyệt).
-     * Hoạt động ở mọi trạng thái PENDING/APPROVED/REJECTED để driver
-     * có thể check trạng thái sau khi đăng ký.
+     * Hoạt động ở mọi trạng thái PENDING/APPROVED/REJECTED.
      */
     @Transactional(readOnly = true)
     public DriverResponse getMyProfile(String userId) {
@@ -186,11 +183,8 @@ public class DriverService {
     }
 
     /**
-     * Helper cho mọi endpoint driver-only (POST /trips, POST /vehicles, accept
-     * booking, ...)
-     * Gọi ở đầu method → throw 403 nếu driver chưa được admin duyệt.
-     * Đây là cách thực thi "cách B": driver có thể login + xem status,
-     * nhưng KHÔNG dùng được driver features cho đến khi APPROVED.
+     * Helper cho mọi endpoint driver-only (POST /trips, POST /vehicles, accept booking).
+     * Throw 403 nếu driver chưa được admin duyệt.
      */
     public DriverProfile requireApprovedDriver(String userId) {
         DriverProfile profile = driverProfileRepository.findByUserId(userId)

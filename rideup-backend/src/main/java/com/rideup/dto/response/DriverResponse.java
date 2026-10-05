@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 
 /**
  * Trả về cho driver app khi gọi GET /driver/me.
- * Driver có thể xem profile của mình ở mọi trạng thái (PENDING/APPROVED/REJECTED).
+ * Driver xem profile ở mọi trạng thái (PENDING/APPROVED/REJECTED).
  */
 @Data
 @Builder

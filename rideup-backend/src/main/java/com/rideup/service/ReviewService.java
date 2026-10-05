@@ -27,20 +27,14 @@ import java.math.RoundingMode;
 import java.util.List;
 
 /**
- * UC37: Đánh giá tài xế.
+ * Đánh giá tài xế sau chuyến đi.
  *
- * Điều kiện (theo spec):
- * - Trip phải ở trạng thái COMPLETED
- * - Customer phải là người đã booking trip này
- *
- * Sau khi review, tự động:
- * - Lưu Review record
- * - Cập nhật driverRating = trung bình cộng tất cả reviews
- * - Tăng totalDriverRides
- *
- * Lưu ý: trong microservice architecture spec, việc cập nhật DriverProfile
- * được thực hiện qua Kafka event 'driver-rating-updated'. Ở đây em làm trực tiếp
- * trong cùng transaction (monolith).
+ * <p>Luồng xử lý:</p>
+ * <ol>
+ *   <li>Validate trip COMPLETED + customer đã booking trip</li>
+ *   <li>Lưu Review record</li>
+ *   <li>Cập nhật driverRating = trung bình cộng dồn + tăng totalDriverRides</li>
+ * </ol>
  */
 @Service
 @RequiredArgsConstructor
@@ -62,12 +56,10 @@ public class ReviewService {
         Trip trip = tripRepository.findById(tripId)
             .orElseThrow(() -> AppException.notFound("Không tìm thấy chuyến"));
 
-        // Điều kiện 1: trip phải COMPLETED
         if (trip.getStatus() != TripStatus.COMPLETED) {
             throw AppException.badRequest("Chỉ đánh giá được chuyến đã hoàn thành");
         }
 
-        // Điều kiện 2: customer đã booking trip này (PENDING/CONFIRMED/COMPLETED)
         boolean hasBooked = bookingRepository.existsByCustomerIdAndTripIdAndStatusIn(
             userId, tripId,
             List.of(BookingStatus.PENDING, BookingStatus.CONFIRMED, BookingStatus.COMPLETED)
@@ -76,7 +68,6 @@ public class ReviewService {
             throw AppException.forbidden("Bạn không có booking cho chuyến này");
         }
 
-        // Không cho review 2 lần cùng trip
         if (reviewRepository.existsByTripIdAndCustomerId(tripId, userId)) {
             throw AppException.conflict("Bạn đã đánh giá chuyến này rồi");
         }
@@ -94,8 +85,7 @@ public class ReviewService {
             .build();
         review = reviewRepository.save(review);
 
-        // Cập nhật driver rating (trung bình cộng dồn):
-        // newAvg = (oldAvg * count + newRating) / (count + 1)
+        // Cập nhật driver rating: newAvg = (oldAvg * count + newRating) / (count + 1)
         BigDecimal currentAvg = profile.getDriverRating();
         long count = profile.getTotalDriverRides();
         BigDecimal newRating = currentAvg
