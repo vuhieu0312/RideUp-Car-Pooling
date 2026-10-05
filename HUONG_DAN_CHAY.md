@@ -1,6 +1,6 @@
 # Hướng dẫn chạy RideUp end-to-end
 
-> File này dành cho việc test thủ công toàn bộ flow: từ backend → frontend customer → frontend driver → admin duyệt.
+> File này dành cho việc test thủ công toàn bộ flow: backend → customer app → driver app → admin app duyệt.
 
 ---
 
@@ -150,6 +150,24 @@ Mở browser **cửa sổ riêng** (có thể ẩn danh): **http://localhost:517
 
 ---
 
+## 5b. Frontend Admin (port 5175)
+
+Mở **Git Bash / Terminal 4**:
+
+```bash
+cd D:/OneDrive/Desktop/RideUp/rideup-admin
+npm install   # chỉ lần đầu
+npm run dev
+```
+
+Mở browser **cửa sổ riêng**: **http://localhost:5175**
+
+Trang admin có 2 màn hình:
+- `/login` — đăng nhập với `admin@rideup.com` / `admin123`
+- `/dashboard` — duyệt driver PENDING + duyệt vehicle PENDING
+
+---
+
 ## 6. Script test E2E (làm theo thứ tự)
 
 ### Bước A: Tạo customer
@@ -191,76 +209,67 @@ Mở browser **cửa sổ riêng** (có thể ẩn danh): **http://localhost:517
 7. Click **Execute**
 8. Response 200 → copy `accessToken`
 
-### Bước C: Admin duyệt driver (qua Swagger UI hoặc curl)
+### Bước C: Admin duyệt driver (qua Admin app hoặc Swagger UI)
 
-**Cách 1: Swagger UI**
+**Cách 1: Admin app (5175)** — nhanh nhất
+1. Mở http://localhost:5175 → login admin
+2. Vào Dashboard → tab **Drivers** → thấy driver PENDING
+3. Click **Approve** → status chuyển APPROVED
+
+**Cách 2: Swagger UI**
 1. Trong Swagger, vào `POST /auth/authentication` → đăng nhập admin → lấy token
 2. Authorize với admin token
 3. Vào `GET /api/admin/drivers?status=PENDING` → copy `id` của driver
 4. Vào `POST /api/admin/drivers/{id}/approve` → Execute
 
-**Cách 2: curl (Git Bash)**
+**Cách 3: curl (Git Bash)**
 ```bash
 ADMIN_TOKEN=$(curl -s -X POST http://localhost:8080/api/auth/authentication \
   -H 'Content-Type: application/json' \
   -d '{"email":"admin@rideup.com","password":"admin123"}' \
   | python -c "import sys, json; print(json.load(sys.stdin)['data']['accessToken'])")
 
-# Lấy driverProfileId
 DRIVER_ID=$(curl -s http://localhost:8080/api/admin/drivers?status=PENDING \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   | python -c "import sys, json; print(json.load(sys.stdin)['data'][0]['id'])")
 echo "Driver ID: $DRIVER_ID"
 
-# Approve
 curl -X POST http://localhost:8080/api/admin/drivers/$DRIVER_ID/approve \
   -H "Authorization: Bearer $ADMIN_TOKEN"
 ```
 
-### Bước D: Đăng ký xe cho driver
-
-1. Ở tab **Driver** (5174): **Đăng nhập** với `taixe@test.com` / `12345678`
-   → Vào thẳng `/driver` (vì đã approved, không cần qua `/pending`)
-2. Hiện tại **chưa có UI đăng ký xe** → dùng Swagger UI hoặc curl:
-
-```bash
-DRIVER_TOKEN=$(curl -s -X POST http://localhost:8080/api/auth/authentication \
-  -H 'Content-Type: application/json' \
-  -d '{"email":"taixe@test.com","password":"12345678"}' \
-  | python -c "import sys, json; print(json.load(sys.stdin)['data']['accessToken'])")
-
-curl -X POST http://localhost:8080/api/driver/vehicles \
-  -H "Authorization: Bearer $DRIVER_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "plateNumber": "29A-12345",
-    "vehicleBrand": "Toyota",
-    "vehicleModel": "Vios",
-    "vehicleYear": 2020,
-    "vehicleColor": "Trắng",
-    "seatCapacity": 4,
-    "vehicleType": "CAR",
-    "registrationExpiryDate": "2030-12-31",
-    "insuranceExpiryDate": "2030-12-31"
-  }'
-```
-
-3. **Admin duyệt xe** qua Swagger UI hoặc curl:
-```bash
-# Lấy vehicleId
-VEHICLE_ID=$(curl -s http://localhost:8080/api/admin/vehicles/pending \
-  -H "Authorization: Bearer $ADMIN_TOKEN" \
-  | python -c "import sys, json; print(json.load(sys.stdin)['data'][0]['id'])")
-
-# Approve
-curl -X POST http://localhost:8080/api/admin/vehicles/$VEHICLE_ID/approve \
-  -H "Authorization: Bearer $ADMIN_TOKEN"
-```
-
-### Bước E: Driver tạo chuyến (qua UI)
+### Bước D: Đăng ký xe cho driver (qua Driver app UI)
 
 Ở tab **Driver** (5174):
-1. Click **🚌 Đăng chuyến mới**
+1. **Đăng nhập** với `taixe@test.com` / `12345678`
+   → Vào thẳng `/driver` (vì đã approved)
+2. Click nút **Đăng ký xe** (hoặc vào URL `/driver/vehicles/new`)
+4. Điền form:
+   - Biển số: `29A-12345`
+   - Hãng: `Toyota`
+   - Dòng: `Vios`
+   - Năm: `2020`
+   - Màu: `Trắng`
+   - Số chỗ: `4`
+   - Loại xe: `CAR`
+   - Ngày hết hạn đăng kiểm: `2030-12-31`
+   - Ngày hết hạn bảo hiểm: `2030-12-31`
+5. Submit → về trang danh sách xe, status PENDING
+
+(Nếu muốn dùng Swagger/curl thay vì UI: xem mục cũ trong git log, đã chuyển sang UI.)
+
+### Bước E: Admin duyệt xe
+
+**Qua Admin app (5175)**:
+1. Sau khi login, vào Dashboard → tab **Vehicles** → thấy xe PENDING
+2. Click **Approve** → `isVerified=true, isActive=true`
+
+**Hoặc qua Swagger UI**: `GET /admin/vehicles/pending` → `POST /admin/vehicles/{id}/approve`
+
+### Bước F: Driver tạo chuyến (qua Driver app UI)
+
+Ở tab **Driver** (5174):
+1. Vào `/driver` → click **🚌 Tạo chuyến mới** (hoặc URL `/driver/trips/new`)
 2. Form tự load 63 tỉnh (do `/locations/provinces` là public)
 3. Điền:
    - **Tỉnh đi**: Hồ Chí Minh
@@ -274,7 +283,7 @@ curl -X POST http://localhost:8080/api/admin/vehicles/$VEHICLE_ID/approve \
 
 ✅ Verify: backend log có dòng `Trip created id=...`
 
-### Bước F: Customer tìm + đặt chuyến
+### Bước G: Customer tìm + đặt chuyến
 
 Ở tab **Customer** (5173):
 1. Click **🔍 Tìm chuyến xe**
@@ -287,11 +296,16 @@ curl -X POST http://localhost:8080/api/admin/vehicles/$VEHICLE_ID/approve \
 4. Click **Đặt chỗ** → form đặt → điền số ghế 1 → **Xác nhận**
 5. → redirect về **📋 Chuyến của tôi**, thấy booking PENDING
 
-### Bước G: Driver xác nhận booking (qua curl)
+### Bước H: Driver xem booking pending
 
-Hiện tại **chưa có UI** cho tab Booking từ khách. Dùng curl:
+**Qua Driver app (5174)**: hiện tại tab `/driver` chỉ có 2 nút tạo/xem chuyến. Quản lý booking chưa có UI — dùng Swagger UI hoặc curl:
 
 ```bash
+DRIVER_TOKEN=$(curl -s -X POST http://localhost:8080/api/auth/authentication \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"taixe@test.com","password":"12345678"}' \
+  | python -c "import sys, json; print(json.load(sys.stdin)['data']['accessToken'])")
+
 # List pending
 curl -s http://localhost:8080/api/driver/bookings/pending \
   -H "Authorization: Bearer $DRIVER_TOKEN" \
@@ -306,7 +320,9 @@ curl -X POST http://localhost:8080/api/driver/bookings/$BOOKING_ID/confirm \
   -H "Authorization: Bearer $DRIVER_TOKEN"
 ```
 
-### Bước H: Customer xác nhận
+**Hoặc qua Swagger UI**: `GET /driver/bookings/pending` → `POST /driver/bookings/{id}/confirm`
+
+### Bước I: Customer xác nhận
 
 Ở tab **Customer** (5173):
 1. Vào **📋 Chuyến của tôi**
@@ -318,15 +334,15 @@ curl -X POST http://localhost:8080/api/driver/bookings/$BOOKING_ID/confirm \
 
 Sau khi tạo 2-3 trips khác nhau (giờ khác nhau, giá khác nhau), test:
 
-### Bước 1: Lấy driver 2nd token
+### Bước 1: Tạo driver thứ 2
 
-Tạo driver thứ 2 qua Swagger UI (giống Bước B):
+Qua Swagger UI (giống Bước B):
 - Email: `taixe2@test.com`
 - Cùng quy trình admin approve
 
 ### Bước 2: Tạo thêm trips
 
-Driver 2 tạo trip:
+Driver 2 vào `/driver/trips/new`:
 - Cùng tuyến HCM → HN
 - Giờ khác (vd 10:00)
 - Giá khác (vd 250000)
@@ -366,6 +382,8 @@ Response: danh sách trip được **sắp xếp theo weighted score** (không p
 | 500 khi upload file PNG/JPG lớn | Kiểm tra `spring.servlet.multipart.max-file-size` trong `application.yml` |
 | Swagger UI 401 | Click nút **Authorize** ở góc phải, paste `Bearer <token>` |
 | Token hết hạn (sau 15 phút) | Login lại lấy token mới |
+| Admin app mở trắng | Chưa login → vào `/login` trước |
+| Driver app redirect về `/login` khi đã login | Token hết hạn hoặc role không đúng (vd login CUSTOMER vào app driver) |
 
 ---
 
@@ -378,6 +396,7 @@ Response: danh sách trip được **sắp xếp theo weighted score** (không p
 | WebSocket | ws://localhost:8080/api/ws |
 | Customer app | http://localhost:5173 |
 | Driver app | http://localhost:5174 |
+| Admin app | http://localhost:5175 |
 
 ---
 
@@ -420,6 +439,12 @@ npm run dev &
 DRV_PID=$!
 echo "Driver PID: $DRV_PID"
 
+# Start admin
+cd D:/OneDrive/Desktop/RideUp/rideup-admin
+npm run dev &
+ADM_PID=$!
+echo "Admin PID: $ADM_PID"
+
 # Wait for Ctrl+C
 echo "Apps đang chạy. Ctrl+C để dừng."
 wait
@@ -428,10 +453,11 @@ wait
 **Windows CMD** (`test.bat`):
 ```bat
 @echo off
-start "Backend" cmd /k "cd /d D:\OneDrive\Desktop\RideUp\rideup-backend && mvn spring-boot:run"
+start "Backend"  cmd /k "cd /d D:\OneDrive\Desktop\RideUp\rideup-backend  && mvn spring-boot:run"
 timeout /t 30
 start "Customer" cmd /k "cd /d D:\OneDrive\Desktop\RideUp\rideup-customer && npm run dev"
-start "Driver" cmd /k "cd /d D:\OneDrive\Desktop\RideUp\rideup-driver && npm run dev"
+start "Driver"   cmd /k "cd /d D:\OneDrive\Desktop\RideUp\rideup-driver   && npm run dev"
+start "Admin"    cmd /k "cd /d D:\OneDrive\Desktop\RideUp\rideup-admin    && npm run dev"
 echo All apps started.
 pause
 ```
