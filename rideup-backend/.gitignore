@@ -1,0 +1,14 @@
+target/
+.idea/
+*.iml
+.vscode/
+.DS_Store
+*.log
+logs/
+build/
+.gradle/
+node_modules/
+.env
+.env.local
+*.zip
+uploads/
