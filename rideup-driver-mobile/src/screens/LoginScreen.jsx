@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
-import { Button, HelperText, Text, TextInput } from 'react-native-paper';
+import { ImageBackground, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../auth/AuthContext';
+import { colors, HERO_IMAGE } from '../theme';
 
 export default function LoginScreen({ navigation }) {
   const { doLogin } = useAuth();
@@ -13,47 +13,84 @@ export default function LoginScreen({ navigation }) {
 
   async function submit() {
     setError('');
-    if (!email || !password) { setError('Vui lòng nhập email và mật khẩu'); return; }
+    if (!email || !password) {
+      setError('Vui lòng nhập email và mật khẩu');
+      return;
+    }
     setLoading(true);
     try {
       const user = await doLogin(email, password);
-      // Chỉ cho role DRIVER. Không tiết lộ role cho attacker.
-      if (!user.roles?.includes('DRIVER')) throw new Error('Invalid');
-      // Tự chuyển sang Main stack
+      if (!user.roles?.includes('DRIVER')) throw new Error('Sai thông tin');
     } catch (e) {
       setError('Email hoặc mật khẩu không đúng');
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.hero}>
-          <Text variant="labelLarge" style={styles.brand}>RIDEUP · TÀI XẾ</Text>
-          <Text variant="headlineMedium" style={styles.title}>Chủ động hành trình,{'\n'}tăng thêm thu nhập.</Text>
-          <Text variant="bodyMedium" style={styles.subtitle}>Quản lý chuyến xe dễ dàng, kết nối hành khách đúng lúc.</Text>
-        </View>
+      <ScrollView contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={false}>
+        <ImageBackground source={{ uri: HERO_IMAGE }} style={styles.hero} imageStyle={{ resizeMode: 'cover' }}>
+          <View style={styles.heroOverlay} />
+          <Text style={styles.brand}>RIDEUP · TÀI XẾ</Text>
+          <Text style={styles.title}>Chủ động hành trình,{'\n'}tăng thêm thu nhập.</Text>
+          <Text style={styles.subtitle}>Quản lý chuyến xe dễ dàng, kết nối hành khách đúng lúc.</Text>
+          <View style={styles.heroFade} />
+        </ImageBackground>
 
         <View style={styles.card}>
-          <Text variant="labelLarge" style={styles.kicker}>TÀI XẾ</Text>
-          <Text variant="headlineSmall" style={styles.cardTitle}>Chào mừng trở lại</Text>
-          {!!error && <HelperText type="error" visible>{error}</HelperText>}
-          <TextInput mode="outlined" label="Email" placeholder="you@example.com"
-            keyboardType="email-address" autoCapitalize="none"
-            value={email} onChangeText={setEmail} style={styles.input} />
-          <TextInput mode="outlined" label="Mật khẩu" placeholder="Nhập mật khẩu"
-            secureTextEntry={!showPassword} value={password} onChangeText={setPassword}
-            right={<TextInput.Icon icon={showPassword ? 'eye-off' : 'eye'} onPress={() => setShowPassword((v) => !v)} />}
-            style={styles.input} />
-          <Button mode="contained" onPress={submit} loading={loading} disabled={loading}
-            style={styles.submit} contentStyle={{ paddingVertical: 6 }}>
-            Đăng nhập
-          </Button>
+          <View style={styles.heading}>
+            <Text style={styles.kicker}>TÀI XẾ</Text>
+            <Text style={styles.cardTitle}>Chào mừng trở lại</Text>
+            <Text style={styles.cardSubtitle}>Đăng nhập để quản lý những chuyến đi của bạn.</Text>
+          </View>
+
+          {!!error && (
+            <View style={styles.alertError}>
+              <Text style={styles.alertErrorText}>{error}</Text>
+            </View>
+          )}
+
+          <View style={styles.field}>
+            <Text style={styles.fieldLabel}>✉  Email</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="you@example.com"
+              placeholderTextColor="#a4b2ae"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              value={email}
+              onChangeText={setEmail}
+            />
+          </View>
+
+          <View style={styles.field}>
+            <Text style={styles.fieldLabel}>🔒  Mật khẩu</Text>
+            <View style={styles.passwordWrap}>
+              <TextInput
+                style={[styles.input, { paddingRight: 42 }]}
+                placeholder="Nhập mật khẩu"
+                placeholderTextColor="#a4b2ae"
+                secureTextEntry={!showPassword}
+                value={password}
+                onChangeText={setPassword}
+              />
+              <TouchableOpacity style={styles.eyeButton} onPress={() => setShowPassword((v) => !v)}>
+                <Text style={styles.eyeIcon}>{showPassword ? '🙈' : '👁'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <TouchableOpacity style={styles.submit} onPress={submit} disabled={loading}>
+            <Text style={styles.submitText}>{loading ? 'Đang đăng nhập...' : 'Đăng nhập'}</Text>
+          </TouchableOpacity>
+
           <View style={styles.switchRow}>
-            <Text variant="bodyMedium">Chưa có tài khoản tài xế? </Text>
-            <Text variant="bodyMedium" style={styles.link} onPress={() => navigation.navigate('DriverRegister')}>
-              Đăng ký tài xế
-            </Text>
+            <Text style={styles.switchText}>Chưa có tài khoản tài xế? </Text>
+            <TouchableOpacity onPress={() => navigation.navigate('DriverRegister')}>
+              <Text style={styles.switchLink}>Đăng ký tài xế</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </ScrollView>
@@ -62,16 +99,34 @@ export default function LoginScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flexGrow: 1, padding: 20, backgroundColor: '#f9fafb' },
-  hero: { marginTop: 40, marginBottom: 24 },
-  brand: { color: '#08b85c', letterSpacing: 2, fontWeight: '700' },
-  title: { marginTop: 12, fontWeight: '700' },
-  subtitle: { marginTop: 8, color: '#6b7280' },
-  card: { backgroundColor: '#fff', borderRadius: 16, padding: 20, elevation: 2 },
-  kicker: { color: '#08b85c', letterSpacing: 2 },
-  cardTitle: { marginTop: 6, fontWeight: '700', marginBottom: 16 },
-  input: { marginBottom: 8 },
-  submit: { marginTop: 16, borderRadius: 12 },
-  switchRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 16 },
-  link: { color: '#08b85c', fontWeight: '600' },
+  hero: { minHeight: 245, paddingTop: 28, paddingHorizontal: 22, paddingBottom: 70, justifyContent: 'flex-start' },
+  heroOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.authOverlay },
+  heroFade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 76, backgroundColor: colors.bg, opacity: 0.96, transform: [{ scaleY: -1 }] },
+  brand: { fontSize: 11, fontWeight: '800', color: 'white', letterSpacing: 2 },
+  title: { marginTop: 52, fontSize: 27, lineHeight: 30, fontWeight: '700', color: 'white' },
+  subtitle: { marginTop: 6, fontSize: 12, color: 'rgba(255,255,255,0.86)', maxWidth: 285 },
+
+  card: { marginTop: -42, marginHorizontal: 14, padding: 22, paddingBottom: 20, borderRadius: 14, backgroundColor: 'white', shadowColor: colors.shadowColor, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.12, shadowRadius: 24, elevation: 6 },
+
+  alertError: { backgroundColor: colors.dangerBg, borderWidth: 1, borderColor: '#fecaca', padding: 9, borderRadius: 6, marginBottom: 14 },
+  alertErrorText: { fontSize: 11, color: colors.dangerText },
+
+  heading: { marginBottom: 20 },
+  kicker: { fontSize: 9, fontWeight: '800', color: colors.primaryAccent, letterSpacing: 1.4 },
+  cardTitle: { marginTop: 5, fontSize: 22, fontWeight: '700', color: colors.text },
+  cardSubtitle: { marginTop: 4, fontSize: 12, color: colors.textSubtle },
+
+  field: { marginBottom: 14 },
+  fieldLabel: { fontSize: 11, fontWeight: '700', color: colors.textSecondary, marginBottom: 6 },
+  input: { minHeight: 46, padding: 12, borderWidth: 1, borderColor: colors.borderLight, borderRadius: 9, backgroundColor: colors.surfaceMuted, fontSize: 13, color: colors.textDark },
+  passwordWrap: { position: 'relative' },
+  eyeButton: { position: 'absolute', right: 7, top: 7, width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
+  eyeIcon: { fontSize: 16 },
+
+  submit: { marginTop: 5, padding: 13, borderRadius: 9, backgroundColor: colors.primary, alignItems: 'center' },
+  submitText: { color: 'white', fontSize: 13, fontWeight: '700' },
+
+  switchRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 18 },
+  switchText: { fontSize: 11, color: colors.textSubtle },
+  switchLink: { fontSize: 11, color: colors.primaryAccent, fontWeight: '700' },
 });

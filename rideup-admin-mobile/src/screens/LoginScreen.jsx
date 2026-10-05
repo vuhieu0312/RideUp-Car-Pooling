@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
-import { Button, HelperText, Text, TextInput } from 'react-native-paper';
+import { ImageBackground, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../auth/AuthContext';
+import { colors, HERO_IMAGE } from '../theme';
 
 export default function LoginScreen() {
   const { doLogin } = useAuth();
@@ -15,32 +15,60 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       await doLogin(email, password);
-      // AppNavigator sẽ tự chuyển sang Dashboard
     } catch (e) {
       setError('Email hoặc mật khẩu không đúng');
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.hero}>
-          <Text variant="labelLarge" style={styles.brand}>RIDEUP · ADMIN</Text>
-          <Text variant="headlineSmall" style={styles.title}>🛡️ Đăng nhập quản trị</Text>
-          <Text variant="bodyMedium" style={styles.subtitle}>Dành cho quản trị viên. Tài xế/khách dùng app phù hợp.</Text>
-        </View>
+      <ScrollView contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={false}>
+        <ImageBackground source={{ uri: HERO_IMAGE }} style={styles.hero} imageStyle={{ resizeMode: 'cover' }}>
+          <View style={styles.heroOverlay} />
+          <Text style={styles.brand}>RIDEUP · ADMIN</Text>
+          <Text style={styles.title}>🛡️ Đăng nhập{'\n'}quản trị hệ thống.</Text>
+          <Text style={styles.subtitle}>Dành cho quản trị viên. Nếu là khách hoặc tài xế, vui lòng dùng app phù hợp.</Text>
+          <View style={styles.heroFade} />
+        </ImageBackground>
 
         <View style={styles.card}>
-          {!!error && <HelperText type="error" visible>{error}</HelperText>}
-          <TextInput mode="outlined" label="Email" value={email}
-            onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none"
-            style={styles.input} />
-          <TextInput mode="outlined" label="Mật khẩu" value={password}
-            onChangeText={setPassword} secureTextEntry style={styles.input} />
-          <Button mode="contained" onPress={submit} loading={loading} disabled={loading}
-            style={styles.submit} contentStyle={{ paddingVertical: 6 }}>
-            Đăng nhập
-          </Button>
+          <View style={styles.heading}>
+            <Text style={styles.kicker}>QUẢN TRỊ</Text>
+            <Text style={styles.cardTitle}>Chào mừng trở lại</Text>
+            <Text style={styles.cardSubtitle}>Đăng nhập để duyệt hồ sơ và quản lý hệ thống.</Text>
+          </View>
+
+          {!!error && (
+            <View style={styles.alertError}>
+              <Text style={styles.alertErrorText}>{error}</Text>
+            </View>
+          )}
+
+          <View style={styles.field}>
+            <Text style={styles.fieldLabel}>✉  Email</Text>
+            <TextInput
+              style={styles.input}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              value={email}
+              onChangeText={setEmail}
+            />
+          </View>
+          <View style={styles.field}>
+            <Text style={styles.fieldLabel}>🔒  Mật khẩu</Text>
+            <TextInput
+              style={styles.input}
+              secureTextEntry
+              value={password}
+              onChangeText={setPassword}
+            />
+          </View>
+
+          <TouchableOpacity style={styles.submit} onPress={submit} disabled={loading}>
+            <Text style={styles.submitText}>{loading ? 'Đang đăng nhập...' : 'Đăng nhập'}</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -48,12 +76,27 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flexGrow: 1, padding: 20, backgroundColor: '#f1f5f9' },
-  hero: { marginTop: 60, marginBottom: 24 },
-  brand: { color: '#1e293b', letterSpacing: 2, fontWeight: '700' },
-  title: { marginTop: 12, fontWeight: '700' },
-  subtitle: { marginTop: 8, color: '#6b7280' },
-  card: { backgroundColor: '#fff', borderRadius: 16, padding: 20, elevation: 2 },
-  input: { marginBottom: 8 },
-  submit: { marginTop: 16, borderRadius: 12 },
+  hero: { minHeight: 245, paddingTop: 28, paddingHorizontal: 22, paddingBottom: 70, justifyContent: 'flex-start' },
+  heroOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.authOverlay },
+  heroFade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 76, backgroundColor: colors.bg, opacity: 0.96, transform: [{ scaleY: -1 }] },
+  brand: { fontSize: 11, fontWeight: '800', color: 'white', letterSpacing: 2 },
+  title: { marginTop: 52, fontSize: 27, lineHeight: 30, fontWeight: '700', color: 'white' },
+  subtitle: { marginTop: 6, fontSize: 12, color: 'rgba(255,255,255,0.86)', maxWidth: 285 },
+
+  card: { marginTop: -42, marginHorizontal: 14, padding: 22, paddingBottom: 20, borderRadius: 14, backgroundColor: 'white', shadowColor: colors.shadowColor, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.12, shadowRadius: 24, elevation: 6 },
+
+  alertError: { backgroundColor: colors.dangerBg, borderWidth: 1, borderColor: '#fecaca', padding: 9, borderRadius: 6, marginBottom: 14 },
+  alertErrorText: { fontSize: 11, color: colors.dangerText },
+
+  heading: { marginBottom: 20 },
+  kicker: { fontSize: 9, fontWeight: '800', color: colors.primary, letterSpacing: 1.4 },
+  cardTitle: { marginTop: 5, fontSize: 22, fontWeight: '700', color: colors.text },
+  cardSubtitle: { marginTop: 4, fontSize: 12, color: colors.textSubtle },
+
+  field: { marginBottom: 14 },
+  fieldLabel: { fontSize: 11, fontWeight: '700', color: colors.textSecondary, marginBottom: 6 },
+  input: { minHeight: 46, padding: 12, borderWidth: 1, borderColor: colors.borderLight, borderRadius: 9, backgroundColor: colors.surfaceMuted, fontSize: 13, color: colors.textDark },
+
+  submit: { marginTop: 5, padding: 13, borderRadius: 9, backgroundColor: colors.primary, alignItems: 'center' },
+  submitText: { color: 'white', fontSize: 13, fontWeight: '700' },
 });

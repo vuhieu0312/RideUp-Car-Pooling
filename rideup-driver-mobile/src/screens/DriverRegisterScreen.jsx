@@ -1,13 +1,9 @@
 import { useState } from 'react';
-import { Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { Image, ImageBackground, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { Button, Card, HelperText, Text, TextInput } from 'react-native-paper';
 import { registerDriver } from '../api/api';
+import { colors, HERO_IMAGE } from '../theme';
 
-/**
- * Driver KYC registration. Upload 3 ảnh qua expo-image-picker (camera hoặc library).
- * RN FormData nhận object {uri, name, type} — khác với web FormData (File blob).
- */
 export default function DriverRegisterScreen() {
   const [form, setForm] = useState({
     fullName: '', email: '', password: '', phone: '',
@@ -21,24 +17,18 @@ export default function DriverRegisterScreen() {
 
   const set = (k) => (v) => setForm((p) => ({ ...p, [k]: v }));
 
-  async function pickImage(key) {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      quality: 0.7,
-    });
-    if (!result.canceled && result.assets?.[0]) {
-      const a = result.assets[0];
-      setFiles((p) => ({ ...p, [key]: { uri: a.uri, name: a.fileName || `${key}.jpg`, type: a.mimeType || 'image/jpeg' } }));
+  async function pickImage(key, source) {
+    let result;
+    if (source === 'camera') {
+      await ImagePicker.requestCameraPermissionsAsync();
+      result = await ImagePicker.launchCameraAsync({ allowsEditing: true, quality: 0.7 });
+    } else {
+      result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.7,
+      });
     }
-  }
-
-  async function captureImage(key) {
-    await ImagePicker.requestCameraPermissionsAsync();
-    const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
-      quality: 0.7,
-    });
     if (!result.canceled && result.assets?.[0]) {
       const a = result.assets[0];
       setFiles((p) => ({ ...p, [key]: { uri: a.uri, name: a.fileName || `${key}.jpg`, type: a.mimeType || 'image/jpeg' } }));
@@ -55,55 +45,87 @@ export default function DriverRegisterScreen() {
     setLoading(true);
     try {
       await registerDriver(form, files);
-      // Backend đã issue token + login. AuthContext sẽ tự chuyển sang Main stack.
     } catch (e) {
       setError(e.response?.data?.message || 'Đăng ký thất bại');
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.hero}>
-          <Text variant="labelLarge" style={styles.kicker}>TÀI XẾ</Text>
-          <Text variant="headlineSmall" style={styles.title}>Đăng ký hồ sơ</Text>
-          <Text variant="bodyMedium" style={styles.subtitle}>Admin sẽ duyệt hồ sơ trước khi bạn bắt đầu nhận chuyến.</Text>
+      <ScrollView contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={false}>
+        <ImageBackground source={{ uri: HERO_IMAGE }} style={styles.hero} imageStyle={{ resizeMode: 'cover' }}>
+          <View style={styles.heroOverlay} />
+          <Text style={styles.brand}>RIDEUP · TÀI XẾ</Text>
+          <Text style={styles.title}>Cùng RideUp{'\n'}lăn bánh mỗi ngày.</Text>
+          <Text style={styles.subtitle}>Đăng ký hồ sơ, nhận chuyến và chủ động thời gian của bạn.</Text>
+          <View style={styles.heroFade} />
+        </ImageBackground>
+
+        <View style={styles.card}>
+          <View style={styles.heading}>
+            <Text style={styles.kicker}>TÀI XẾ</Text>
+            <Text style={styles.cardTitle}>Đăng ký hồ sơ</Text>
+            <Text style={styles.cardSubtitle}>Admin sẽ duyệt hồ sơ trước khi bạn bắt đầu nhận chuyến.</Text>
+          </View>
+
+          {!!error && (
+            <View style={styles.alertError}>
+              <Text style={styles.alertErrorText}>{error}</Text>
+            </View>
+          )}
+
+          {/* Section 1: Thông tin cá nhân */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>1. Thông tin cá nhân</Text>
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>👤  Họ và tên *</Text>
+              <TextInput style={styles.input} value={form.fullName} onChangeText={set('fullName')} />
+            </View>
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>✉  Email *</Text>
+              <TextInput style={styles.input} keyboardType="email-address" autoCapitalize="none" value={form.email} onChangeText={set('email')} />
+            </View>
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>📞  Số điện thoại *</Text>
+              <TextInput style={styles.input} keyboardType="phone-pad" placeholder="0912345678" placeholderTextColor="#a4b2ae" value={form.phone} onChangeText={set('phone')} />
+            </View>
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>🔒  Mật khẩu (≥ 8 ký tự) *</Text>
+              <TextInput style={styles.input} secureTextEntry value={form.password} onChangeText={set('password')} />
+            </View>
+          </View>
+
+          {/* Section 2: Giấy tờ */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>2. Giấy tờ tùy thân</Text>
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>🪪  Số CCCD (12 số) *</Text>
+              <TextInput style={styles.input} keyboardType="numeric" maxLength={12} value={form.cccd} onChangeText={set('cccd')} />
+            </View>
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>🪪  Số GPLX *</Text>
+              <TextInput style={styles.input} value={form.gplx} onChangeText={set('gplx')} />
+            </View>
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>🪪  Ngày hết hạn GPLX *</Text>
+              <TextInput style={styles.input} placeholder="2030-12-31" placeholderTextColor="#a4b2ae" value={form.gplxExpiryDate} onChangeText={set('gplxExpiryDate')} />
+            </View>
+          </View>
+
+          {/* Section 3: Ảnh */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>3. Ảnh giấy tờ</Text>
+            <ImageField label="CCCD mặt trước *" file={files.cccdImageFront} onPick={() => pickImage('cccdImageFront', 'lib')} onCapture={() => pickImage('cccdImageFront', 'camera')} />
+            <ImageField label="CCCD mặt sau *" file={files.cccdImageBack} onPick={() => pickImage('cccdImageBack', 'lib')} onCapture={() => pickImage('cccdImageBack', 'camera')} />
+            <ImageField label="GPLX *" file={files.gplxImage} onPick={() => pickImage('gplxImage', 'lib')} onCapture={() => pickImage('gplxImage', 'camera')} />
+          </View>
+
+          <TouchableOpacity style={styles.submit} onPress={submit} disabled={loading}>
+            <Text style={styles.submitText}>{loading ? 'Đang gửi hồ sơ...' : 'Gửi hồ sơ đăng ký'}</Text>
+          </TouchableOpacity>
         </View>
-
-        <Card style={{ marginBottom: 12 }}>
-          <Card.Content>
-            <Text variant="titleSmall" style={styles.section}>1. Thông tin cá nhân</Text>
-            <TextInput mode="outlined" label="Họ và tên *" value={form.fullName} onChangeText={set('fullName')} style={styles.input} />
-            <TextInput mode="outlined" label="Email *" value={form.email} onChangeText={set('email')} keyboardType="email-address" autoCapitalize="none" style={styles.input} />
-            <TextInput mode="outlined" label="Số điện thoại *" value={form.phone} onChangeText={set('phone')} keyboardType="phone-pad" style={styles.input} />
-            <TextInput mode="outlined" label="Mật khẩu (≥ 8 ký tự) *" value={form.password} onChangeText={set('password')} secureTextEntry style={styles.input} />
-          </Card.Content>
-        </Card>
-
-        <Card style={{ marginBottom: 12 }}>
-          <Card.Content>
-            <Text variant="titleSmall" style={styles.section}>2. Giấy tờ tùy thân</Text>
-            <TextInput mode="outlined" label="Số CCCD (12 số) *" value={form.cccd} onChangeText={set('cccd')} keyboardType="numeric" maxLength={12} style={styles.input} />
-            <TextInput mode="outlined" label="Số GPLX *" value={form.gplx} onChangeText={set('gplx')} style={styles.input} />
-            <TextInput mode="outlined" label="Ngày hết hạn GPLX *" value={form.gplxExpiryDate} onChangeText={set('gplxExpiryDate')} placeholder="2030-12-31" style={styles.input} />
-          </Card.Content>
-        </Card>
-
-        <Card style={{ marginBottom: 12 }}>
-          <Card.Content>
-            <Text variant="titleSmall" style={styles.section}>3. Ảnh giấy tờ</Text>
-            <ImageField label="CCCD mặt trước *" file={files.cccdImageFront} onPick={() => pickImage('cccdImageFront')} onCapture={() => captureImage('cccdImageFront')} />
-            <ImageField label="CCCD mặt sau *" file={files.cccdImageBack} onPick={() => pickImage('cccdImageBack')} onCapture={() => captureImage('cccdImageBack')} />
-            <ImageField label="GPLX *" file={files.gplxImage} onPick={() => pickImage('gplxImage')} onCapture={() => captureImage('gplxImage')} />
-          </Card.Content>
-        </Card>
-
-        {!!error && <HelperText type="error" visible>{error}</HelperText>}
-
-        <Button mode="contained" onPress={submit} loading={loading} disabled={loading}
-          style={{ marginTop: 16, borderRadius: 12 }} contentStyle={{ paddingVertical: 6 }}>
-          Gửi hồ sơ đăng ký
-        </Button>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -111,20 +133,28 @@ export default function DriverRegisterScreen() {
 
 function ImageField({ label, file, onPick, onCapture }) {
   return (
-    <View style={{ marginBottom: 12 }}>
-      <Text variant="labelSmall" style={{ color: '#6b7280', marginBottom: 4 }}>{label}</Text>
+    <View style={styles.field}>
+      <Text style={styles.fieldLabel}>📷  {label}</Text>
       {file?.uri ? (
-        <View>
-          <Image source={{ uri: file.uri }} style={{ width: '100%', height: 180, borderRadius: 8 }} />
-          <View style={{ flexDirection: 'row', marginTop: 8 }}>
-            <Button mode="outlined" onPress={onPick} style={{ flex: 1, marginRight: 4 }} icon="image">Đổi</Button>
-            <Button mode="outlined" onPress={onCapture} style={{ flex: 1, marginLeft: 4 }} icon="camera">Chụp lại</Button>
+        <View style={{ marginTop: 6 }}>
+          <Image source={{ uri: file.uri }} style={{ width: '100%', height: 160, borderRadius: 8 }} />
+          <View style={{ flexDirection: 'row', marginTop: 6, gap: 6 }}>
+            <TouchableOpacity style={[styles.imageBtn, { flex: 1 }]} onPress={onPick}>
+              <Text style={styles.imageBtnText}>🖼  Chọn ảnh khác</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.imageBtn, { flex: 1 }]} onPress={onCapture}>
+              <Text style={styles.imageBtnText}>📷  Chụp lại</Text>
+            </TouchableOpacity>
           </View>
         </View>
       ) : (
-        <View style={{ flexDirection: 'row' }}>
-          <Button mode="outlined" onPress={onPick} style={{ flex: 1, marginRight: 4 }} icon="image">Chọn ảnh</Button>
-          <Button mode="outlined" onPress={onCapture} style={{ flex: 1, marginLeft: 4 }} icon="camera">Chụp ảnh</Button>
+        <View style={{ flexDirection: 'row', gap: 6, marginTop: 4 }}>
+          <TouchableOpacity style={[styles.imageBtn, { flex: 1 }]} onPress={onPick}>
+            <Text style={styles.imageBtnText}>🖼  Chọn ảnh</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.imageBtn, { flex: 1 }]} onPress={onCapture}>
+            <Text style={styles.imageBtnText}>📷  Chụp ảnh</Text>
+          </TouchableOpacity>
         </View>
       )}
     </View>
@@ -132,11 +162,33 @@ function ImageField({ label, file, onPick, onCapture }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flexGrow: 1, padding: 16, backgroundColor: '#f9fafb' },
-  hero: { marginTop: 40, marginBottom: 16 },
-  kicker: { color: '#08b85c', letterSpacing: 2 },
-  title: { marginTop: 6, fontWeight: '700' },
-  subtitle: { marginTop: 4, color: '#6b7280' },
-  section: { fontWeight: '700', marginBottom: 8 },
-  input: { marginBottom: 8 },
+  hero: { minHeight: 245, paddingTop: 28, paddingHorizontal: 22, paddingBottom: 70, justifyContent: 'flex-start' },
+  heroOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.authOverlay },
+  heroFade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 76, backgroundColor: colors.bg, opacity: 0.96, transform: [{ scaleY: -1 }] },
+  brand: { fontSize: 11, fontWeight: '800', color: 'white', letterSpacing: 2 },
+  title: { marginTop: 52, fontSize: 27, lineHeight: 30, fontWeight: '700', color: 'white' },
+  subtitle: { marginTop: 6, fontSize: 12, color: 'rgba(255,255,255,0.86)', maxWidth: 285 },
+
+  card: { marginTop: -42, marginHorizontal: 14, padding: 22, paddingBottom: 20, borderRadius: 14, backgroundColor: 'white', shadowColor: colors.shadowColor, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.12, shadowRadius: 24, elevation: 6 },
+
+  alertError: { backgroundColor: colors.dangerBg, borderWidth: 1, borderColor: '#fecaca', padding: 9, borderRadius: 6, marginBottom: 14 },
+  alertErrorText: { fontSize: 11, color: colors.dangerText },
+
+  heading: { marginBottom: 20 },
+  kicker: { fontSize: 9, fontWeight: '800', color: colors.primaryAccent, letterSpacing: 1.4 },
+  cardTitle: { marginTop: 5, fontSize: 22, fontWeight: '700', color: colors.text },
+  cardSubtitle: { marginTop: 4, fontSize: 12, color: colors.textSubtle },
+
+  section: { marginTop: 18, paddingTop: 14, borderTopWidth: 1, borderTopColor: '#e7f0ec' },
+  sectionTitle: { marginBottom: 12, fontSize: 13, fontWeight: '700', color: colors.textDark },
+
+  field: { marginBottom: 14 },
+  fieldLabel: { fontSize: 11, fontWeight: '700', color: colors.textSecondary, marginBottom: 6 },
+  input: { minHeight: 46, padding: 12, borderWidth: 1, borderColor: colors.borderLight, borderRadius: 9, backgroundColor: colors.surfaceMuted, fontSize: 13, color: colors.textDark },
+
+  imageBtn: { padding: 10, borderWidth: 1, borderColor: colors.borderLight, borderStyle: 'dashed', borderRadius: 8, alignItems: 'center', backgroundColor: colors.surfaceMuted },
+  imageBtnText: { fontSize: 11, color: colors.textSecondary, fontWeight: '600' },
+
+  submit: { marginTop: 5, padding: 13, borderRadius: 9, backgroundColor: colors.primary, alignItems: 'center' },
+  submitText: { color: 'white', fontSize: 13, fontWeight: '700' },
 });
