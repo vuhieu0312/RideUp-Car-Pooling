@@ -1,19 +1,12 @@
 import { useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
-import {
-  Button, Card, HelperText, IconButton, Text, TextInput,
-} from 'react-native-paper';
+import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import * as Location from 'expo-location';
 import { createBooking } from '../api/api';
+import { colors } from '../theme';
 
-/**
- * Màn hình đặt chỗ. Khác biệt so với web:
- * - Không dùng Google Maps (MapPicker). GPS lấy từ expo-location, người dùng có thể chỉnh tay.
- * - Form đơn giản hơn để phù hợp mobile.
- */
 export default function BookingCreateScreen({ route, navigation }) {
   const { trip, seats: defaultSeats, pickupWardId, dropoffWardId } = route.params || {};
-  const [seatsCount, setSeatsCount] = useState(String(defaultSeats || 1));
+  const [seats, setSeats] = useState(String(defaultSeats || 1));
   const [pickupText, setPickupText] = useState('');
   const [pickupLat, setPickupLat] = useState('');
   const [pickupLng, setPickupLng] = useState('');
@@ -27,18 +20,16 @@ export default function BookingCreateScreen({ route, navigation }) {
   if (!trip) {
     return (
       <View style={styles.container}>
-        <Text>Không có dữ liệu chuyến.</Text>
-        <Button onPress={() => navigation.navigate('Home')}>Về trang chủ</Button>
+        <Text style={{ padding: 16 }}>Không có dữ liệu chuyến.</Text>
       </View>
     );
   }
 
-  const totalAmount = trip.priceVnd * Number(seatsCount);
-  const fmtMoney = (v) => `${new Intl.NumberFormat('vi-VN').format(v)} đ`;
+  const total = trip.priceVnd * Number(seats);
+  const fmtMoney = (v) => `${new Intl.NumberFormat('vi-VN').format(v || 0)} đ`;
   const fmtTime = (iso) => (iso ? iso.replace('T', ' ').substring(0, 16) : '');
 
-  // Lấy vị trí hiện tại qua GPS của thiết bị
-  async function useMyLocationForPickup() {
+  async function useMyLocation() {
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== 'granted') {
       setError('Cần quyền truy cập vị trí để dùng GPS');
@@ -51,17 +42,14 @@ export default function BookingCreateScreen({ route, navigation }) {
 
   async function submit() {
     setError('');
-    const seats = Number(seatsCount);
-    if (!seats || seats < 1) { setError('Số ghế phải >= 1'); return; }
-    if (seats > trip.seatAvailable) {
-      setError(`Chuyến chỉ còn ${trip.seatAvailable} ghế`);
-      return;
-    }
+    const n = Number(seats);
+    if (!n || n < 1) { setError('Số ghế phải >= 1'); return; }
+    if (n > trip.seatAvailable) { setError(`Chuyến chỉ còn ${trip.seatAvailable} ghế`); return; }
     setLoading(true);
     try {
       await createBooking({
         tripId: trip.id,
-        seatCount: seats,
+        seatCount: n,
         pickupAddressText: pickupText || null,
         pickupLat: pickupLat ? Number(pickupLat) : null,
         pickupLng: pickupLng ? Number(pickupLng) : null,
@@ -80,80 +68,66 @@ export default function BookingCreateScreen({ route, navigation }) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.topBar}>
-        <IconButton icon="arrow-left" onPress={() => navigation.goBack()} />
-        <Text variant="titleMedium" style={{ fontWeight: '700' }}>Đặt chỗ chuyến xe</Text>
+      {/* Header green */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Text style={styles.backIcon}>‹</Text>
+        </TouchableOpacity>
+        <View>
+          <Text style={styles.headerKicker}>RIDEUP</Text>
+          <Text style={styles.headerTitle}>Đặt chỗ chuyến xe</Text>
+        </View>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 16 }}>
-        <Card style={{ marginBottom: 12 }}>
-          <Card.Content>
-            <Text variant="labelLarge" style={styles.kicker}>THÔNG TIN CHUYẾN</Text>
-            <Text variant="titleSmall" style={{ fontWeight: '700' }}>
-              🚌 {trip.startProvinceName} → {trip.endProvinceName}
-            </Text>
-            <Text variant="bodySmall" style={styles.subtitle}>
-              Khởi hành: {fmtTime(trip.departureTime)} · Tài xế: {trip.driverName}
-            </Text>
-            <Text variant="bodySmall" style={styles.subtitle}>
-              Còn {trip.seatAvailable}/{trip.seatTotal} ghế · Giá: {fmtMoney(trip.priceVnd)}/ghế
-            </Text>
-          </Card.Content>
-        </Card>
+      <ScrollView contentContainerStyle={{ padding: 14 }}>
+        {/* Thông tin chuyến */}
+        <View style={styles.card}>
+          <Text style={styles.cardKicker}>THÔNG TIN CHUYẾN</Text>
+          <Text style={styles.tripLine}>🚌 <Text style={{ fontWeight: '700' }}>{trip.startProvinceName}</Text> → <Text style={{ fontWeight: '700' }}>{trip.endProvinceName}</Text></Text>
+          <Text style={styles.muted}>Khởi hành: {fmtTime(trip.departureTime)} · Tài xế: {trip.driverName}{trip.driverRating > 0 ? ` · ⭐ ${trip.driverRating}` : ''}</Text>
+          <Text style={styles.muted}>Còn {trip.seatAvailable}/{trip.seatTotal} ghế · Giá: {fmtMoney(trip.priceVnd)}/ghế</Text>
+        </View>
 
-        {!!error && <HelperText type="error" visible>{error}</HelperText>}
+        {!!error && <Text style={styles.errorText}>{error}</Text>}
 
-        <Card>
-          <Card.Content>
-            <TextInput mode="outlined" label="Số ghế muốn đặt" value={seatsCount}
-              onChangeText={setSeatsCount} keyboardType="numeric"
-              style={{ marginBottom: 8 }} />
+        <View style={styles.card}>
+          <Text style={styles.label}>Số ghế muốn đặt</Text>
+          <TextInput style={styles.input} keyboardType="numeric" value={seats} onChangeText={setSeats} />
 
-            <Text variant="titleSmall" style={{ fontWeight: '700', marginTop: 8 }}>📍 Điểm đón</Text>
-            <Button mode="text" icon="crosshairs-gps" onPress={useMyLocationForPickup}>
-              Lấy vị trí hiện tại
-            </Button>
-            <TextInput mode="outlined" label="Vĩ độ (latitude)" value={pickupLat}
-              onChangeText={setPickupLat} keyboardType="numeric" style={{ marginBottom: 8 }} />
-            <TextInput mode="outlined" label="Kinh độ (longitude)" value={pickupLng}
-              onChangeText={setPickupLng} keyboardType="numeric" style={{ marginBottom: 8 }} />
-            <TextInput mode="outlined" label="Mô tả địa chỉ đón" value={pickupText}
-              onChangeText={setPickupText} placeholder="Số 1 Võ Văn Ngân, Q. Thủ Đức"
-              multiline style={{ marginBottom: 8 }} />
+          <Text style={styles.section}>📍 Điểm đón</Text>
+          <TouchableOpacity style={styles.gpsBtn} onPress={useMyLocation}>
+            <Text style={styles.gpsBtnText}>📡 Lấy vị trí hiện tại</Text>
+          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <TextInput style={[styles.input, { flex: 1 }]} placeholder="Vĩ độ" placeholderTextColor="#a4b2ae" keyboardType="numeric" value={pickupLat} onChangeText={setPickupLat} />
+            <TextInput style={[styles.input, { flex: 1 }]} placeholder="Kinh độ" placeholderTextColor="#a4b2ae" keyboardType="numeric" value={pickupLng} onChangeText={setPickupLng} />
+          </View>
+          <TextInput style={[styles.input, styles.multiline]} placeholder="Mô tả địa chỉ đón (vd: Số 1 Võ Văn Ngân)" placeholderTextColor="#a4b2ae" multiline value={pickupText} onChangeText={setPickupText} />
 
-            <Text variant="titleSmall" style={{ fontWeight: '700', marginTop: 8 }}>🏁 Điểm trả</Text>
-            <TextInput mode="outlined" label="Vĩ độ" value={dropoffLat}
-              onChangeText={setDropoffLat} keyboardType="numeric" style={{ marginBottom: 8 }} />
-            <TextInput mode="outlined" label="Kinh độ" value={dropoffLng}
-              onChangeText={setDropoffLng} keyboardType="numeric" style={{ marginBottom: 8 }} />
-            <TextInput mode="outlined" label="Mô tả địa chỉ trả" value={dropoffText}
-              onChangeText={setDropoffText} placeholder="Số 10 Phạm Văn Đồng, Q. Cầu Giấy"
-              multiline style={{ marginBottom: 8 }} />
+          <Text style={styles.section}>🏁 Điểm trả</Text>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <TextInput style={[styles.input, { flex: 1 }]} placeholder="Vĩ độ" placeholderTextColor="#a4b2ae" keyboardType="numeric" value={dropoffLat} onChangeText={setDropoffLat} />
+            <TextInput style={[styles.input, { flex: 1 }]} placeholder="Kinh độ" placeholderTextColor="#a4b2ae" keyboardType="numeric" value={dropoffLng} onChangeText={setDropoffLng} />
+          </View>
+          <TextInput style={[styles.input, styles.multiline]} placeholder="Mô tả địa chỉ trả" placeholderTextColor="#a4b2ae" multiline value={dropoffText} onChangeText={setDropoffText} />
 
-            <Text variant="titleSmall" style={{ fontWeight: '700', marginTop: 8 }}>📝 Ghi chú cho tài xế</Text>
-            <TextInput mode="outlined" label="Ghi chú" value={note}
-              onChangeText={setNote} placeholder="Tôi sẽ mang theo 1 vali lớn..."
-              multiline numberOfLines={3} style={{ marginBottom: 8 }} />
-          </Card.Content>
-        </Card>
+          <Text style={styles.section}>📝 Ghi chú cho tài xế</Text>
+          <TextInput style={[styles.input, styles.multiline, { minHeight: 70 }]} placeholder="Tôi sẽ mang theo 1 vali lớn..." placeholderTextColor="#a4b2ae" multiline value={note} onChangeText={setNote} />
+        </View>
 
-        <Card style={{ marginTop: 12, backgroundColor: '#ecfdf5' }}>
-          <Card.Content>
-            <Text variant="labelLarge" style={{ color: '#15803d' }}>TỔNG TIỀN</Text>
-            <Text variant="headlineMedium" style={{ color: '#15803d', fontWeight: '700' }}>
-              {fmtMoney(totalAmount)}
-            </Text>
-            <Text variant="bodySmall" style={{ color: '#15803d' }}>
-              ({seatsCount} ghế × {fmtMoney(trip.priceVnd)})
-            </Text>
-          </Card.Content>
-        </Card>
+        <View style={styles.totalBox}>
+          <Text style={styles.totalKicker}>TỔNG TIỀN</Text>
+          <Text style={styles.totalPrice}>{fmtMoney(total)}</Text>
+          <Text style={styles.totalHint}>({seats} ghế × {fmtMoney(trip.priceVnd)})</Text>
+        </View>
 
-        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 12, gap: 8 }}>
-          <Button mode="outlined" onPress={() => navigation.goBack()}>Quay lại</Button>
-          <Button mode="contained" onPress={submit} loading={loading} disabled={loading}>
-            Xác nhận đặt chỗ
-          </Button>
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 14 }}>
+          <TouchableOpacity style={[styles.submitBtn, { backgroundColor: '#fff', borderWidth: 1, borderColor: colors.border }]} onPress={() => navigation.goBack()}>
+            <Text style={[styles.submitBtnText, { color: colors.text }]}>Quay lại</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.submitBtn, { flex: 1, backgroundColor: colors.primary }]} onPress={submit} disabled={loading}>
+            <Text style={styles.submitBtnText}>{loading ? 'Đang đặt...' : 'Xác nhận đặt chỗ'}</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </View>
@@ -161,8 +135,33 @@ export default function BookingCreateScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f9fafb' },
-  topBar: { flexDirection: 'row', alignItems: 'center' },
-  kicker: { color: '#10b981', letterSpacing: 2, marginBottom: 4 },
-  subtitle: { color: '#6b7280', marginTop: 2 },
+  container: { flex: 1, backgroundColor: colors.bg },
+  header: { flexDirection: 'row', alignItems: 'center', minHeight: 68, paddingHorizontal: 14, backgroundColor: '#08b85c' },
+  backBtn: { width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(255,255,255,0.16)', alignItems: 'center', justifyContent: 'center', marginRight: 10 },
+  backIcon: { color: 'white', fontSize: 20, fontWeight: '700' },
+  headerKicker: { fontSize: 9, fontWeight: '800', color: 'rgba(255,255,255,0.8)', letterSpacing: 1.5 },
+  headerTitle: { marginTop: 2, fontSize: 17, fontWeight: '700', color: 'white' },
+
+  card: { padding: 13, marginBottom: 12, borderWidth: 1, borderColor: colors.borderMuted, borderRadius: 11, backgroundColor: 'white', shadowColor: colors.shadowColor, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.07, shadowRadius: 8, elevation: 1 },
+  cardKicker: { fontSize: 11, fontWeight: '700', color: colors.primaryAccent, textTransform: 'uppercase', marginBottom: 8 },
+  muted: { fontSize: 11, color: colors.textSecondary, marginTop: 4 },
+  tripLine: { fontSize: 12, color: colors.textDark },
+  errorText: { color: colors.danger, fontSize: 11, marginBottom: 10 },
+
+  label: { fontSize: 11, color: colors.textSecondary, marginBottom: 4, fontWeight: '600' },
+  input: { paddingHorizontal: 10, paddingVertical: 10, borderWidth: 1, borderColor: colors.borderLight, borderRadius: 8, backgroundColor: colors.surfaceMuted, fontSize: 12, color: colors.textDark, marginBottom: 8 },
+  multiline: { minHeight: 50, textAlignVertical: 'top' },
+
+  section: { marginTop: 12, marginBottom: 6, fontSize: 13, fontWeight: '700', color: colors.textDark },
+
+  gpsBtn: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 6, marginBottom: 8 },
+  gpsBtnText: { fontSize: 12, color: colors.primaryAccent, fontWeight: '700' },
+
+  totalBox: { marginTop: 14, padding: 13, borderRadius: 11, backgroundColor: colors.primaryLight, borderWidth: 1, borderColor: '#9ddcba' },
+  totalKicker: { fontSize: 11, fontWeight: '700', color: '#15803d' },
+  totalPrice: { fontSize: 24, fontWeight: '700', color: '#15803d', marginTop: 4 },
+  totalHint: { fontSize: 11, color: '#15803d' },
+
+  submitBtn: { flex: 1, padding: 12, borderRadius: 9, alignItems: 'center' },
+  submitBtnText: { color: 'white', fontSize: 12, fontWeight: '700' },
 });

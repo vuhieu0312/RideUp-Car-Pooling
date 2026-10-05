@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
-import {
-  Button, Card, Divider, HelperText, IconButton, Menu, Text, TextInput,
-} from 'react-native-paper';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { listProvinces, listWards, searchTrips } from '../api/api';
+import { colors } from '../theme';
+import Picker from '../components/Picker';
 
 export default function TripSearchScreen({ navigation }) {
   const [provinces, setProvinces] = useState([]);
@@ -18,10 +17,9 @@ export default function TripSearchScreen({ navigation }) {
   const [trips, setTrips] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [searched, setSearched] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(null);
+  const [pickerOpen, setPickerOpen] = useState(null);
 
-  useEffect(() => { listProvinces().then(setProvinces).catch(() => setError('Không tải được danh sách tỉnh')); }, []);
+  useEffect(() => { listProvinces().then(setProvinces).catch(() => {}); }, []);
   useEffect(() => {
     setStartWardId('');
     if (fromProvinceId) listWards(fromProvinceId).then(setStartWards).catch(() => setStartWards([]));
@@ -38,19 +36,12 @@ export default function TripSearchScreen({ navigation }) {
       setError('Vui lòng chọn đủ tỉnh, phường/xã và ngày đi');
       return;
     }
-    if (fromProvinceId === toProvinceId) {
-      setError('Tỉnh đi và tỉnh đến phải khác nhau');
-      return;
-    }
     setError('');
     setLoading(true);
-    setSearched(true);
     try {
       const result = await searchTrips({
-        startProvinceId: fromProvinceId,
-        startWardId,
-        endProvinceId: toProvinceId,
-        endWardId,
+        startProvinceId: fromProvinceId, startWardId,
+        endProvinceId: toProvinceId, endWardId,
         departureDate: date,
       });
       setTrips(result);
@@ -61,127 +52,122 @@ export default function TripSearchScreen({ navigation }) {
     }
   }
 
-  const fmtMoney = (v) => `${new Intl.NumberFormat('vi-VN').format(v)} đ`;
+  const fmtMoney = (v) => `${new Intl.NumberFormat('vi-VN').format(v || 0)} đ`;
   const fmtTime = (iso) => (iso ? iso.replace('T', ' ').substring(0, 16) : '');
 
   return (
     <View style={styles.container}>
-      <View style={styles.topBar}>
-        <IconButton icon="arrow-left" onPress={() => navigation.goBack()} />
-        <Text variant="titleMedium" style={{ fontWeight: '700' }}>Tìm chuyến xe ghép</Text>
+      <View style={styles.heading}>
+        <Text style={styles.title}>🔍 Tìm chuyến xe ghép</Text>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 16 }}>
-        <Card style={{ marginBottom: 12 }}>
-          <Card.Content>
-            <Picker label="Tỉnh đón *" value={fromProvinceId} options={provinces}
-              isOpen={menuOpen === 'fromP'}
-              onOpenMenu={() => setMenuOpen('fromP')} onCloseMenu={() => setMenuOpen(null)}
-              onSelect={(id) => { setFromProvinceId(id); setMenuOpen(null); }} />
-            <Picker label="Khu vực đón *" value={startWardId} options={startWards}
-              isOpen={menuOpen === 'fromW'}
-              onOpenMenu={() => setMenuOpen('fromW')} onCloseMenu={() => setMenuOpen(null)}
-              onSelect={(id) => { setStartWardId(id); setMenuOpen(null); }} />
-            <Picker label="Tỉnh trả *" value={toProvinceId} options={provinces}
-              isOpen={menuOpen === 'toP'}
-              onOpenMenu={() => setMenuOpen('toP')} onCloseMenu={() => setMenuOpen(null)}
-              onSelect={(id) => { setToProvinceId(id); setMenuOpen(null); }} />
-            <Picker label="Khu vực trả *" value={endWardId} options={endWards}
-              isOpen={menuOpen === 'toW'}
-              onOpenMenu={() => setMenuOpen('toW')} onCloseMenu={() => setMenuOpen(null)}
-              onSelect={(id) => { setEndWardId(id); setMenuOpen(null); }} />
+      <ScrollView contentContainerStyle={{ padding: 14 }}>
+        <View style={styles.card}>
+          <View style={{ gap: 10 }}>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.fieldLabel}>Tỉnh đón *</Text>
+                <Picker value={fromProvinceId} options={provinces} isOpen={pickerOpen === 'fP'}
+                  onOpen={() => setPickerOpen('fP')} onClose={() => setPickerOpen(null)}
+                  onSelect={(id) => { setFromProvinceId(id); setPickerOpen(null); }} placeholder="Chọn tỉnh" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.fieldLabel}>Khu vực đón *</Text>
+                <Picker value={startWardId} options={startWards} isOpen={pickerOpen === 'fW'}
+                  onOpen={() => setPickerOpen('fW')} onClose={() => setPickerOpen(null)}
+                  onSelect={(id) => { setStartWardId(id); setPickerOpen(null); }} placeholder="Chọn khu vực" />
+              </View>
+            </View>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.fieldLabel}>Tỉnh trả *</Text>
+                <Picker value={toProvinceId} options={provinces} isOpen={pickerOpen === 'tP'}
+                  onOpen={() => setPickerOpen('tP')} onClose={() => setPickerOpen(null)}
+                  onSelect={(id) => { setToProvinceId(id); setPickerOpen(null); }} placeholder="Chọn tỉnh" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.fieldLabel}>Khu vực trả *</Text>
+                <Picker value={endWardId} options={endWards} isOpen={pickerOpen === 'tW'}
+                  onOpen={() => setPickerOpen('tW')} onClose={() => setPickerOpen(null)}
+                  onSelect={(id) => { setEndWardId(id); setPickerOpen(null); }} placeholder="Chọn khu vực" />
+              </View>
+            </View>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.fieldLabel}>Ngày đi *</Text>
+                <View style={styles.dateInput}><Text style={{ color: date ? colors.textDark : colors.textLabel }}>{date || 'YYYY-MM-DD'}</Text></View>
+                <View style={{ flexDirection: 'row', marginTop: 4 }}>
+                  {['2026-10-05', '2026-10-06', '2026-10-07'].map((d) => (
+                    <TouchableOpacity key={d} onPress={() => setDate(d)} style={styles.shortcut}>
+                      <Text style={styles.shortcutText}>{d.slice(5)}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+              <View style={{ width: 80 }}>
+                <Text style={styles.fieldLabel}>Ghế</Text>
+                <View style={styles.dateInput}><Text>{seats}</Text></View>
+              </View>
+            </View>
+            <TouchableOpacity style={styles.searchBtn} onPress={runSearch} disabled={loading}>
+              <Text style={styles.searchBtnText}>{loading ? 'Đang tìm...' : 'Tìm'}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
 
-            <TextInput mode="outlined" label="Ngày đi *" value={date}
-              onChangeText={setDate} placeholder="2026-12-31" style={{ marginTop: 8 }} />
-            <TextInput mode="outlined" label="Số ghế" value={seats}
-              onChangeText={setSeats} keyboardType="numeric" style={{ marginTop: 8 }} />
+        {!!error && <Text style={styles.errorText}>{error}</Text>}
 
-            <Button mode="contained" onPress={runSearch} loading={loading} disabled={loading}
-              style={{ marginTop: 12, borderRadius: 12 }} contentStyle={{ paddingVertical: 6 }}>
-              Tìm
-            </Button>
-          </Card.Content>
-        </Card>
-
-        {!!error && <HelperText type="error" visible>{error}</HelperText>}
-
-        {searched && !loading && trips.length === 0 && (
-          <Text style={{ color: '#6b7280', textAlign: 'center', padding: 24 }}>
-            Không có chuyến nào phù hợp với tiêu chí của bạn.
-          </Text>
-        )}
-
-        {trips.length > 0 && (
-          <Text style={{ marginBottom: 8 }}>Tìm thấy <Text style={{ fontWeight: '700' }}>{trips.length}</Text> chuyến:</Text>
-        )}
+        {trips.length > 0 && <Text style={{ marginTop: 12 }}>Tìm thấy <Text style={{ fontWeight: '700' }}>{trips.length}</Text> chuyến:</Text>}
 
         {trips.map((t) => (
-          <Card key={t.id} style={{ marginBottom: 12 }}>
-            <Card.Content>
-              <View style={styles.rowBetween}>
-                <View style={{ flex: 1 }}>
-                  <Text variant="titleSmall" style={{ fontWeight: '700' }}>
-                    🚌 {t.startProvinceName} → {t.endProvinceName}
-                  </Text>
-                  <Text variant="bodySmall" style={styles.subtitle}>
-                    Tài xế: {t.driverName}{t.driverRating > 0 ? ` · ⭐ ${t.driverRating}` : ''}
-                    {t.vehiclePlate ? ` · 🚗 ${t.vehiclePlate}` : ''}
-                  </Text>
-                </View>
-                <View style={{ alignItems: 'flex-end' }}>
-                  <Text variant="titleMedium" style={{ color: '#16a34a', fontWeight: '700' }}>{fmtMoney(t.priceVnd)}</Text>
-                  <Text variant="bodySmall" style={styles.subtitle}>/ghế</Text>
-                </View>
+          <View key={t.id} style={[styles.card, { marginTop: 8 }]}>
+            <View style={styles.tripHead}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.tripRoute}>🚌 {t.startProvinceName} → {t.endProvinceName}</Text>
+                <Text style={styles.muted}>Tài xế: {t.driverName}{t.driverRating > 0 ? ` · ⭐ ${t.driverRating}` : ''}{t.vehiclePlate ? ` · 🚗 ${t.vehiclePlate}` : ''}</Text>
               </View>
-
-              <Divider style={{ marginVertical: 8 }} />
-              <View style={styles.rowGap}>
-                <View><Text variant="bodySmall" style={styles.subtitle}>Khởi hành</Text><Text style={{ fontWeight: '600' }}>{fmtTime(t.departureTime)}</Text></View>
-                <View><Text variant="bodySmall" style={styles.subtitle}>Còn trống</Text><Text style={{ fontWeight: '600' }}>{t.seatAvailable}/{t.seatTotal} ghế</Text></View>
-                <View><Text variant="bodySmall" style={styles.subtitle}>Tổng tiền</Text><Text style={{ fontWeight: '600', color: '#16a34a' }}>{fmtMoney(t.priceVnd * Number(seats))}</Text></View>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={styles.tripPrice}>{fmtMoney(t.priceVnd)}</Text>
+                <Text style={styles.muted}>/ghế</Text>
               </View>
-            </Card.Content>
-            <Card.Actions>
-              <Button mode="contained" onPress={() => navigation.navigate('BookingCreate', { trip: t, seats: Number(seats) })}>
-                Đặt chỗ
-              </Button>
-            </Card.Actions>
-          </Card>
+            </View>
+            <View style={styles.separator} />
+            <View style={styles.metrics}>
+              <View style={styles.metric}><Text style={styles.metricLabel}>Khởi hành</Text><Text style={styles.metricValue}>{fmtTime(t.departureTime)}</Text></View>
+              <View style={styles.metric}><Text style={styles.metricLabel}>Còn trống</Text><Text style={styles.metricValue}>{t.seatAvailable}/{t.seatTotal}</Text></View>
+              <View style={styles.metric}><Text style={styles.metricLabel}>Tổng tiền</Text><Text style={[styles.metricValue, { color: colors.success }]}>{fmtMoney(t.priceVnd * Number(seats))}</Text></View>
+            </View>
+            <TouchableOpacity style={styles.bookBtn} onPress={() => navigation.navigate('BookingCreate', { trip: t, seats: Number(seats) })}>
+              <Text style={styles.bookBtnText}>Đặt chỗ</Text>
+            </TouchableOpacity>
+          </View>
         ))}
       </ScrollView>
     </View>
   );
 }
 
-function Picker({ label, value, options, isOpen, onOpenMenu, onCloseMenu, onSelect }) {
-  const selected = options.find((o) => o.id === value);
-  return (
-    <View style={{ marginTop: 8 }}>
-      <Text variant="labelSmall" style={{ color: '#6b7280', marginBottom: 4 }}>{label}</Text>
-      <Menu
-        visible={isOpen} onDismiss={onCloseMenu}
-        anchor={
-          <Button mode="outlined" onPress={onOpenMenu} icon="chevron-down"
-            contentStyle={{ flexDirection: 'row-reverse', justifyContent: 'flex-start' }}>
-            {selected?.name || 'Chọn...'}
-          </Button>
-        }
-        style={{ marginTop: 56, width: '90%' }}
-      >
-        {options.length === 0 ? (
-          <Menu.Item title="Không có dữ liệu" disabled />
-        ) : options.map((opt) => (
-          <Menu.Item key={opt.id} title={opt.name} onPress={() => onSelect(opt.id)} />
-        ))}
-      </Menu>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f9fafb' },
-  topBar: { flexDirection: 'row', alignItems: 'center' },
-  rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  rowGap: { flexDirection: 'row', gap: 24 },
-  subtitle: { color: '#6b7280' },
+  container: { flex: 1, backgroundColor: colors.bg },
+  heading: { padding: 14 },
+  title: { fontSize: 18, fontWeight: '700', color: colors.text },
+  card: { padding: 13, borderRadius: 11, backgroundColor: 'white', borderWidth: 1, borderColor: colors.borderMuted, shadowColor: colors.shadowColor, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.07, shadowRadius: 8, elevation: 1 },
+  fieldLabel: { fontSize: 10, color: colors.textSecondary, marginBottom: 4, fontWeight: '600' },
+  dateInput: { minHeight: 38, paddingHorizontal: 10, borderWidth: 1, borderColor: colors.borderLight, borderRadius: 8, backgroundColor: colors.surfaceMuted, justifyContent: 'center' },
+  shortcut: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10, backgroundColor: colors.primaryFaintest, marginRight: 6 },
+  shortcutText: { fontSize: 10, color: colors.textMuted },
+  searchBtn: { marginTop: 12, padding: 12, backgroundColor: colors.primary, borderRadius: 8, alignItems: 'center' },
+  searchBtnText: { color: 'white', fontWeight: '700' },
+  errorText: { marginTop: 10, color: colors.danger, fontSize: 12 },
+  muted: { fontSize: 11, color: colors.textSubtle },
+  tripHead: { flexDirection: 'row', justifyContent: 'space-between' },
+  tripRoute: { fontSize: 13, fontWeight: '700', color: colors.textDark, marginBottom: 4 },
+  tripPrice: { fontSize: 16, fontWeight: '700', color: colors.success },
+  separator: { height: 1, backgroundColor: colors.border, marginVertical: 10 },
+  metrics: { flexDirection: 'row', gap: 24 },
+  metric: { flex: 1 },
+  metricLabel: { fontSize: 10, color: colors.textSubtle },
+  metricValue: { fontSize: 12, fontWeight: '600' },
+  bookBtn: { marginTop: 12, padding: 8, borderRadius: 7, backgroundColor: colors.primary, alignItems: 'center' },
+  bookBtnText: { color: 'white', fontWeight: '700' },
 });
