@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { colors } from '../theme';
+import { colors, shadow } from '../theme';
 
 /**
  * Date picker giống CustomerHomePage web:
@@ -88,7 +88,7 @@ const styles = StyleSheet.create({
   chevron: { color: '#9aaca6', fontSize: 14, marginLeft: 4 },
 
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', padding: 20 },
-  menu: { width: '100%', maxWidth: 460, padding: 12, borderWidth: 1, borderColor: colors.borderDate, borderRadius: 10, backgroundColor: 'white', shadowColor: colors.shadowColor, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.16, shadowRadius: 18, elevation: 8 },
+  menu: { width: '100%', maxWidth: 460, padding: 12, borderWidth: 1, borderColor: colors.borderDate, borderRadius: 10, backgroundColor: 'white', ...shadow(8, 0.16, 18) },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
   monthLabel: { color: colors.textDark, fontSize: 11, textTransform: 'capitalize', fontWeight: '600' },
   navBtn: { width: 25, height: 25, borderRadius: 12.5, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center' },

@@ -78,19 +78,22 @@ public class LocationService {
             .code(p.getCode())
             .lat(p.getLat())
             .lng(p.getLng())
-            .osmid(p.getOsmid())
+            .osmid(p.getOsmId())
             .build();
     }
 
     private WardResponse toWardResponse(Ward w) {
+        Province p = w.getProvince();
         return WardResponse.builder()
             .id(w.getId())
-            .provinceId(w.getProvinceId())
+            .provinceId(p != null ? p.getId() : null)
+            .provinceName(p != null ? p.getName() : null)
             .name(w.getName())
             .code(w.getCode())
             .displayName(w.getDisplayName())
             .lat(w.getLat())
             .lng(w.getLng())
+            .osmId(w.getOsmId())
             .build();
     }
 }

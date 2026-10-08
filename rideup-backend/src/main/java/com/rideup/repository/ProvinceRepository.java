@@ -11,5 +11,5 @@ public interface ProvinceRepository extends JpaRepository<Province, String> {
 
     Optional<Province> findByCode(String code);
 
-    Optional<Province> findByOsmid(Long osmid);
+    Optional<Province> findByOsmId(Long osmId);
 }

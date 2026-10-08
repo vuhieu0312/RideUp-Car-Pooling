@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import { Image, ImageBackground, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { LinearGradient } from 'expo-linear-gradient';
 import { registerDriver } from '../api/api';
-import { colors, HERO_IMAGE } from '../theme';
+import { useAuth } from '../auth/AuthContext';
+import { colors, FONT, HERO_IMAGE, shadow } from '../theme';
 
 export default function DriverRegisterScreen() {
+  const { saveSession } = useAuth();
   const [form, setForm] = useState({
     fullName: '', email: '', password: '', phone: '',
     cccd: '', gplx: '', gplxExpiryDate: '',
@@ -44,7 +47,8 @@ export default function DriverRegisterScreen() {
     if (!files.cccdImageFront || !files.cccdImageBack || !files.gplxImage) { setError('Vui lòng chọn đủ 3 ảnh'); return; }
     setLoading(true);
     try {
-      await registerDriver(form, files);
+      const data = await registerDriver(form, files);
+      await saveSession(data);
     } catch (e) {
       setError(e.response?.data?.message || 'Đăng ký thất bại');
     } finally {
@@ -60,7 +64,7 @@ export default function DriverRegisterScreen() {
           <Text style={styles.brand}>RIDEUP · TÀI XẾ</Text>
           <Text style={styles.title}>Cùng RideUp{'\n'}lăn bánh mỗi ngày.</Text>
           <Text style={styles.subtitle}>Đăng ký hồ sơ, nhận chuyến và chủ động thời gian của bạn.</Text>
-          <View style={styles.heroFade} />
+          <LinearGradient pointerEvents="none" colors={['rgba(247,250,249,0)', colors.bg]} style={styles.heroFade} />
         </ImageBackground>
 
         <View style={styles.card}>
@@ -162,33 +166,33 @@ function ImageField({ label, file, onPick, onCapture }) {
 }
 
 const styles = StyleSheet.create({
-  hero: { minHeight: 245, paddingTop: 28, paddingHorizontal: 22, paddingBottom: 70, justifyContent: 'flex-start' },
+  hero: { minHeight: 245, paddingTop: 28, paddingHorizontal: 22, paddingBottom: 70, justifyContent: 'flex-start', overflow: 'hidden' },
   heroOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.authOverlay },
-  heroFade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 76, backgroundColor: colors.bg, opacity: 0.96, transform: [{ scaleY: -1 }] },
-  brand: { fontSize: 11, fontWeight: '800', color: 'white', letterSpacing: 2 },
-  title: { marginTop: 52, fontSize: 27, lineHeight: 30, fontWeight: '700', color: 'white' },
+  heroFade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 76 },
+  brand: { fontFamily: FONT[800], fontSize: 11, fontWeight: '800', color: 'white', letterSpacing: 2 },
+  title: { fontFamily: FONT[700], marginTop: 52, fontSize: 27, lineHeight: 30, fontWeight: '700', color: 'white' },
   subtitle: { marginTop: 6, fontSize: 12, color: 'rgba(255,255,255,0.86)', maxWidth: 285 },
 
-  card: { marginTop: -42, marginHorizontal: 14, padding: 22, paddingBottom: 20, borderRadius: 14, backgroundColor: 'white', shadowColor: colors.shadowColor, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.12, shadowRadius: 24, elevation: 6 },
+  card: { marginTop: -42, marginHorizontal: 14, padding: 22, paddingBottom: 20, borderRadius: 14, backgroundColor: 'white', ...shadow(8, 0.12, 24) },
 
   alertError: { backgroundColor: colors.dangerBg, borderWidth: 1, borderColor: '#fecaca', padding: 9, borderRadius: 6, marginBottom: 14 },
   alertErrorText: { fontSize: 11, color: colors.dangerText },
 
   heading: { marginBottom: 20 },
-  kicker: { fontSize: 9, fontWeight: '800', color: colors.primaryAccent, letterSpacing: 1.4 },
-  cardTitle: { marginTop: 5, fontSize: 22, fontWeight: '700', color: colors.text },
+  kicker: { fontFamily: FONT[800], fontSize: 9, fontWeight: '800', color: colors.primaryAccent, letterSpacing: 1.4 },
+  cardTitle: { fontFamily: FONT[700], marginTop: 5, fontSize: 22, fontWeight: '700', color: colors.text },
   cardSubtitle: { marginTop: 4, fontSize: 12, color: colors.textSubtle },
 
   section: { marginTop: 18, paddingTop: 14, borderTopWidth: 1, borderTopColor: '#e7f0ec' },
-  sectionTitle: { marginBottom: 12, fontSize: 13, fontWeight: '700', color: colors.textDark },
+  sectionTitle: { fontFamily: FONT[700], marginBottom: 12, fontSize: 13, fontWeight: '700', color: colors.textDark },
 
   field: { marginBottom: 14 },
-  fieldLabel: { fontSize: 11, fontWeight: '700', color: colors.textSecondary, marginBottom: 6 },
+  fieldLabel: { fontFamily: FONT[700], fontSize: 11, fontWeight: '700', color: colors.textSecondary, marginBottom: 6 },
   input: { minHeight: 46, padding: 12, borderWidth: 1, borderColor: colors.borderLight, borderRadius: 9, backgroundColor: colors.surfaceMuted, fontSize: 13, color: colors.textDark },
 
   imageBtn: { padding: 10, borderWidth: 1, borderColor: colors.borderLight, borderStyle: 'dashed', borderRadius: 8, alignItems: 'center', backgroundColor: colors.surfaceMuted },
   imageBtnText: { fontSize: 11, color: colors.textSecondary, fontWeight: '600' },
 
   submit: { marginTop: 5, padding: 13, borderRadius: 9, backgroundColor: colors.primary, alignItems: 'center' },
-  submitText: { color: 'white', fontSize: 13, fontWeight: '700' },
+  submitText: { fontFamily: FONT[700], color: 'white', fontSize: 13, fontWeight: '700' },
 });

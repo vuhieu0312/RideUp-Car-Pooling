@@ -1,5 +1,6 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { DeviceEventEmitter } from 'react-native';
 
 const baseURL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8080/api';
 const api = axios.create({ baseURL, timeout: 30000 });
@@ -15,6 +16,7 @@ api.interceptors.response.use(
   async (error) => {
     if (error.response?.status === 401) {
       await AsyncStorage.multiRemove(['adminToken', 'adminUser']);
+      DeviceEventEmitter.emit('rideup-auth-expired');
     }
     return Promise.reject(error);
   }

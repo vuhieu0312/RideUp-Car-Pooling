@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { listProvinces, listWards, searchTrips } from '../api/api';
-import { colors } from '../theme';
+import { colors, FONT, shadow } from '../theme';
+import DateField from '../components/DateField';
 import Picker from '../components/Picker';
 
 export default function TripSearchScreen({ navigation }) {
@@ -34,6 +35,10 @@ export default function TripSearchScreen({ navigation }) {
   async function runSearch() {
     if (!fromProvinceId || !startWardId || !toProvinceId || !endWardId || !date) {
       setError('Vui lòng chọn đủ tỉnh, phường/xã và ngày đi');
+      return;
+    }
+    if (fromProvinceId === toProvinceId) {
+      setError('Tỉnh đi và tỉnh đến phải khác nhau');
       return;
     }
     setError('');
@@ -95,18 +100,11 @@ export default function TripSearchScreen({ navigation }) {
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.fieldLabel}>Ngày đi *</Text>
-                <View style={styles.dateInput}><Text style={{ color: date ? colors.textDark : colors.textLabel }}>{date || 'YYYY-MM-DD'}</Text></View>
-                <View style={{ flexDirection: 'row', marginTop: 4 }}>
-                  {['2026-10-05', '2026-10-06', '2026-10-07'].map((d) => (
-                    <TouchableOpacity key={d} onPress={() => setDate(d)} style={styles.shortcut}>
-                      <Text style={styles.shortcutText}>{d.slice(5)}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
+                <View style={styles.dateInput}><DateField value={date} onChange={setDate} /></View>
               </View>
               <View style={{ width: 80 }}>
                 <Text style={styles.fieldLabel}>Ghế</Text>
-                <View style={styles.dateInput}><Text>{seats}</Text></View>
+                <TextInput style={styles.dateInput} keyboardType="number-pad" min={1} value={seats} onChangeText={(value) => setSeats(value.replace(/[^0-9]/g, '') || '1')} />
               </View>
             </View>
             <TouchableOpacity style={styles.searchBtn} onPress={runSearch} disabled={loading}>
@@ -150,9 +148,9 @@ export default function TripSearchScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   heading: { padding: 14 },
-  title: { fontSize: 18, fontWeight: '700', color: colors.text },
-  card: { padding: 13, borderRadius: 11, backgroundColor: 'white', borderWidth: 1, borderColor: colors.borderMuted, shadowColor: colors.shadowColor, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.07, shadowRadius: 8, elevation: 1 },
-  fieldLabel: { fontSize: 10, color: colors.textSecondary, marginBottom: 4, fontWeight: '600' },
+  title: { fontFamily: FONT[700], fontSize: 18, fontWeight: '700', color: colors.text },
+  card: { padding: 13, borderRadius: 11, backgroundColor: 'white', borderWidth: 1, borderColor: colors.borderMuted, ...shadow(2, 0.07, 8) },
+  fieldLabel: { fontFamily: FONT[600], fontSize: 10, color: colors.textSecondary, marginBottom: 4, fontWeight: '600' },
   dateInput: { minHeight: 38, paddingHorizontal: 10, borderWidth: 1, borderColor: colors.borderLight, borderRadius: 8, backgroundColor: colors.surfaceMuted, justifyContent: 'center' },
   shortcut: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10, backgroundColor: colors.primaryFaintest, marginRight: 6 },
   shortcutText: { fontSize: 10, color: colors.textMuted },
@@ -161,13 +159,13 @@ const styles = StyleSheet.create({
   errorText: { marginTop: 10, color: colors.danger, fontSize: 12 },
   muted: { fontSize: 11, color: colors.textSubtle },
   tripHead: { flexDirection: 'row', justifyContent: 'space-between' },
-  tripRoute: { fontSize: 13, fontWeight: '700', color: colors.textDark, marginBottom: 4 },
-  tripPrice: { fontSize: 16, fontWeight: '700', color: colors.success },
+  tripRoute: { fontFamily: FONT[700], fontSize: 13, fontWeight: '700', color: colors.textDark, marginBottom: 4 },
+  tripPrice: { fontFamily: FONT[700], fontSize: 16, fontWeight: '700', color: colors.success },
   separator: { height: 1, backgroundColor: colors.border, marginVertical: 10 },
   metrics: { flexDirection: 'row', gap: 24 },
   metric: { flex: 1 },
   metricLabel: { fontSize: 10, color: colors.textSubtle },
-  metricValue: { fontSize: 12, fontWeight: '600' },
+  metricValue: { fontFamily: FONT[600], fontSize: 12, fontWeight: '600' },
   bookBtn: { marginTop: 12, padding: 8, borderRadius: 7, backgroundColor: colors.primary, alignItems: 'center' },
   bookBtnText: { color: 'white', fontWeight: '700' },
 });

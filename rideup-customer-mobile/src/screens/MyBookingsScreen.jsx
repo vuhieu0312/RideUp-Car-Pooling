@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../auth/AuthContext';
 import { cancelBooking, listMyBookings } from '../api/api';
-import { colors } from '../theme';
+import { colors, shadow } from '../theme';
 
 const STATUS_META = {
   PENDING: { label: '⏳ Chờ tài xế duyệt', bg: colors.pendingBg, fg: '#92400e' },
@@ -36,6 +36,9 @@ export default function MyBookingsScreen({ navigation }) {
   }
 
   useEffect(() => { load(); }, []);
+
+  // ScrollView dọc cũ tự "clamp" scroll position khi content ngắn đi → cảm giác màn dịch xuống.
+  // FlatList + `key={filter}` ép remount với filter mới → scroll bắt đầu từ 0, không có transition.
 
   const fmtMoney = (v) => `${new Intl.NumberFormat('vi-VN').format(v || 0)} đ`;
   const fmtTime = (iso) => (iso ? iso.replace('T', ' ').substring(0, 16) : '');
@@ -78,70 +81,83 @@ export default function MyBookingsScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filters} contentContainerStyle={{ paddingHorizontal: 12, gap: 6 }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filters} contentContainerStyle={styles.filtersContent}>
         {FILTERS.map((f) => (
           <TouchableOpacity
             key={f.key}
             style={[styles.filter, filter === f.key && styles.filterActive]}
             onPress={() => setFilter(f.key)}
           >
-            <Text style={[styles.filterText, filter === f.key && styles.filterTextActive]}>{f.label} <Text style={styles.filterCount}>{counts[f.key]}</Text></Text>
+            <Text
+              numberOfLines={1}
+              ellipsizeMode="clip"
+              style={[styles.filterText, filter === f.key && styles.filterTextActive]}
+            >
+              {f.label}<Text style={styles.filterCount}> {counts[f.key]}</Text>
+            </Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
 
-      <ScrollView contentContainerStyle={{ padding: 12, paddingBottom: 24 }}>
-        {!!actionMsg && <Text style={styles.actionMsg}>{actionMsg}</Text>}
-        {loading ? (
-          <Text style={styles.muted}>Đang tải...</Text>
-        ) : bookings.length === 0 ? (
-          <View style={styles.emptyBox}>
-            <Text style={styles.muted}>Bạn chưa có booking nào.</Text>
-            <TouchableOpacity style={styles.primaryBtn} onPress={() => navigation.navigate('Home')}>
-              <Text style={styles.primaryBtnText}>Tìm chuyến ngay</Text>
-            </TouchableOpacity>
-          </View>
-        ) : visible.length === 0 ? (
-          <Text style={styles.emptyBox}>Không có chuyến xe trong nhóm này.</Text>
-        ) : (
-          visible.map((b) => {
-            const meta = STATUS_META[b.status] || { label: b.status, bg: colors.pendingBg, fg: '#92400e' };
-            const canCancel = b.status === 'PENDING' || b.status === 'CONFIRMED';
-            return (
-              <View key={b.id} style={styles.card}>
-                <View style={styles.cardHead}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.code}>Mã: <Text style={{ fontWeight: '700' }}>{b.bookingCode}</Text></Text>
-                    <Text style={styles.tripTime}>🚌 Khởi hành: {fmtTime(b.tripDeparture)}</Text>
-                    {!!b.tripPlate && <Text style={styles.muted}>Xe: {b.tripPlate}</Text>}
-                  </View>
-                  <View style={[styles.badge, { backgroundColor: meta.bg }]}>
-                    <Text style={[styles.badgeText, { color: meta.fg }]}>{meta.label}</Text>
-                  </View>
-                </View>
-
-                <View style={styles.separator} />
-
-                <View style={styles.metrics}>
-                  <View style={styles.metric}><Text style={styles.metricLabel}>Số ghế</Text><Text style={styles.metricValue}>{b.seatCount}</Text></View>
-                  <View style={styles.metric}><Text style={styles.metricLabel}>Tổng tiền</Text><Text style={[styles.metricValue, { color: colors.success }]}>{fmtMoney(b.totalAmount)}</Text></View>
-                  <View style={styles.metric}><Text style={styles.metricLabel}>Thanh toán</Text><Text style={styles.metricValue}>{b.paymentStatus}</Text></View>
-                </View>
-
-                {!!b.cancelReason && (
-                  <Text style={styles.cancelReason}>Lý do: {b.cancelReason}</Text>
-                )}
-
-                {canCancel && (
-                  <TouchableOpacity style={styles.dangerBtn} onPress={() => doCancel(b)}>
-                    <Text style={styles.dangerBtnText}>Huỷ booking</Text>
-                  </TouchableOpacity>
-                )}
+      <FlatList
+        key={`bookings-${filter}`}
+        data={visible}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.listContent}
+        ListHeaderComponent={
+          <>
+            {!!actionMsg && <Text style={styles.actionMsg}>{actionMsg}</Text>}
+            {loading && <Text style={styles.muted}>Đang tải...</Text>}
+            {!loading && bookings.length === 0 && (
+              <View style={styles.emptyBox}>
+                <Text style={styles.muted}>Bạn chưa có booking nào.</Text>
+                <TouchableOpacity style={styles.primaryBtn} onPress={() => navigation.navigate('HomeTab')}>
+                  <Text style={styles.primaryBtnText}>Tìm chuyến ngay</Text>
+                </TouchableOpacity>
               </View>
-            );
-          })
-        )}
-      </ScrollView>
+            )}
+            {!loading && bookings.length > 0 && visible.length === 0 && (
+              <Text style={styles.emptyBox}>Không có chuyến xe trong nhóm này.</Text>
+            )}
+          </>
+        }
+        renderItem={({ item: b }) => {
+          const meta = STATUS_META[b.status] || { label: b.status, bg: colors.pendingBg, fg: '#92400e' };
+          const canCancel = b.status === 'PENDING' || b.status === 'CONFIRMED';
+          return (
+            <View style={styles.card}>
+              <View style={styles.cardHead}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.code}>Mã: <Text style={{ fontWeight: '700' }}>{b.bookingCode}</Text></Text>
+                  <Text style={styles.tripTime}>🚌 Khởi hành: {fmtTime(b.tripDeparture)}</Text>
+                  {!!b.tripPlate && <Text style={styles.muted}>Xe: {b.tripPlate}</Text>}
+                </View>
+                <View style={[styles.badge, { backgroundColor: meta.bg }]}>
+                  <Text style={[styles.badgeText, { color: meta.fg }]}>{meta.label}</Text>
+                </View>
+              </View>
+
+              <View style={styles.separator} />
+
+              <View style={styles.metrics}>
+                <View style={styles.metric}><Text style={styles.metricLabel}>Số ghế</Text><Text style={styles.metricValue}>{b.seatCount}</Text></View>
+                <View style={styles.metric}><Text style={styles.metricLabel}>Tổng tiền</Text><Text style={[styles.metricValue, { color: colors.success }]}>{fmtMoney(b.totalAmount)}}</Text></View>
+                <View style={styles.metric}><Text style={styles.metricLabel}>Thanh toán</Text><Text style={styles.metricValue}>{b.paymentStatus}</Text></View>
+              </View>
+
+              {!!b.cancelReason && (
+                <Text style={styles.cancelReason}>Lý do: {b.cancelReason}</Text>
+              )}
+
+              {canCancel && (
+                <TouchableOpacity style={styles.dangerBtn} onPress={() => doCancel(b)}>
+                  <Text style={styles.dangerBtnText}>Huỷ booking</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          );
+        }}
+      />
     </View>
   );
 }
@@ -154,18 +170,35 @@ const styles = StyleSheet.create({
   refreshBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
   refreshIcon: { color: colors.primaryAccent, fontSize: 19, fontWeight: '700' },
 
-  filters: { marginVertical: 14 },
-  filter: { paddingHorizontal: 10, paddingVertical: 7, borderWidth: 1, borderColor: '#e1ebe7', borderRadius: 14, backgroundColor: 'white' },
+  filters: { marginTop: 10, marginBottom: 10, flexGrow: 0 },
+  filtersContent: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,         // tạo khoảng thở cho border-radius, không bị clip ở mép ScrollView
+    gap: 6,
+    alignItems: 'center',
+  },
+  filter: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    height: 30,
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#e1ebe7',
+    borderRadius: 14,
+    backgroundColor: 'white',
+    overflow: 'visible',       // đảm bảo border không bị parent clip
+  },
   filterActive: { borderColor: colors.primaryAccent, backgroundColor: colors.primaryLight },
-  filterText: { fontSize: 10, color: colors.textMuted },
-  filterTextActive: { color: colors.primaryAccent, fontWeight: '700' },
-  filterCount: { marginLeft: 3, fontSize: 9 },
+  filterText: { fontSize: 11, lineHeight: 14, color: colors.textMuted, fontWeight: '500' },
+  filterTextActive: { color: colors.primaryAccent, fontWeight: '500' },  // không bold — giữ size chữ đồng đều
+  filterCount: { fontSize: 10, lineHeight: 13, fontWeight: '500' },
 
   actionMsg: { padding: 9, backgroundColor: colors.primaryFaintest, borderRadius: 6, marginBottom: 10, fontSize: 11, color: colors.textDark },
+  listContent: { padding: 12, paddingBottom: 24 },
   muted: { color: colors.textSubtle, fontSize: 12 },
   emptyBox: { padding: 38, borderRadius: 10, backgroundColor: 'white', color: colors.textSubtle, fontSize: 12, textAlign: 'center' },
 
-  card: { marginBottom: 9, padding: 12, borderWidth: 1, borderColor: '#e3ece8', borderRadius: 10, backgroundColor: 'white', shadowColor: colors.shadowColor, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.07, shadowRadius: 7, elevation: 1 },
+  card: { marginBottom: 9, padding: 12, borderWidth: 1, borderColor: '#e3ece8', borderRadius: 10, backgroundColor: 'white', ...shadow(2, 0.07, 7) },
   cardHead: { flexDirection: 'row', alignItems: 'flex-start' },
   code: { fontSize: 10, color: colors.textSubtle, marginBottom: 4 },
   tripTime: { fontSize: 13, fontWeight: '700', color: colors.textDark, marginTop: 4 },

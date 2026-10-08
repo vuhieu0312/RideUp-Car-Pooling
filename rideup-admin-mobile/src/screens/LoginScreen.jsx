@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ImageBackground, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../auth/AuthContext';
 import { colors, HERO_IMAGE } from '../theme';
 
@@ -30,7 +31,7 @@ export default function LoginScreen() {
           <Text style={styles.brand}>RIDEUP · ADMIN</Text>
           <Text style={styles.title}>🛡️ Đăng nhập{'\n'}quản trị hệ thống.</Text>
           <Text style={styles.subtitle}>Dành cho quản trị viên. Nếu là khách hoặc tài xế, vui lòng dùng app phù hợp.</Text>
-          <View style={styles.heroFade} />
+          <LinearGradient pointerEvents="none" colors={['rgba(247,250,249,0)', colors.bg]} style={styles.heroFade} />
         </ImageBackground>
 
         <View style={styles.card}>
@@ -76,9 +77,9 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  hero: { minHeight: 245, paddingTop: 28, paddingHorizontal: 22, paddingBottom: 70, justifyContent: 'flex-start' },
+  hero: { minHeight: 245, paddingTop: 28, paddingHorizontal: 22, paddingBottom: 70, justifyContent: 'flex-start', overflow: 'hidden' },
   heroOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.authOverlay },
-  heroFade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 76, backgroundColor: colors.bg, opacity: 0.96, transform: [{ scaleY: -1 }] },
+  heroFade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 76 },
   brand: { fontSize: 11, fontWeight: '800', color: 'white', letterSpacing: 2 },
   title: { marginTop: 52, fontSize: 27, lineHeight: 30, fontWeight: '700', color: 'white' },
   subtitle: { marginTop: 6, fontSize: 12, color: 'rgba(255,255,255,0.86)', maxWidth: 285 },

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { colors } from '../theme';
+import { colors, shadow } from '../theme';
 
 /**
  * Custom dropdown picker (giống CustomerHomePage web).
@@ -61,7 +61,7 @@ const styles = StyleSheet.create({
   chevron: { color: '#9aaca6', fontSize: 18, marginLeft: 4 },
 
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', padding: 20 },
-  menu: { width: '100%', maxWidth: 460, maxHeight: 360, padding: 8, borderWidth: 1, borderColor: colors.borderDate, borderRadius: 10, backgroundColor: 'white', shadowColor: colors.shadowColor, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.16, shadowRadius: 18, elevation: 8 },
+  menu: { width: '100%', maxWidth: 460, maxHeight: 360, padding: 8, borderWidth: 1, borderColor: colors.borderDate, borderRadius: 10, backgroundColor: 'white', ...shadow(8, 0.16, 18) },
   searchInput: { marginBottom: 6, padding: 9, borderWidth: 1, borderColor: colors.borderDate, borderRadius: 8, fontSize: 11, color: colors.textDark, backgroundColor: 'white' },
   optionsList: { maxHeight: 280 },
   empty: { padding: 14, fontSize: 11, color: colors.textSubtle, textAlign: 'center' },

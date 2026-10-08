@@ -100,7 +100,7 @@ public class TripService {
                 }
                 boolean isPickup = s.getStopType() == StopType.PICKUP;
                 String provinceId = isPickup ? start.getId() : end.getId();
-                if (!ward.getProvinceId().equals(provinceId)) {
+                if (ward.getProvince() == null || !ward.getProvince().getId().equals(provinceId)) {
                     throw new AppException(
                             HttpStatus.BAD_REQUEST, 400,
                             "Phường/xã '" + s.getWardId() + "' không thuộc tỉnh " +
@@ -137,12 +137,12 @@ public class TripService {
         Ward startWard = locationService.getWardEntity(req.getStartWardId());
         Ward endWard = locationService.getWardEntity(req.getEndWardId());
 
-        if (!start.getId().equals(startWard.getProvinceId())) {
+        if (startWard.getProvince() == null || !start.getId().equals(startWard.getProvince().getId())) {
             throw new AppException(
                     HttpStatus.BAD_REQUEST, 400,
                     "Xã/phường đi không thuộc tỉnh đi");
         }
-        if (!end.getId().equals(endWard.getProvinceId())) {
+        if (endWard.getProvince() == null || !end.getId().equals(endWard.getProvince().getId())) {
             throw new AppException(
                     HttpStatus.BAD_REQUEST, 400,
                     "Xã/phường đến không thuộc tỉnh đến");

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import * as Location from 'expo-location';
 import { createBooking } from '../api/api';
-import { colors } from '../theme';
+import { colors, FONT, shadow } from '../theme';
 
 export default function BookingCreateScreen({ route, navigation }) {
   const { trip, seats: defaultSeats, pickupWardId, dropoffWardId } = route.params || {};
@@ -58,7 +58,7 @@ export default function BookingCreateScreen({ route, navigation }) {
         dropoffLng: dropoffLng ? Number(dropoffLng) : null,
         note: note || null,
       });
-      navigation.navigate('MyBookings');
+      navigation.navigate('MyBookingsTab');
     } catch (e) {
       setError(e.response?.data?.message || 'Đặt chỗ thất bại');
     } finally {
@@ -138,30 +138,30 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   header: { flexDirection: 'row', alignItems: 'center', minHeight: 68, paddingHorizontal: 14, backgroundColor: '#08b85c' },
   backBtn: { width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(255,255,255,0.16)', alignItems: 'center', justifyContent: 'center', marginRight: 10 },
-  backIcon: { color: 'white', fontSize: 20, fontWeight: '700' },
-  headerKicker: { fontSize: 9, fontWeight: '800', color: 'rgba(255,255,255,0.8)', letterSpacing: 1.5 },
-  headerTitle: { marginTop: 2, fontSize: 17, fontWeight: '700', color: 'white' },
+  backIcon: { fontFamily: FONT[700], color: 'white', fontSize: 20, fontWeight: '700' },
+  headerKicker: { fontFamily: FONT[800], fontSize: 9, fontWeight: '800', color: 'rgba(255,255,255,0.8)', letterSpacing: 1.5 },
+  headerTitle: { fontFamily: FONT[700], marginTop: 2, fontSize: 17, fontWeight: '700', color: 'white' },
 
-  card: { padding: 13, marginBottom: 12, borderWidth: 1, borderColor: colors.borderMuted, borderRadius: 11, backgroundColor: 'white', shadowColor: colors.shadowColor, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.07, shadowRadius: 8, elevation: 1 },
-  cardKicker: { fontSize: 11, fontWeight: '700', color: colors.primaryAccent, textTransform: 'uppercase', marginBottom: 8 },
+  card: { padding: 13, marginBottom: 12, borderWidth: 1, borderColor: colors.borderMuted, borderRadius: 11, backgroundColor: 'white', ...shadow(2, 0.07, 8) },
+  cardKicker: { fontFamily: FONT[700], fontSize: 11, fontWeight: '700', color: colors.primaryAccent, textTransform: 'uppercase', marginBottom: 8 },
   muted: { fontSize: 11, color: colors.textSecondary, marginTop: 4 },
   tripLine: { fontSize: 12, color: colors.textDark },
   errorText: { color: colors.danger, fontSize: 11, marginBottom: 10 },
 
-  label: { fontSize: 11, color: colors.textSecondary, marginBottom: 4, fontWeight: '600' },
+  label: { fontFamily: FONT[600], fontSize: 11, color: colors.textSecondary, marginBottom: 4, fontWeight: '600' },
   input: { paddingHorizontal: 10, paddingVertical: 10, borderWidth: 1, borderColor: colors.borderLight, borderRadius: 8, backgroundColor: colors.surfaceMuted, fontSize: 12, color: colors.textDark, marginBottom: 8 },
   multiline: { minHeight: 50, textAlignVertical: 'top' },
 
-  section: { marginTop: 12, marginBottom: 6, fontSize: 13, fontWeight: '700', color: colors.textDark },
+  section: { fontFamily: FONT[700], marginTop: 12, marginBottom: 6, fontSize: 13, fontWeight: '700', color: colors.textDark },
 
   gpsBtn: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 6, marginBottom: 8 },
   gpsBtnText: { fontSize: 12, color: colors.primaryAccent, fontWeight: '700' },
 
   totalBox: { marginTop: 14, padding: 13, borderRadius: 11, backgroundColor: colors.primaryLight, borderWidth: 1, borderColor: '#9ddcba' },
-  totalKicker: { fontSize: 11, fontWeight: '700', color: '#15803d' },
-  totalPrice: { fontSize: 24, fontWeight: '700', color: '#15803d', marginTop: 4 },
+  totalKicker: { fontFamily: FONT[700], fontSize: 11, fontWeight: '700', color: '#15803d' },
+  totalPrice: { fontFamily: FONT[700], fontSize: 24, fontWeight: '700', color: '#15803d', marginTop: 4 },
   totalHint: { fontSize: 11, color: '#15803d' },
 
   submitBtn: { flex: 1, padding: 12, borderRadius: 9, alignItems: 'center' },
-  submitBtnText: { color: 'white', fontSize: 12, fontWeight: '700' },
+  submitBtnText: { fontFamily: FONT[700], color: 'white', fontSize: 12, fontWeight: '700' },
 });

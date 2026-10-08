@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { ImageBackground, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { registerCustomer } from '../api/api';
 import { useAuth } from '../auth/AuthContext';
-import { colors, HERO_IMAGE } from '../theme';
+import { colors, FONT, HERO_IMAGE, shadow } from '../theme';
 
 export default function RegisterScreen() {
   const { doLogin } = useAuth();
@@ -42,7 +43,7 @@ export default function RegisterScreen() {
           <Text style={styles.brand}>RIDEUP</Text>
           <Text style={styles.title}>Bắt đầu hành trình{'\n'}của riêng bạn.</Text>
           <Text style={styles.subtitle}>Tạo tài khoản để tìm chuyến xe phù hợp hơn mỗi ngày.</Text>
-          <View style={styles.heroFade} />
+          <LinearGradient pointerEvents="none" colors={['rgba(247,250,249,0)', colors.bg]} style={styles.heroFade} />
         </ImageBackground>
 
         <View style={styles.card}>
@@ -90,30 +91,30 @@ export default function RegisterScreen() {
 }
 
 const styles = StyleSheet.create({
-  hero: { minHeight: 245, paddingTop: 28, paddingHorizontal: 22, paddingBottom: 70, justifyContent: 'flex-start' },
+  hero: { minHeight: 245, paddingTop: 28, paddingHorizontal: 22, paddingBottom: 70, justifyContent: 'flex-start', overflow: 'hidden' },
   heroOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.authOverlay },
-  heroFade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 76, backgroundColor: colors.bg, opacity: 0.96, transform: [{ scaleY: -1 }] },
-  brand: { fontSize: 11, fontWeight: '800', color: 'white', letterSpacing: 2 },
-  title: { marginTop: 52, fontSize: 27, lineHeight: 30, fontWeight: '700', color: 'white' },
+  heroFade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 76 },
+  brand: { fontFamily: FONT[800], fontSize: 11, fontWeight: '800', color: 'white', letterSpacing: 2 },
+  title: { fontFamily: FONT[700], marginTop: 52, fontSize: 27, lineHeight: 30, fontWeight: '700', color: 'white' },
   subtitle: { marginTop: 6, fontSize: 12, color: 'rgba(255,255,255,0.86)', maxWidth: 285 },
 
-  card: { marginTop: -42, marginHorizontal: 14, padding: 22, paddingBottom: 20, borderRadius: 14, backgroundColor: 'white', shadowColor: colors.shadowColor, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.12, shadowRadius: 24, elevation: 6 },
+  card: { marginTop: -42, marginHorizontal: 14, padding: 22, paddingBottom: 20, borderRadius: 14, backgroundColor: 'white', ...shadow(8, 0.12, 24) },
 
   alertError: { backgroundColor: colors.dangerBg, borderWidth: 1, borderColor: '#fecaca', padding: 9, borderRadius: 6, marginBottom: 14 },
   alertErrorText: { fontSize: 11, color: colors.dangerText },
 
   heading: { marginBottom: 20 },
-  kicker: { fontSize: 9, fontWeight: '800', color: colors.primaryAccent, letterSpacing: 1.4 },
-  cardTitle: { marginTop: 5, fontSize: 22, fontWeight: '700', color: colors.text },
+  kicker: { fontFamily: FONT[800], fontSize: 9, fontWeight: '800', color: colors.primaryAccent, letterSpacing: 1.4 },
+  cardTitle: { fontFamily: FONT[700], marginTop: 5, fontSize: 22, fontWeight: '700', color: colors.text },
   cardSubtitle: { marginTop: 4, fontSize: 12, color: colors.textSubtle },
 
   field: { marginBottom: 14 },
-  fieldLabel: { fontSize: 11, fontWeight: '700', color: colors.textSecondary, marginBottom: 6 },
+  fieldLabel: { fontFamily: FONT[700], fontSize: 11, fontWeight: '700', color: colors.textSecondary, marginBottom: 6 },
   input: { minHeight: 46, padding: 12, borderWidth: 1, borderColor: colors.borderLight, borderRadius: 9, backgroundColor: colors.surfaceMuted, fontSize: 13, color: colors.textDark },
   passwordWrap: { position: 'relative' },
   eyeButton: { position: 'absolute', right: 7, top: 7, width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
   eyeIcon: { fontSize: 16 },
 
   submit: { marginTop: 5, padding: 13, borderRadius: 9, backgroundColor: colors.primary, alignItems: 'center' },
-  submitText: { color: 'white', fontSize: 13, fontWeight: '700' },
+  submitText: { fontFamily: FONT[700], color: 'white', fontSize: 13, fontWeight: '700' },
 });

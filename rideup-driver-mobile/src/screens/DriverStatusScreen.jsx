@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { DeviceEventEmitter, ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Text } from 'react-native-paper';
 import { getDriverProfile, getDriverStatus } from '../api/api';
 
@@ -15,6 +15,10 @@ export default function DriverStatusScreen() {
         const s = await getDriverStatus();
         if (cancelled) return;
         setStatus(s);
+        if (s.status === 'APPROVED') {
+          DeviceEventEmitter.emit('rideup-driver-approved');
+          return;
+        }
         if (s.status !== 'APPROVED') {
           const p = await getDriverProfile();
           if (!cancelled) setProfile(p);

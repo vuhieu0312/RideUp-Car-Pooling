@@ -17,9 +17,11 @@ import java.math.BigDecimal;
 public class WardResponse {
     String id;
     String provinceId;
+    String provinceName;
     String name;
     String code;
     String displayName;
     BigDecimal lat;
     BigDecimal lng;
+    Long osmId;
 }

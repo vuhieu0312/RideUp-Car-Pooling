@@ -1,5 +1,6 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { DeviceEventEmitter } from 'react-native';
 
 // Lấy base URL từ app.json (extra.apiUrl). Có thể override bằng EXPO_PUBLIC_API_URL khi start.
 const baseURL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8080/api';
@@ -21,7 +22,7 @@ api.interceptors.response.use(
   async (error) => {
     if (error.response?.status === 401) {
       await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'user']);
-      // AuthContext sẽ reload khi user state đổi
+      DeviceEventEmitter.emit('rideup-auth-expired');
     }
     return Promise.reject(error);
   }
@@ -52,6 +53,9 @@ export const listWards = (provinceId, keyword) =>
 export const searchTrips = (body) =>
   api.post('/trips/search', body).then((r) => r.data.data);
 
+export const searchTripsRanked = (body) =>
+  api.post('/trips/search-ranking', body).then((r) => r.data.data);
+
 // ===== Bookings (customer) =====
 export const createBooking = (form) =>
   api.post('/customer/bookings', form).then((r) => r.data);
@@ -61,3 +65,28 @@ export const listMyBookings = () =>
 
 export const cancelBooking = (id, reason) =>
   api.delete(`/customer/bookings/${id}`, { params: { reason } }).then((r) => r.data);
+
+// ===== Profile (self) =====
+export const getMyProfile = () =>
+  api.get('/users/me').then((r) => r.data.data);
+
+export const updateMyProfile = (body) =>
+  api.patch('/users/me', body).then((r) => r.data.data);
+
+export const changePassword = (body) =>
+  api.post('/users/me/change-password', body).then((r) => r.data);
+
+/**
+ * Upload avatar — file là object do expo-image-picker trả về:
+ *   { uri, name, type } hoặc { uri, mimeType, fileName }
+ * Kết quả trả về UserResponse đã cập nhật avatarUrl.
+ */
+export const uploadAvatar = (file) => {
+  const fd = new FormData();
+  const name = file.name || file.fileName || 'avatar.jpg';
+  const type = file.type || file.mimeType || 'image/jpeg';
+  fd.append('avatar', { uri: file.uri, name, type });
+  return api
+    .post('/users/me/avatar', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+    .then((r) => r.data.data);
+};

@@ -51,6 +51,20 @@ app:
   upload:
     dir: ${UPLOAD_DIR:uploads/}
 
+location:
+  seeding:
+    # Bật/tắt auto-seed lúc app khởi động
+    enabled: ${LOCATION_SEED_ENABLED:true}
+    # Số lần retry khi Overpass fail (timeout/5xx/429)
+    max-retries: ${LOCATION_SEED_MAX_RETRIES:3}
+    # Backoff ban đầu (ms) — sẽ nhân đôi sau mỗi retry, max 10s
+    initial-backoff-ms: ${LOCATION_SEED_INITIAL_BACKOFF_MS:1500}
+    # Delay giữa 2 tỉnh (ms) — tránh Overpass rate-limit
+    delay-between-province-ms: ${LOCATION_SEED_DELAY_MS:2000}
+    # Ngưỡng wards/tỉnh tối thiểu để coi là "đủ". DB wards < province × threshold
+    # → auto re-seed wards (kể cả khi wardCount > 0)
+    min-wards-per-province: ${LOCATION_SEED_MIN_WARDS_PER_PROVINCE:30}
+
 springdoc:
   api-docs:
     path: /v3/api-docs

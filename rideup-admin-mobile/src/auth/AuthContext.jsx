@@ -1,5 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { DeviceEventEmitter } from 'react-native';
+import { login } from '../api/api';
 
 const AuthContext = createContext(null);
 
@@ -8,12 +10,16 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const subscription = DeviceEventEmitter.addListener('rideup-auth-expired', () => setUser(null));
     (async () => {
       try {
         const raw = await AsyncStorage.getItem('adminUser');
-        if (raw) setUser(JSON.parse(raw));
+        const storedUser = raw ? JSON.parse(raw) : null;
+        if (storedUser?.user?.roles?.includes('ADMIN')) setUser(storedUser);
+        else if (storedUser) await AsyncStorage.multiRemove(['adminToken', 'adminUser']);
       } catch {} finally { setLoading(false); }
     })();
+    return () => subscription.remove();
   }, []);
 
   async function doLogin(email, password) {
@@ -39,5 +45,4 @@ export function AuthProvider({ children }) {
   );
 }
 
-import { login } from '../api/api';
 export const useAuth = () => useContext(AuthContext);

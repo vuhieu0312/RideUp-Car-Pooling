@@ -1,5 +1,6 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { DeviceEventEmitter } from 'react-native';
 
 const baseURL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8080/api';
 
@@ -16,6 +17,7 @@ api.interceptors.response.use(
   async (error) => {
     if (error.response?.status === 401) {
       await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'user']);
+      DeviceEventEmitter.emit('rideup-auth-expired');
     }
     return Promise.reject(error);
   }
@@ -74,3 +76,27 @@ export const registerVehicle = (form) =>
 
 export const listMyVehicles = () =>
   api.get('/driver/vehicles').then((r) => r.data.data);
+
+// ===== Profile (self) =====
+export const getMyProfile = () =>
+  api.get('/users/me').then((r) => r.data.data);
+
+export const updateMyProfile = (body) =>
+  api.patch('/users/me', body).then((r) => r.data.data);
+
+export const changePassword = (body) =>
+  api.post('/users/me/change-password', body).then((r) => r.data);
+
+/**
+ * Upload avatar — file là object do expo-image-picker trả về.
+ * Driver mobile đã có sẵn expo-image-picker.
+ */
+export const uploadAvatar = (file) => {
+  const fd = new FormData();
+  const name = file.name || file.fileName || 'avatar.jpg';
+  const type = file.type || file.mimeType || 'image/jpeg';
+  fd.append('avatar', { uri: file.uri, name, type });
+  return api
+    .post('/users/me/avatar', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+    .then((r) => r.data.data);
+};

@@ -1,16 +1,18 @@
 import { useEffect, useState } from 'react';
 import { Image, ImageBackground, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { Card, IconButton, Text } from 'react-native-paper';
+import { LinearGradient } from 'expo-linear-gradient';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Avatar, Card, IconButton, Text } from 'react-native-paper';
 import { useAuth } from '../auth/AuthContext';
 import { listProvinces, listWards, searchTrips } from '../api/api';
-import { colors, HERO_IMAGE } from '../theme';
+import { colors, FONT, HERO_IMAGE, shadow } from '../theme';
 import Picker from '../components/Picker';
 import DateField from '../components/DateField';
 
 const TRIP_ICONS = ['🚕', '▣', '★'];
 
 export default function HomeScreen({ navigation }) {
-  const { user, doLogout } = useAuth();
+  const { user } = useAuth();
   const [provinces, setProvinces] = useState([]);
   const [pickupWards, setPickupWards] = useState([]);
   const [dropoffWards, setDropoffWards] = useState([]);
@@ -78,7 +80,7 @@ export default function HomeScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 90 }} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
         {/* Hero */}
         <ImageBackground source={{ uri: HERO_IMAGE }} style={styles.hero} imageStyle={{ resizeMode: 'cover' }}>
           <View style={styles.heroOverlay} />
@@ -87,20 +89,23 @@ export default function HomeScreen({ navigation }) {
               <Text style={styles.brand}>RIDEUP</Text>
               <Text style={styles.greeting}>Xin chào, {user?.fullName || 'bạn'} <Text style={{ fontSize: 16 }}>👋</Text></Text>
             </View>
-            <TouchableOpacity onPress={doLogout} style={styles.heroAction} accessibilityLabel="Đăng xuất">
-              <Text style={styles.heroActionIcon}>↪</Text>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('AccountTab', { screen: 'Account' })}
+              accessibilityLabel="Mở tài khoản"
+            >
+              {renderHeroAvatar(user)}
             </TouchableOpacity>
           </View>
           <Text style={styles.heroTitle}>Bạn muốn đi đâu?</Text>
           <Text style={styles.heroSubtitle}>Đặt nhanh, giá rõ ràng, tài xế đã xác minh.</Text>
-          <View style={styles.heroFade} />
+          <LinearGradient pointerEvents="none" colors={['rgba(247,250,249,0)', colors.bg]} style={styles.heroFade} />
         </ImageBackground>
 
         {/* Stats */}
         <View style={styles.statsRow}>
-          <Stat icon="🚕" value="0" label="Chuyến đang mở" />
-          <Stat icon="▣" value="0" label="Lượt đã đi" />
-          <Stat icon="★" value="5.0" label="Đánh giá" accent />
+          <Stat icon="car-outline" value="0" label="Chuyến đang mở" />
+          <Stat icon="clipboard-text-outline" value="0" label="Lượt đã đi" />
+          <Stat icon="star-outline" value="5.0" label="Đánh giá" accent />
         </View>
 
         {/* Search panel */}
@@ -111,7 +116,7 @@ export default function HomeScreen({ navigation }) {
           </View>
 
           <PickerField
-            icon="●"
+            icon="map-marker"
             label="TỈNH ĐÓN"
             value={fromProvinceId}
             options={provinces}
@@ -122,7 +127,7 @@ export default function HomeScreen({ navigation }) {
             placeholder="Chọn tỉnh/thành phố đón"
           />
           <PickerField
-            icon="⌖"
+            icon="map-marker-radius"
             label="KHU VỰC ĐÓN"
             value={pickupWardId}
             options={pickupWards}
@@ -133,7 +138,7 @@ export default function HomeScreen({ navigation }) {
             placeholder="Chọn quận/huyện, phường/xã đón"
           />
           <PickerField
-            icon="●"
+            icon="map-marker"
             label="TỈNH TRẢ"
             value={toProvinceId}
             options={provinces}
@@ -144,7 +149,7 @@ export default function HomeScreen({ navigation }) {
             placeholder="Chọn tỉnh/thành phố trả"
           />
           <PickerField
-            icon="⌖"
+            icon="map-marker-radius"
             label="KHU VỰC TRẢ"
             value={dropoffWardId}
             options={dropoffWards}
@@ -166,7 +171,7 @@ export default function HomeScreen({ navigation }) {
           {!!searchError && <Text style={styles.searchError}>{searchError}</Text>}
 
           <TouchableOpacity style={styles.searchButton} onPress={searchTripsAction} disabled={searching}>
-            <Text style={styles.searchButtonText}>{searching ? 'Đang tìm chuyến...' : '⌕  Tìm chuyến ngay'}</Text>
+            {searching ? <Text style={styles.searchButtonText}>Đang tìm chuyến...</Text> : <><MaterialCommunityIcons name="magnify" size={18} color="#fff" /><Text style={styles.searchButtonText}>Tìm chuyến ngay</Text></>}
           </TouchableOpacity>
         </View>
 
@@ -196,21 +201,19 @@ export default function HomeScreen({ navigation }) {
             </View>
           ) : searched ? (
             <View style={styles.emptyState}>
-              <View style={styles.emptyIcon}><Text style={{ fontSize: 16 }}>🚕</Text></View>
+              <View style={styles.emptyIcon}><MaterialCommunityIcons name="car-outline" size={18} color={colors.primaryAccent} /></View>
               <Text style={styles.emptyStrong}>Không có chuyến phù hợp</Text>
               <Text style={styles.emptySpan}>Thử đổi ngày hoặc điểm đi, điểm đến.</Text>
             </View>
           ) : (
             <View style={styles.emptyState}>
-              <View style={styles.emptyIcon}><Text style={{ fontSize: 16 }}>🚕</Text></View>
+              <View style={styles.emptyIcon}><MaterialCommunityIcons name="car-outline" size={18} color={colors.primaryAccent} /></View>
               <Text style={styles.emptyStrong}>Chưa có chuyến xe đang mở</Text>
               <Text style={styles.emptySpan}>Hãy chọn điểm đi và điểm đến để tìm chuyến phù hợp.</Text>
             </View>
           )}
         </View>
       </ScrollView>
-
-      <BottomNav navigation={navigation} active="Home" />
     </View>
   );
 }
@@ -218,7 +221,7 @@ export default function HomeScreen({ navigation }) {
 function Stat({ icon, value, label, accent }) {
   return (
     <View style={styles.statBox}>
-      <Text style={[styles.statIcon, accent && styles.statIconAccent]}>{icon}</Text>
+      <MaterialCommunityIcons name={icon} size={14} color={accent ? '#f2a900' : colors.primaryAccent} />
       <Text style={styles.statValue}>{value}</Text>
       <Text style={styles.statLabel}>{label}</Text>
     </View>
@@ -228,7 +231,7 @@ function Stat({ icon, value, label, accent }) {
 function PickerField({ icon, label, value, options, isOpen, onOpenMenu, onCloseMenu, onSelect, placeholder }) {
   return (
     <View style={styles.selectRow}>
-      <Text style={styles.rowIcon}>{icon}</Text>
+      <MaterialCommunityIcons name={icon} size={16} color={colors.primaryAccent} style={styles.rowIcon} />
       <View style={styles.fieldCopy}>
         <Text style={styles.fieldLabel}>{label}</Text>
         <Picker
@@ -259,7 +262,7 @@ function TripCard({ trip, provinceName, fmtTime, fmtMoney, onBook }) {
       <View style={styles.tripCardHead}>
         <View style={{ flex: 1 }}>
           <Text style={styles.tripRoute}>{provinceName(trip.startProvinceId)} → {provinceName(trip.endProvinceId)}</Text>
-          <Text style={styles.tripTime}>🕐 {fmtTime(trip.departureTime)}</Text>
+          <View style={styles.tripTimeRow}><MaterialCommunityIcons name="clock-outline" size={13} color={colors.textSubtle} /><Text style={styles.tripTime}>{fmtTime(trip.departureTime)}</Text></View>
         </View>
         <View>
           <Text style={styles.tripPrice}>{fmtMoney(trip.priceVnd)}</Text>
@@ -267,36 +270,12 @@ function TripCard({ trip, provinceName, fmtTime, fmtMoney, onBook }) {
         </View>
       </View>
       <View style={styles.tripMeta}>
-        <Text>👤 {trip.driverName || 'Tài xế RideUp'}</Text>
+        <View style={styles.driverMeta}><MaterialCommunityIcons name="account-outline" size={14} color={colors.textSubtle} /><Text>Tài xế {trip.driverName || 'RideUp'}</Text></View>
         <Text>Còn {trip.seatAvailable}/{trip.seatTotal} ghế</Text>
       </View>
       <TouchableOpacity style={styles.bookButton} onPress={onBook}>
         <Text style={styles.bookButtonText}>Đặt chỗ</Text>
       </TouchableOpacity>
-    </View>
-  );
-}
-
-function BottomNav({ navigation, active }) {
-  const items = [
-    { key: 'Home', label: 'Trang chủ', icon: '⌂' },
-    { key: 'MyBookings', label: 'Chuyến xe', icon: '🚗' },
-    { key: 'Messages', label: 'Tin nhắn', icon: '✉' },
-    { key: 'Notifications', label: 'Thông báo', icon: '🔔' },
-    { key: 'Profile', label: 'Tài khoản', icon: '👤' },
-  ];
-  return (
-    <View style={styles.bottomNav}>
-      {items.map((item) => (
-        <TouchableOpacity
-          key={item.key}
-          style={[styles.bottomItem, active === item.key && styles.bottomItemActive]}
-          onPress={() => item.key === 'Home' || item.key === 'MyBookings' ? navigation.navigate(item.key) : null}
-        >
-          <Text style={[styles.bottomItemIcon, active === item.key && styles.bottomItemIconActive]}>{item.icon}</Text>
-          <Text style={[styles.bottomItemLabel, active === item.key && styles.bottomItemLabelActive]}>{item.label}</Text>
-        </TouchableOpacity>
-      ))}
     </View>
   );
 }
@@ -309,27 +288,60 @@ function tomorrowIso() {
   return new Date(Date.now() + 86400000).toISOString().slice(0, 10);
 }
 
+/** Avatar nhỏ ở góc phải header — ưu tiên ảnh từ user.avatarUrl, fallback initials. */
+function renderHeroAvatar(user) {
+  const initials = (user?.fullName || user?.email || 'U')
+    .split(/\s+/)
+    .map((s) => s[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+  const url = user?.avatarUrl
+    ? (user.avatarUrl.startsWith('http') ? user.avatarUrl : `http://localhost:8080${user.avatarUrl}`)
+    : null;
+  return (
+    <View style={styles.heroAvatarWrap}>
+      {url ? (
+        <Avatar.Image size={36} source={{ uri: url }} />
+      ) : (
+        <Avatar.Text
+          size={36}
+          label={initials}
+          style={{ backgroundColor: colors.primaryAccent }}
+          labelStyle={{ fontSize: 12, fontWeight: '700' }}
+        />
+      )}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
-  hero: { minHeight: 218, padding: 18, paddingBottom: 36, justifyContent: 'flex-start' },
+  hero: { minHeight: 240, padding: 18, paddingBottom: 36, justifyContent: 'flex-start' },
   heroOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.heroOverlay },
   heroTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  brand: { fontSize: 10, fontWeight: '800', color: 'rgba(255,255,255,0.75)', letterSpacing: 2 },
-  greeting: { marginTop: 8, fontSize: 14, fontWeight: '600', color: colors.textOnPrimary },
+  brand: { fontFamily: FONT[800], fontSize: 10, fontWeight: '800', color: 'rgba(255,255,255,0.75)', letterSpacing: 2 },
+  greeting: { fontFamily: FONT[600], marginTop: 8, fontSize: 14, fontWeight: '600', color: colors.textOnPrimary },
   heroAction: { width: 32, height: 32, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.45)', backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' },
   heroActionIcon: { color: 'white', fontSize: 16, fontWeight: '700' },
-  heroTitle: { marginTop: 30, fontSize: 25, fontWeight: '700', color: 'white', lineHeight: 28 },
-  heroSubtitle: { marginTop: 4, fontSize: 11, color: 'rgba(255,255,255,0.82)' },
-  heroFade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 82, backgroundColor: colors.bg, opacity: 0.92, transform: [{ scaleY: -1 }] },
+  heroAvatarWrap: {
+    width: 40, height: 40, borderRadius: 20, overflow: 'hidden',
+    borderWidth: 2, borderColor: 'rgba(255,255,255,0.45)',
+    backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center',
+  },
+  heroTitle: { fontFamily: FONT[700], marginTop: 28, fontSize: 25, fontWeight: '700', color: 'white', lineHeight: 28 },
+  heroSubtitle: { fontFamily: FONT[400], marginTop: 4, fontSize: 11, color: 'rgba(255,255,255,0.82)' },
+  heroFade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 82 },
 
   statsRow: { flexDirection: 'row', marginHorizontal: 14, marginTop: -26, marginBottom: 16, gap: 7, zIndex: 2 },
-  statBox: { flex: 1, minHeight: 72, alignItems: 'center', justifyContent: 'center', backgroundColor: 'white', borderRadius: 9, shadowColor: colors.shadowColor, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 3 },
+  statBox: { flex: 1, minHeight: 72, alignItems: 'center', justifyContent: 'center', backgroundColor: 'white', borderRadius: 9, ...shadow(2, 0.1, 8) },
   statIcon: { fontSize: 11, color: colors.primaryAccent, marginBottom: 2 },
   statIconAccent: { color: '#f2a900' },
   statValue: { fontSize: 17, fontWeight: '700', color: colors.text },
   statLabel: { marginTop: 4, fontSize: 9, color: colors.textMuted },
 
-  panel: { marginHorizontal: 14, padding: 14, borderRadius: 12, backgroundColor: 'white', shadowColor: colors.shadowColor, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.07, shadowRadius: 10, elevation: 2 },
+  panel: { marginHorizontal: 14, padding: 14, borderRadius: 12, backgroundColor: 'white', ...shadow(2, 0.07, 10) },
   panelTitle: { fontSize: 16, fontWeight: '700', color: colors.textDark },
   panelHeading: { marginBottom: 12 },
   panelHint: { fontSize: 9, color: colors.textLabel, marginTop: 1 },
@@ -344,7 +356,7 @@ const styles = StyleSheet.create({
   shortcutText: { fontSize: 9, color: colors.textMuted, fontWeight: '500' },
 
   searchError: { marginBottom: 10, padding: 9, borderWidth: 1, borderColor: '#f2cccc', borderRadius: 8, backgroundColor: colors.dangerLightBg, color: '#b34f4f', fontSize: 10 },
-  searchButton: { backgroundColor: colors.primary, paddingVertical: 12, borderRadius: 8, alignItems: 'center' },
+  searchButton: { flexDirection: 'row', gap: 6, backgroundColor: colors.primary, paddingVertical: 12, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
   searchButtonText: { color: 'white', fontSize: 13, fontWeight: '700' },
 
   sectionHeading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
@@ -358,18 +370,12 @@ const styles = StyleSheet.create({
   tripCard: { padding: 12, borderWidth: 1, borderColor: colors.borderMuted, borderRadius: 9, backgroundColor: colors.surfaceMuted, marginBottom: 8 },
   tripCardHead: { flexDirection: 'row', justifyContent: 'space-between' },
   tripRoute: { fontSize: 12, color: colors.textDark, fontWeight: '600' },
-  tripTime: { fontSize: 10, color: colors.textSubtle, marginTop: 4 },
+  tripTimeRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
+  tripTime: { fontSize: 10, color: colors.textSubtle },
   tripPrice: { fontSize: 12, fontWeight: '700', color: colors.primaryAccent },
   tripPriceUnit: { fontSize: 9, fontWeight: '500', color: colors.primaryAccent, textAlign: 'right' },
-  tripMeta: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 9, fontSize: 10, color: colors.textSubtle },
+  tripMeta: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 9, fontSize: 10, color: colors.textSubtle },
+  driverMeta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   bookButton: { marginTop: 10, paddingVertical: 8, borderRadius: 7, backgroundColor: colors.primary, alignItems: 'center' },
   bookButtonText: { color: 'white', fontSize: 11, fontWeight: '700' },
-
-  bottomNav: { position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', paddingVertical: 7, paddingHorizontal: 4, backgroundColor: 'rgba(255,255,255,0.97)', borderTopWidth: 1, borderColor: colors.border },
-  bottomItem: { flex: 1, alignItems: 'center', paddingVertical: 3 },
-  bottomItemActive: { borderRadius: 18, backgroundColor: colors.primaryLight },
-  bottomItemIcon: { fontSize: 17, color: '#9aa9a4' },
-  bottomItemIconActive: { color: colors.primaryAccent },
-  bottomItemLabel: { fontSize: 8, fontWeight: '600', color: '#9aa9a4', marginTop: 3 },
-  bottomItemLabelActive: { color: colors.primaryAccent },
 });

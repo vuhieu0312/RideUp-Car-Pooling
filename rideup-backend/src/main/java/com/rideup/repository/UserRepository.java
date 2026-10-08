@@ -20,4 +20,7 @@ public interface UserRepository extends JpaRepository<User, String> {
     Optional<User> findByPhone(String phone);
 
     List<User> findByIdIn(Collection<String> ids);
+
+    /** Unique check khi update profile — loại trừ chính user đang sửa. */
+    boolean existsByPhoneAndIdNot(String phone, String id);
 }

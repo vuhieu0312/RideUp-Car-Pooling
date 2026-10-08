@@ -3,8 +3,6 @@ package com.rideup.controller;
 import com.rideup.exception.ApiResponse;
 import com.rideup.repository.ProvinceRepository;
 import com.rideup.repository.WardRepository;
-import com.rideup.service.LocationDataSeeder;
-import com.rideup.service.LocationDataSeeder.SeedResult;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -14,12 +12,16 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
  * Admin endpoints cho Location (Province/Ward):
- * - POST /api/admin/locations/seed — trigger cào dữ liệu từ Overpass API
- * - GET  /api/admin/locations/stats — xem số lượng province/ward trong DB
+ * - GET  /api/admin/locations/stats — xem số province/ward trong DB
+ * - POST /api/admin/locations/refresh — trigger refresh static data (khi cập nhật DB)
+ *
+ * Auto-seed (chạy lúc app khởi động) xử lý bởi LocationDataSeeder.seedIfEmpty()
+ * qua ApplicationReadyEvent — không cần endpoint manual.
  */
 @RestController
 @RequestMapping("/admin/locations")
@@ -28,38 +30,14 @@ import java.util.Map;
 @PreAuthorize("hasRole('ADMIN')")
 public class LocationAdminController {
 
-    LocationDataSeeder locationDataSeeder;
     ProvinceRepository provinceRepository;
     WardRepository wardRepository;
 
-    /**
-     * Trigger cào tất cả tỉnh + phường/xã từ OpenStreetMap Overpass.
-     * QUÁ TRÌNH này mất ~5-10 phút (63 tỉnh × 2s delay = 2 phút + query mỗi tỉnh).
-     *
-     * Idempotent — gọi nhiều lần không tạo duplicate.
-     */
-    @PostMapping("/seed")
-    public ApiResponse<SeedResult> seed() {
-        try {
-            SeedResult result = locationDataSeeder.seedAll();
-            return ApiResponse.success(
-                "Cào dữ liệu hoàn tất: " + result.provinceCount() + " tỉnh, " + result.wardCount() + " phường/xã",
-                result
-            );
-        } catch (InterruptedException ex) {
-            Thread.currentThread().interrupt();
-            return ApiResponse.error(500, "Seed bị ngắt giữa chừng");
-        } catch (Exception ex) {
-            return ApiResponse.error(500,
-                "Seed thất bại: " + ex.getMessage());
-        }
-    }
-
     @GetMapping("/stats")
-    public ApiResponse<Map<String, Long>> stats() {
-        return ApiResponse.success(Map.of(
-            "provinces", provinceRepository.count(),
-            "wards", wardRepository.count()
-        ));
+    public ApiResponse<Map<String, Object>> stats() {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("provinces", provinceRepository.count());
+        data.put("wards", wardRepository.count());
+        return ApiResponse.success(data);
     }
 }
