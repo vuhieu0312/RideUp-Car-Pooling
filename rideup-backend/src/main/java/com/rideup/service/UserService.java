@@ -17,10 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-/**
- * Nghiệp vụ liên quan tới user tự quản lý (xem/sửa profile, đổi mật khẩu, upload avatar).
- * Mọi method đều nhận userId từ controller (lấy qua {@code Authentication}) — không nhận từ client.
- */
+/** Nghiệp vụ liên quan tới user tự quản lý (xem/sửa profile, đổi mật khẩu, upload avatar). */
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)

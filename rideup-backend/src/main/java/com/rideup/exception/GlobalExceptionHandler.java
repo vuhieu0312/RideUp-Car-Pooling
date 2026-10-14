@@ -50,10 +50,7 @@ public class GlobalExceptionHandler {
             .body(ApiResponse.error(403, "Access denied"));
     }
 
-    /**
-     * Optimistic lock conflict (vd. 2 customer đặt cùng trip và trip chỉ còn 1
-     * ghế). Trả 409 — frontend sẽ thấy "racing" thay vì 500.
-     */
+    /** Optimistic lock conflict (vd. */
     @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
     public ResponseEntity<ApiResponse<Void>> handleOptimisticLock(
             ObjectOptimisticLockingFailureException ex) {
@@ -61,15 +58,24 @@ public class GlobalExceptionHandler {
             .body(ApiResponse.error(409, "Dữ liệu vừa được cập nhật, vui lòng thử lại"));
     }
 
-    /**
-     * Unique constraint / FK violation (vd. trùng booking_code, trùng
-     * unique (customer_id, trip_id, status) khi đặt 2 lần). Trả 409.
-     */
+    /** Unique constraint / FK violation (vd. */
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiResponse<Void>> handleDataIntegrity(
             DataIntegrityViolationException ex) {
+        String rootMsg = ex.getMostSpecificCause() != null
+            ? ex.getMostSpecificCause().getMessage() : "";
+        String userMessage;
+        if (rootMsg.contains("uk_booking_active_per_customer_trip")) {
+            userMessage = "Bạn đã có booking đang hoạt động cho chuyến này. Vui lòng huỷ booking cũ trước khi đặt lại.";
+        } else if (rootMsg.contains("Duplicate entry") && rootMsg.contains("booking_code")) {
+            userMessage = "Mã booking bị trùng, vui lòng thử lại.";
+        } else if (rootMsg.contains("foreign key") || rootMsg.contains("FOREIGN KEY")) {
+            userMessage = "Dữ liệu liên quan không tồn tại (trip/ward/user).";
+        } else {
+            userMessage = "Dữ liệu vi phạm ràng buộc, vui lòng thử lại.";
+        }
         return ResponseEntity.status(HttpStatus.CONFLICT)
-            .body(ApiResponse.error(409, "Dữ liệu vi phạm ràng buộc (trùng hoặc không hợp lệ)"));
+            .body(ApiResponse.error(409, userMessage));
     }
 
     @ExceptionHandler(Exception.class)

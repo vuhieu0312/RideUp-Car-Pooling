@@ -50,6 +50,15 @@ server:
 app:
   upload:
     dir: ${UPLOAD_DIR:uploads/}
+  booking:
+    pending-expiration-minutes: ${BOOKING_PENDING_MINUTES:15}
+    expiration-check-ms: ${BOOKING_EXPIRATION_CHECK_MS:60000}
+
+stripe:
+  secret-key: ${STRIPE_SECRET_KEY:}
+  webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
+  publishable-key: ${STRIPE_PUBLISHABLE_KEY:}
+  currency-code: ${STRIPE_CURRENCY_CODE:vnd}
 
 location:
   seeding:

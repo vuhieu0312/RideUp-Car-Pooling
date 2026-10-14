@@ -10,19 +10,7 @@ import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBr
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 
-/**
- * STOMP over WebSocket.
- *
- * Endpoint handshake: GET /api/ws (context-path /api được áp dụng).
- * Client connect: ws://host:8080/api/ws?token=<accessToken>
- *   - Token trong query param (vì nhiều browser/JS STOMP client không gửi được header tuỳ ý)
- *   - JwtHandshakeInterceptor validate token + kiểm tra Redis
- *   - Nếu không có JWT hoặc token invalid → handshake fail (401)
- *
- * Subscribe:
- *   - /user/queue/status  (private — chỉ admin push trạng thái duyệt tới user cụ thể)
- *   - /topic/...          (public broadcast nếu cần)
- */
+/** STOMP over WebSocket. */
 @Configuration
 @EnableWebSocketMessageBroker
 @RequiredArgsConstructor

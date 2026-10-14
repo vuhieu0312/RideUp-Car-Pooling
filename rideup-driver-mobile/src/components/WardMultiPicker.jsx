@@ -1,16 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import {
-  FlatList, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View,
-} from 'react-native';
+import { FlatList, KeyboardAvoidingView, Modal, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors, typography } from '../theme';
+import { Text, TextInput } from './Typography';
 
-/**
- * Dropdown chọn nhiều xã/phường với search.
- * - Trigger chỉ hiện "(count/max)" + chevron.
- * - Mở modal: search input + list checkbox, có nút "Xong (count)" ở cuối.
- * - Khi đạt max thì khóa các item chưa chọn.
- */
+/** Dropdown chọn nhiều xã/phường với search. */
 export default function WardMultiPicker({
   label,
   wards,
@@ -72,7 +66,10 @@ export default function WardMultiPicker({
       </TouchableOpacity>
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
-        <View style={styles.backdrop}>
+        <KeyboardAvoidingView
+          style={styles.backdrop}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
           <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={() => setOpen(false)} />
           <View style={styles.sheet}>
             <View style={styles.header}>
@@ -153,7 +150,7 @@ export default function WardMultiPicker({
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
@@ -182,15 +179,13 @@ const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
   },
   sheet: {
     backgroundColor: colors.surface,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    overflow: 'hidden',
-    maxHeight: '85%',
-    paddingBottom: 24,
+    borderRadius: 12,
+    maxHeight: '78%',
   },
   header: {
     flexDirection: 'row',
@@ -225,6 +220,7 @@ const styles = StyleSheet.create({
   },
 
   list: { maxHeight: 380 },
+  listContent: { paddingBottom: 4 },
   item: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -248,9 +244,14 @@ const styles = StyleSheet.create({
   },
   footerHint: { fontSize: 11, color: colors.textSubtle, marginBottom: 8, textAlign: 'center' },
   doneBtn: {
+    marginHorizontal: 12,
+    marginBottom: 12,
     paddingVertical: 12,
     backgroundColor: colors.primary,
-    borderRadius: 9,
+    borderTopLeftRadius: 9,
+    borderTopRightRadius: 9,
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
     alignItems: 'center',
   },
   doneText: { color: '#fff', fontWeight: '700', fontSize: 13 },

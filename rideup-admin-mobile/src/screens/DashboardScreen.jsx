@@ -1,16 +1,18 @@
 import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import {
-  Button, Card, Chip, Dialog, HelperText, IconButton, Portal, SegmentedButtons,
-  Text, TextInput,
-} from 'react-native-paper';
+import { Button, Card, Chip, Dialog, HelperText, IconButton, Portal, SegmentedButtons, TextInput } from 'react-native-paper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   approveDriver, approveVehicle, getLocationStats,
   listDrivers, listPendingVehicles, rejectDriver, rejectVehicle,
 } from '../api/api';
 import { useAuth } from '../auth/AuthContext';
+import IconText from '../components/IconText';
+import { Text } from '../components/Typography';
+import Logo from '../components/Logo';
 
 export default function DashboardScreen() {
+  const insets = useSafeAreaInsets();
   const { user, doLogout } = useAuth();
   const [tab, setTab] = useState('drivers');
   const [drivers, setDrivers] = useState([]);
@@ -24,14 +26,14 @@ export default function DashboardScreen() {
   async function loadDrivers() {
     setLoading(true);
     try { setDrivers(await listDrivers('PENDING')); }
-    catch (e) { setMsg('❌ ' + (e.response?.data?.message || e.message)); }
+    catch (e) { setMsg('Lỗi: ' + (e.response?.data?.message || e.message)); }
     finally { setLoading(false); }
   }
 
   async function loadVehicles() {
     setLoading(true);
     try { setVehicles(await listPendingVehicles()); }
-    catch (e) { setMsg('❌ ' + (e.response?.data?.message || e.message)); }
+    catch (e) { setMsg('Lỗi: ' + (e.response?.data?.message || e.message)); }
     finally { setLoading(false); }
   }
 
@@ -49,13 +51,13 @@ export default function DashboardScreen() {
   }, [tab]);
 
   async function approveD(id) {
-    try { const x = await approveDriver(id); setMsg('✅ ' + x.message); loadDrivers(); }
-    catch (e) { setMsg('❌ ' + (e.response?.data?.message || e.message)); }
+    try { const x = await approveDriver(id); setMsg(x.message); loadDrivers(); }
+    catch (e) { setMsg('Lỗi: ' + (e.response?.data?.message || e.message)); }
   }
 
   async function approveV(id) {
-    try { const x = await approveVehicle(id); setMsg('✅ ' + x.message); loadVehicles(); }
-    catch (e) { setMsg('❌ ' + (e.response?.data?.message || e.message)); }
+    try { const x = await approveVehicle(id); setMsg(x.message); loadVehicles(); }
+    catch (e) { setMsg('Lỗi: ' + (e.response?.data?.message || e.message)); }
   }
 
   async function doReject() {
@@ -63,12 +65,12 @@ export default function DashboardScreen() {
     try {
       if (rejectTarget.type === 'driver') await rejectDriver(rejectTarget.id, rejectReason);
       else await rejectVehicle(rejectTarget.id, rejectReason);
-      setMsg('✅ Đã từ chối');
+      setMsg('Đã từ chối');
       setRejectTarget(null);
       setRejectReason('');
       if (rejectTarget.type === 'driver') loadDrivers(); else loadVehicles();
     } catch (e) {
-      setMsg('❌ ' + (e.response?.data?.message || e.message));
+      setMsg('Lỗi: ' + (e.response?.data?.message || e.message));
     }
   }
 
@@ -77,9 +79,9 @@ export default function DashboardScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: '#f1f5f9' }}>
       {/* Top bar */}
-      <View style={styles.topBar}>
+      <View style={[styles.topBar, { paddingTop: insets.top + 16 }]}>
         <View style={{ flex: 1 }}>
-          <Text variant="labelLarge" style={styles.brand}>RIDEUP · ADMIN</Text>
+          <Logo size="sm" tag="ADMIN" />
           <Text variant="titleMedium" style={{ fontWeight: '700' }}>Dashboard</Text>
           <Text variant="bodySmall" style={{ color: '#94a3b8' }}>{user?.user?.fullName || user?.user?.email || ''}</Text>
         </View>
@@ -88,7 +90,7 @@ export default function DashboardScreen() {
 
       <ScrollView contentContainerStyle={{ padding: 16 }}>
         {!!msg && (
-          <HelperText type={msg.startsWith('❌') ? 'error' : 'info'} visible>{msg}</HelperText>
+          <HelperText type={msg.startsWith('Lỗi') ? 'error' : 'info'} visible>{msg}</HelperText>
         )}
 
         <SegmentedButtons
@@ -110,9 +112,9 @@ export default function DashboardScreen() {
               <Card key={d.id} style={{ marginBottom: 8 }}>
                 <Card.Content>
                   <Text style={{ fontWeight: '700' }}>{d.fullName}</Text>
-                  <Text variant="bodySmall">📧 {d.email}</Text>
-                  <Text variant="bodySmall">📞 {d.phone}</Text>
-                  <Text variant="bodySmall">🪪 CCCD: {d.cccd} · GPLX: {d.gplx}</Text>
+                  <IconText name="email-outline" size={14} gap={5} variant="bodySmall">{d.email}</IconText>
+                  <IconText name="phone-outline" size={14} gap={5} variant="bodySmall">{d.phone}</IconText>
+                  <IconText name="card-account-details-outline" size={14} gap={5} variant="bodySmall">CCCD: {d.cccd} · GPLX: {d.gplx}</IconText>
                   <Text variant="bodySmall" style={{ color: '#6b7280' }}>Ngày tạo: {fmtDate(d.createdAt)}</Text>
                 </Card.Content>
                 <Card.Actions>
@@ -133,8 +135,8 @@ export default function DashboardScreen() {
             vehicles.map((v) => (
               <Card key={v.id} style={{ marginBottom: 8 }}>
                 <Card.Content>
-                  <Text style={{ fontWeight: '700' }}>🚗 {v.plateNumber}</Text>
-                  <Text variant="bodySmall">👤 {v.driverName} ({v.driverId?.substring(0, 8)}...)</Text>
+                  <IconText name="car-outline" size={16} color="#374151" textStyle={{ fontWeight: '700' }}>{v.plateNumber}</IconText>
+                  <IconText name="account-outline" size={14} gap={5} variant="bodySmall">{v.driverName} ({v.driverId?.substring(0, 8)}...)</IconText>
                   <Text variant="bodySmall">{v.vehicleType} · {v.seatCapacity} chỗ</Text>
                   <Text variant="bodySmall" style={{ color: '#6b7280' }}>Hạn ĐK: {fmtDate(v.registrationExpiryDate)}</Text>
                 </Card.Content>

@@ -21,26 +21,44 @@ public class BookingResponse {
     String id;
     String bookingCode;
     String customerId;
-    String customerName;
-    String customerPhone;
     String tripId;
-    String tripDeparture;
-    String tripPlate;
     BookingStatus status;
+    String paymentId;
     PaymentStatus paymentStatus;
+
     Integer seatCount;
     BigDecimal pricePerSeat;
     BigDecimal totalAmount;
-    LocalDateTime reservedAt;
-    LocalDateTime expiresAt;
-    String pickupAddressText;
+
+    /**
+     * Trả về cho mobile (STRIPE):
+     * - STRIPE: chứa {@code client_secret} của PaymentIntent — mobile dùng cho {@code presentPaymentSheet}.
+     * - CASH: null.
+     *
+     * <p>Tên field là {@code paymentUrl} cho giữ backward-compat, nhưng giá trị thực là
+     * Stripe {@code client_secret} (KHÔNG phải URL hosted page như trước).</p>
+     */
+    String paymentUrl;
+
     Double pickupLat;
     Double pickupLng;
-    String dropoffAddressText;
+    String pickupWardId;
+    String pickupAddressText;
+
     Double dropoffLat;
     Double dropoffLng;
+    String dropoffWardId;
+    String dropoffAddressText;
+
+    String userAvatar;
+    String userName;
+
     String note;
+    LocalDateTime reservedAt;
+    LocalDateTime expiresAt;
     LocalDateTime cancelledAt;
     String cancelReason;
+
     LocalDateTime createdAt;
+    LocalDateTime updatedAt;
 }

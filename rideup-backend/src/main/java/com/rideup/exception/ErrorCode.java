@@ -3,19 +3,7 @@ package com.rideup.exception;
 import lombok.Getter;
 import org.springframework.http.HttpStatus;
 
-/**
- * Mã lỗi chuẩn của hệ thống.
- *
- * <p>Mỗi code gồm:
- * <ul>
- *   <li><b>code</b>: số int — dùng cho client xử lý tự động (i18n, retry...)</li>
- *   <li><b>message</b>: tiếng Việt — hiện cho end-user</li>
- *   <li><b>httpStatus</b>: HTTP status code tương ứng — GlobalExceptionHandler dùng</li>
- * </ul>
- *
- * <p>Code số từ 1000+ tránh nhầm với HTTP status (400, 401, 403...).</p>
- * <p>Khi thêm code mới: append vào cuối enum, không đổi code cũ (backward-compat).</p>
- */
+/** Mã lỗi chuẩn của hệ thống. */
 @Getter
 public enum ErrorCode {
     UNCATEGORIZED_EXCEPTION        (9999, "Lỗi không xác định",                HttpStatus.INTERNAL_SERVER_ERROR),
@@ -58,7 +46,14 @@ public enum ErrorCode {
     CHAT_NOT_ALLOWED                (1036, "Chỉ có thể chat trước khi chuyến kết thúc", HttpStatus.BAD_REQUEST),
     CHAT_MESSAGE_INVALID            (1037, "Tin nhắn không hợp lệ",                  HttpStatus.BAD_REQUEST),
     VNPAY_NOT_CONFIGURED            (1038, "VNPAY chưa được cấu hình trên backend",  HttpStatus.BAD_REQUEST),
-    BOOKING_REQUEST_INVALID         (1039, "Yêu cầu đặt chỗ không hợp lệ",          HttpStatus.BAD_REQUEST);
+    BOOKING_REQUEST_INVALID         (1039, "Yêu cầu đặt chỗ không hợp lệ",          HttpStatus.BAD_REQUEST),
+    STRIPE_NOT_CONFIGURED           (1046, "Stripe chưa được cấu hình trên backend", HttpStatus.BAD_REQUEST),
+    STRIPE_PAYMENT_FAILED           (1047, "Thanh toán Stripe thất bại",              HttpStatus.BAD_REQUEST),
+    INVALID_PAYMENT_AMOUNT          (1048, "Số tiền thanh toán không hợp lệ",         HttpStatus.BAD_REQUEST),
+    PAYMENT_STATUS_INVALID          (1049, "Trạng thái thanh toán không hợp lệ",     HttpStatus.BAD_REQUEST),
+    DEPOSIT_NOT_ALLOWED             (1051, "Không có nợ hoa hồng để thanh toán",     HttpStatus.BAD_REQUEST),
+    SEARCH_DATE_IN_PAST             (1052, "Không thể tìm chuyến ở ngày đã qua",     HttpStatus.BAD_REQUEST),
+    BOOKING_TRIP_DEPARTED           (1053, "Chuyến đã quá giờ khởi hành, không thể đặt chỗ", HttpStatus.BAD_REQUEST);
 
     private final int code;
     private final String message;

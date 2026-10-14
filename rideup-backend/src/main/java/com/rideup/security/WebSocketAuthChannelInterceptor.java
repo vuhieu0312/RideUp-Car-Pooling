@@ -15,12 +15,7 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Set Authentication principal cho STOMP CONNECT dựa trên session attributes
- * mà JwtHandshakeInterceptor đã đặt. Sau đó @SendToUser hoạt động đúng user.
- *
- * KHÔNG validate lại JWT — JwtHandshakeInterceptor đã làm.
- */
+/** Set Authentication principal cho STOMP CONNECT dựa trên session attributes mà JwtHandshakeInterceptor đã đặt. */
 @Component
 @Slf4j
 public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {

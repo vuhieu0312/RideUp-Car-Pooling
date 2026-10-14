@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { FlatList, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { listMyTrips, listProvinces } from '../api/api';
+import { Alert, FlatList, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { cancelTrip, completeTrip, listMyTrips, listProvinces, startTrip } from '../api/api';
 import { colors, FONT, shadow } from '../theme';
+import IconText from '../components/IconText';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Text } from '../components/Typography';
 
 const FILTERS = [
   { key: 'ALL', label: 'Tất cả' },
@@ -20,10 +24,12 @@ const STATUS_META = {
 };
 
 export default function AllTripsScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const [trips, setTrips] = useState([]);
   const [provinces, setProvinces] = useState([]);
   const [filter, setFilter] = useState('ALL');
   const [loading, setLoading] = useState(true);
+  const [actionMsg, setActionMsg] = useState('');
 
   function load() {
     setLoading(true);
@@ -32,7 +38,94 @@ export default function AllTripsScreen({ navigation }) {
       .finally(() => setLoading(false));
   }
 
+  async function doStartTrip(t) {
+    try {
+      const res = await startTrip(t.id);
+      // Cập nhật ngay trạng thái trên màn hình, rồi tải lại để đồng bộ với server
+      const updated = res?.data;
+      setTrips((prev) => prev.map((x) => (x.id === t.id ? { ...x, ...(updated || {}), status: updated?.status || 'STARTED' } : x)));
+      setActionMsg(`Đã bắt đầu chuyến ${t.id.slice(0, 6)}…`);
+      load();
+    } catch (e) {
+      setActionMsg(`${e.response?.data?.message || 'Lỗi bắt đầu'}`);
+    }
+  }
+
+  function doCompleteTrip(t) {
+    Alert.alert(
+      'Kết thúc chuyến',
+      'Xác nhận kết thúc chuyến? Hệ thống sẽ tự động thanh toán (capture) cho các booking Stripe.',
+      [
+        { text: 'Huỷ', style: 'cancel' },
+        {
+          text: 'Kết thúc',
+          onPress: async () => {
+            try {
+              await completeTrip(t.id);
+              setActionMsg(`Đã kết thúc chuyến ${t.id.slice(0, 6)}…`);
+              load();
+            } catch (e) {
+              setActionMsg(`${e.response?.data?.message || 'Lỗi kết thúc'}`);
+            }
+          },
+        },
+      ]
+    );
+  }
+
+  function doCancelTrip(t) {
+    const booked = Math.max(0, (t.seatTotal || 0) - (t.seatAvailable || 0));
+    Alert.prompt?.(
+      'Huỷ chuyến',
+      `Sẽ hoàn tiền cho tất cả khách đã đặt chuyến này.${booked > 0 ? ` Có ${booked} ghế đã đặt.` : ''}\n\nNhập lý do huỷ chuyến:`,
+      [
+        { text: 'Không', style: 'cancel' },
+        {
+          text: 'Huỷ chuyến & hoàn tiền',
+          style: 'destructive',
+          onPress: async (reasonText) => {
+            try {
+              await cancelTrip(t.id, reasonText || 'Tài xế huỷ chuyến');
+              setActionMsg(`Đã huỷ chuyến ${t.id.slice(0, 6)}… và hoàn tiền cho khách.`);
+              load();
+            } catch (e) {
+              setActionMsg(`${e.response?.data?.message || 'Lỗi huỷ chuyến'}`);
+            }
+          },
+        },
+      ],
+      'plain-text',
+      'Tài xế không thể thực hiện chuyến'
+    ) || Alert.alert(
+      'Huỷ chuyến',
+      `Sẽ hoàn tiền cho tất cả khách đã đặt.${booked > 0 ? ` Có ${booked} ghế đã đặt.` : ''} Xác nhận?`,
+      [
+        { text: 'Không', style: 'cancel' },
+        {
+          text: 'Huỷ chuyến',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await cancelTrip(t.id, 'Tài xế huỷ chuyến');
+              setActionMsg(`Đã huỷ chuyến ${t.id.slice(0, 6)}…`);
+              load();
+            } catch (e) {
+              setActionMsg(`${e.response?.data?.message || 'Lỗi'}`);
+            }
+          },
+        },
+      ]
+    );
+  }
+
   useEffect(() => { load(); }, []);
+
+  // Thông báo tự tắt sau 3 giây
+  useEffect(() => {
+    if (!actionMsg) return undefined;
+    const timer = setTimeout(() => setActionMsg(''), 3000);
+    return () => clearTimeout(timer);
+  }, [actionMsg]);
 
   const visible = useMemo(() => {
     if (filter === 'ALL') return trips;
@@ -54,15 +147,17 @@ export default function AllTripsScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.heading}>
+      <View style={[styles.heading, { paddingTop: insets.top + 16 }]}>
         <View style={{ flex: 1 }}>
           <Text style={styles.kicker}>RIDEUP</Text>
           <Text style={styles.title}>Tất cả chuyến xe</Text>
         </View>
         <TouchableOpacity onPress={load} style={styles.refreshBtn}>
-          <Text style={styles.refreshIcon}>↻</Text>
+          <MaterialCommunityIcons name="refresh" size={18} color={colors.primaryAccent} />
         </TouchableOpacity>
       </View>
+
+      {!!actionMsg && <Text style={styles.actionMsg}>{actionMsg}</Text>}
 
       <ScrollView
         horizontal
@@ -122,7 +217,7 @@ export default function AllTripsScreen({ navigation }) {
                   <Text style={styles.tripRoute}>
                     {provinceName(t.startProvinceId)} → {provinceName(t.endProvinceId)}
                   </Text>
-                  <Text style={styles.tripTime}>🕐 {fmtTime(t.departureTime)}</Text>
+                  <IconText name="clock-outline" size={14} textStyle={styles.tripTime}>{fmtTime(t.departureTime)}</IconText>
                 </View>
                 <View style={[styles.badge, { backgroundColor: meta.bg }]}>
                   <Text style={[styles.badgeText, { color: meta.fg }]}>{meta.label}</Text>
@@ -145,6 +240,53 @@ export default function AllTripsScreen({ navigation }) {
                   <Text style={[styles.metricValue, { color: colors.success }]}>{fmtMoney(revenue)}</Text>
                 </View>
               </View>
+
+              <View style={styles.actions}>
+                {(t.status === 'OPEN' || t.status === 'FULL') && (
+                  <>
+                    <TouchableOpacity
+                      style={[styles.actionBtn, styles.actionDanger]}
+                      onPress={() => doCancelTrip(t)}
+                    >
+                      <IconText name="close-circle-outline" size={14} center textStyle={styles.actionDangerText}>Huỷ chuyến</IconText>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.actionBtn, styles.actionSecondary]}
+                      onPress={() => navigation.navigate('Bookings', { tripId: null })}
+                    >
+                      <IconText name="format-list-bulleted" size={14} center textStyle={styles.actionSecondaryText}>Xem booking</IconText>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.actionBtn, styles.actionPrimary]}
+                      onPress={() => doStartTrip(t)}
+                    >
+                      <IconText name="play" size={13} center textStyle={styles.actionPrimaryText}>Bắt đầu</IconText>
+                    </TouchableOpacity>
+                  </>
+                )}
+                {t.status === 'STARTED' && (
+                  <>
+                    <TouchableOpacity
+                      style={[styles.actionBtn, styles.actionDanger]}
+                      onPress={() => doCancelTrip(t)}
+                    >
+                      <IconText name="close-circle-outline" size={14} center textStyle={styles.actionDangerText}>Huỷ chuyến</IconText>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.actionBtn, styles.actionSecondary]}
+                      onPress={() => navigation.navigate('Bookings', { tripId: t.id })}
+                    >
+                      <IconText name="format-list-bulleted" size={14} center textStyle={styles.actionSecondaryText}>Xem booking</IconText>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.actionBtn, styles.actionPrimary]}
+                      onPress={() => doCompleteTrip(t)}
+                    >
+                      <IconText name="check-circle-outline" size={14} center textStyle={styles.actionPrimaryText}>Kết thúc</IconText>
+                    </TouchableOpacity>
+                  </>
+                )}
+              </View>
             </View>
           );
         }}
@@ -154,6 +296,7 @@ export default function AllTripsScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
+  actionMsg: { padding: 9, marginHorizontal: 12, marginBottom: 6, backgroundColor: colors.primaryFaintest, borderRadius: 6, fontSize: 11, color: colors.textDark },
   container: { flex: 1, backgroundColor: colors.bg },
   heading: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 16 },
   kicker: { fontFamily: FONT[800], fontSize: 9, fontWeight: '800', color: colors.primaryAccent, letterSpacing: 1.5 },
@@ -189,6 +332,15 @@ const styles = StyleSheet.create({
 
   primaryBtn: { marginTop: 12, paddingVertical: 10, paddingHorizontal: 18, borderRadius: 6, backgroundColor: colors.primary, alignSelf: 'center' },
   primaryBtnText: { color: 'white', fontSize: 12, fontWeight: '700' },
+
+  actions: { flexDirection: 'row', gap: 8, marginTop: 10, justifyContent: 'flex-end', flexWrap: 'wrap' },
+  actionBtn: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 6 },
+  actionPrimary: { backgroundColor: colors.primary },
+  actionPrimaryText: { color: 'white', fontSize: 11, fontWeight: '700' },
+  actionSecondary: { backgroundColor: colors.primaryLight, borderWidth: 1, borderColor: colors.primaryAccent },
+  actionSecondaryText: { color: colors.primaryDark, fontSize: 11, fontWeight: '700' },
+  actionDanger: { backgroundColor: colors.dangerBg, borderWidth: 1, borderColor: '#fecaca' },
+  actionDangerText: { color: colors.danger, fontSize: 11, fontWeight: '700' },
 
   card: { marginBottom: 9, padding: 12, borderWidth: 1, borderColor: '#e3ece8', borderRadius: 10, backgroundColor: 'white', ...shadow(2, 0.07, 7) },
   cardHead: { flexDirection: 'row', alignItems: 'flex-start' },

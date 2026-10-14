@@ -6,21 +6,16 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "booking",
-    // Ràng buộc DB: mỗi customer chỉ có tối đa 1 booking ACTIVE (PENDING/CONFIRMED)
-    // cho cùng 1 trip. Hibernate sẽ tự sinh unique constraint khi ddl-auto=update
-    // và bắn DataIntegrityViolationException nếu vi phạm — đây là lớp bảo vệ
-    // tuyệt đối cuối cùng nếu logic check ở service bị bypass.
-    uniqueConstraints = {
-        @UniqueConstraint(name = "uk_booking_active_per_customer_trip",
-            columnNames = {"customer_id", "trip_id", "status"})
-    })
+@Table(name = "booking")
+// Đã BỎ unique constraint (customer_id, trip_id, status) từng có ở đây.
 @Getter
 @Setter
 @NoArgsConstructor
@@ -46,14 +41,16 @@ public class Booking {
     Trip trip;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(nullable = false, length = 30)
     BookingStatus status;
 
     @OneToOne(mappedBy = "booking", fetch = FetchType.LAZY)
     Payment payment;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(nullable = false, length = 30)
     PaymentStatus paymentStatus;
 
     Integer seatCount;

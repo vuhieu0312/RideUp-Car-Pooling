@@ -3,17 +3,7 @@ package com.rideup.exception;
 import lombok.Getter;
 import org.springframework.http.HttpStatus;
 
-/**
- * Exception chuẩn của hệ thống — wrap {@link ErrorCode} hoặc (status, code, message) tuỳ trường hợp.
- *
- * <p>Cách dùng:</p>
- * <ul>
- *   <li>Truyền {@link ErrorCode} enum (code/msg/status từ enum):
- *       <pre>{@code throw new AppException(ErrorCode.USER_NOT_EXISTED);}</pre></li>
- *   <li>Truyền status/code/message trực tiếp:
- *       <pre>{@code throw AppException.notFound("User not found");}</pre></li>
- * </ul>
- */
+/** Exception chuẩn của hệ thống — wrap ErrorCode hoặc (status, code, message) tuỳ trường hợp. */
 @Getter
 public class AppException extends RuntimeException {
     private final ErrorCode errorCode;
@@ -49,9 +39,7 @@ public class AppException extends RuntimeException {
         return errorCode != null ? errorCode.getHttpStatus() : status;
     }
 
-    // ============================================================
     // Factory methods
-    // ============================================================
     public static AppException badRequest(String message) {
         return new AppException(HttpStatus.BAD_REQUEST, 400, message);
     }

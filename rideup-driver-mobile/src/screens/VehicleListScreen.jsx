@@ -1,17 +1,21 @@
 import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { Button, Card, Chip, IconButton, Text } from 'react-native-paper';
+import { Button, Card, Chip, IconButton } from 'react-native-paper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { listMyVehicles } from '../api/api';
+import IconText from '../components/IconText';
+import { Text } from '../components/Typography';
 
 const BADGE = (v) => {
-  if (v.isVerified && v.isActive) return { label: '✅ Đã duyệt', color: '#10b981' };
-  if (v.rejectionReason) return { label: '✖️ Bị từ chối', color: '#dc2626' };
-  return { label: '⏳ Chờ admin duyệt', color: '#f59e0b' };
+  if (v.isVerified && v.isActive) return { icon: 'check-circle-outline', label: 'Đã duyệt', color: '#10b981' };
+  if (v.rejectionReason) return { icon: 'close-circle-outline', label: 'Bị từ chối', color: '#dc2626' };
+  return { icon: 'clock-outline', label: 'Chờ admin duyệt', color: '#f59e0b' };
 };
 
 const fmtDate = (s) => (s ? s.substring(0, 10) : '—');
 
 export default function VehicleListScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -23,9 +27,9 @@ export default function VehicleListScreen({ navigation }) {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#f9fafb' }}>
-      <View style={styles.topBar}>
+      <View style={[styles.topBar, { paddingTop: insets.top + 4 }]}>
         <IconButton icon="arrow-left" onPress={() => navigation.goBack()} />
-        <Text variant="titleMedium" style={{ flex: 1, fontWeight: '700' }}>🚗 Phương tiện của tôi</Text>
+        <IconText name="car-outline" size={20} variant="titleMedium" style={{ flex: 1 }} textStyle={{ fontWeight: '700' }}>Phương tiện của tôi</IconText>
         <IconButton icon="plus" onPress={() => navigation.navigate('VehicleRegister')} />
       </View>
 
@@ -46,7 +50,7 @@ export default function VehicleListScreen({ navigation }) {
               <Card.Content>
                 <View style={styles.rowBetween}>
                   <View style={{ flex: 1 }}>
-                    <Text style={{ fontWeight: '700' }}>🚗 {v.plateNumber}</Text>
+                    <IconText name="car-outline" size={16} color="#374151" textStyle={{ fontWeight: '700' }}>{v.plateNumber}</IconText>
                     <Text variant="bodySmall" style={{ color: '#6b7280' }}>
                       {v.vehicleBrand} {v.vehicleModel} {v.vehicleYear && `(${v.vehicleYear})`}
                     </Text>
@@ -54,7 +58,7 @@ export default function VehicleListScreen({ navigation }) {
                       {v.vehicleColor} · {v.seatCapacity} chỗ · {v.vehicleType}
                     </Text>
                   </View>
-                  <Chip mode="flat" style={{ backgroundColor: bdg.color + '20' }} textStyle={{ color: bdg.color }}>
+                  <Chip mode="flat" icon={bdg.icon} selectedColor={bdg.color} style={{ backgroundColor: bdg.color + '20' }} textStyle={{ color: bdg.color }}>
                     {bdg.label}
                   </Chip>
                 </View>
@@ -69,7 +73,7 @@ export default function VehicleListScreen({ navigation }) {
                 )}
                 {v.isVerified && v.isActive && (
                   <View style={{ backgroundColor: '#dcfce7', padding: 10, borderRadius: 6, marginTop: 8 }}>
-                    <Text style={{ color: '#166534' }}>✅ Xe đã được admin duyệt. Bạn có thể tạo chuyến.</Text>
+                    <IconText name="check-circle-outline" size={16} color="#166534" textStyle={{ color: '#166534' }}>Xe đã được admin duyệt. Bạn có thể tạo chuyến.</IconText>
                   </View>
                 )}
               </Card.Content>

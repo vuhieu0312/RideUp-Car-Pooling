@@ -42,10 +42,7 @@ export function AuthProvider({ children }) {
     setUser(null);
   }
 
-  /**
-   * Merge patch vào user hiện tại + persist xuống AsyncStorage.
-   * Dùng sau khi PATCH /users/me hoặc upload avatar để UI cập nhật ngay.
-   */
+  /** Merge patch vào user hiện tại + persist xuống AsyncStorage. */
   async function updateUser(patch) {
     setUser((prev) => {
       if (!prev) return prev;

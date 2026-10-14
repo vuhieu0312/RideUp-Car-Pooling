@@ -1,11 +1,10 @@
 import { useState } from 'react';
-import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { colors, shadow } from '../theme';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Text, TextInput } from './Typography';
 
-/**
- * Custom dropdown picker (giống CustomerHomePage web).
- * Mở modal search + list options, click để chọn.
- */
+/** Custom dropdown picker (giống CustomerHomePage web). */
 export default function Picker({ value, options, isOpen, onOpen, onClose, onSelect, placeholder }) {
   const [keyword, setKeyword] = useState('');
   const selected = options.find((o) => o.id === value);
@@ -42,7 +41,7 @@ export default function Picker({ value, options, isOpen, onOpen, onClose, onSele
                     onPress={() => { onSelect(opt.id); setKeyword(''); }}
                   >
                     <Text style={[styles.optionText, opt.id === value && styles.optionTextSelected]}>{opt.name}</Text>
-                    {opt.id === value && <Text style={styles.checkmark}>✓</Text>}
+                    {opt.id === value && <MaterialCommunityIcons name="check" size={17} color={colors.primaryDark} />}
                   </TouchableOpacity>
                 ))
               )}

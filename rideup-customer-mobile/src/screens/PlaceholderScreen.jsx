@@ -1,19 +1,18 @@
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { Text } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../auth/AuthContext';
 import { colors } from '../theme';
+import { Text } from '../components/Typography';
 
-/**
- * Placeholder cho các tab chưa implement (Tin nhắn / Thông báo / Tài khoản).
- * Truyền `title`, `icon`, `subtitle` qua route params.
- */
+/** Placeholder cho các tab chưa implement (Tin nhắn / Thông báo / Tài khoản). */
 export default function PlaceholderScreen({ route }) {
   const { title, icon = 'star-outline', subtitle = 'Tính năng đang được phát triển' } = route.params || {};
   const { user, doLogout } = useAuth();
+  const insets = useSafeAreaInsets();
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView contentContainerStyle={[styles.container, { paddingTop: insets.top + 24 }]}>
       <View style={styles.heroIcon}>
         <MaterialCommunityIcons name={icon} size={48} color={colors.primaryAccent} />
       </View>

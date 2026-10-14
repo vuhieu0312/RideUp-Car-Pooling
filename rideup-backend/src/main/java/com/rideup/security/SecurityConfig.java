@@ -52,6 +52,8 @@ public class SecurityConfig {
                 .requestMatchers("/ws/**").permitAll()
                 .requestMatchers("/ws-test.html", "/static/**").permitAll()
                 .requestMatchers("/locations/**").permitAll()
+                // Stripe webhook (server-to-server từ Stripe infrastructure) — không cần JWT.
+                .requestMatchers(HttpMethod.POST, "/payments/wallet/confirm", "/payments/webhook").permitAll()
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

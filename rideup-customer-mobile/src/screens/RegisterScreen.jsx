@@ -1,11 +1,17 @@
 import { useState } from 'react';
-import { ImageBackground, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ImageBackground, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { registerCustomer } from '../api/api';
 import { useAuth } from '../auth/AuthContext';
 import { colors, FONT, HERO_IMAGE, shadow } from '../theme';
+import IconText from '../components/IconText';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Text, TextInput } from '../components/Typography';
+import Logo from '../components/Logo';
 
 export default function RegisterScreen() {
+  const insets = useSafeAreaInsets();
   const { doLogin } = useAuth();
   const [form, setForm] = useState({ fullName: '', email: '', phone: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
@@ -38,9 +44,9 @@ export default function RegisterScreen() {
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={false}>
-        <ImageBackground source={{ uri: HERO_IMAGE }} style={styles.hero} imageStyle={{ resizeMode: 'cover' }}>
+        <ImageBackground source={{ uri: HERO_IMAGE }} style={[styles.hero, { paddingTop: insets.top + 28 }]} imageStyle={{ resizeMode: 'cover' }}>
           <View style={styles.heroOverlay} />
-          <Text style={styles.brand}>RIDEUP</Text>
+          <Logo />
           <Text style={styles.title}>Bắt đầu hành trình{'\n'}của riêng bạn.</Text>
           <Text style={styles.subtitle}>Tạo tài khoản để tìm chuyến xe phù hợp hơn mỗi ngày.</Text>
           <LinearGradient pointerEvents="none" colors={['rgba(247,250,249,0)', colors.bg]} style={styles.heroFade} />
@@ -60,23 +66,23 @@ export default function RegisterScreen() {
           )}
 
           <View style={styles.field}>
-            <Text style={styles.fieldLabel}>👤  Họ và tên</Text>
+            <IconText name="account-outline" size={14} textStyle={styles.fieldLabel}>Họ và tên</IconText>
             <TextInput style={styles.input} placeholder="Nguyễn Văn A" placeholderTextColor="#a4b2ae" value={form.fullName} onChangeText={set('fullName')} />
           </View>
           <View style={styles.field}>
-            <Text style={styles.fieldLabel}>✉  Email</Text>
+            <IconText name="email-outline" size={14} textStyle={styles.fieldLabel}>Email</IconText>
             <TextInput style={styles.input} placeholder="you@example.com" placeholderTextColor="#a4b2ae" keyboardType="email-address" autoCapitalize="none" value={form.email} onChangeText={set('email')} />
           </View>
           <View style={styles.field}>
-            <Text style={styles.fieldLabel}>📞  Số điện thoại</Text>
+            <IconText name="phone-outline" size={14} textStyle={styles.fieldLabel}>Số điện thoại</IconText>
             <TextInput style={styles.input} placeholder="0912345678" placeholderTextColor="#a4b2ae" keyboardType="phone-pad" value={form.phone} onChangeText={set('phone')} />
           </View>
           <View style={styles.field}>
-            <Text style={styles.fieldLabel}>🔒  Mật khẩu (tối thiểu 8 ký tự)</Text>
+            <IconText name="lock-outline" size={14} textStyle={styles.fieldLabel}>Mật khẩu (tối thiểu 8 ký tự)</IconText>
             <View style={styles.passwordWrap}>
               <TextInput style={[styles.input, { paddingRight: 42 }]} placeholder="Nhập mật khẩu" placeholderTextColor="#a4b2ae" secureTextEntry={!showPassword} value={form.password} onChangeText={set('password')} />
               <TouchableOpacity style={styles.eyeButton} onPress={() => setShowPassword((v) => !v)}>
-                <Text style={styles.eyeIcon}>{showPassword ? '🙈' : '👁'}</Text>
+                <MaterialCommunityIcons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={colors.textSubtle} />
               </TouchableOpacity>
             </View>
           </View>

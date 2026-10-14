@@ -1,13 +1,10 @@
 import { useState } from 'react';
-import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors, shadow } from '../theme';
+import { Text } from './Typography';
 
-/**
- * Time picker — 2 cột cuộn: Giờ (00-23) và Phút (00-59).
- * - value: 'HH:MM' hoặc ''
- * - onChange: (newValue: 'HH:MM') => void
- */
+/** Time picker — 2 cột cuộn: Giờ (00-23) và Phút (00-59). */
 const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
 const MINUTES = Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0')); // bước 5 phút
 

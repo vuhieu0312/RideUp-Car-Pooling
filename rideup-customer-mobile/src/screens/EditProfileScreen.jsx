@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Button, HelperText, IconButton, SegmentedButtons, Text, TextInput } from 'react-native-paper';
+import { Button, HelperText, IconButton, SegmentedButtons, TextInput } from 'react-native-paper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../auth/AuthContext';
 import { updateMyProfile } from '../api/api';
 import { colors } from '../theme';
-import DateField from '../components/DateField';
+import BirthDateField from '../components/BirthDateField';
+import { Text } from '../components/Typography';
 
 const GENDERS = [
   { value: 'MALE', label: 'Nam', icon: 'gender-male' },
@@ -13,12 +15,10 @@ const GENDERS = [
   { value: 'OTHER', label: 'Khác', icon: 'account-question-outline' },
 ];
 
-/**
- * Màn sửa thông tin cá nhân — cho phép đổi họ tên, SĐT, ngày sinh, giới tính.
- * Email khóa (hiển thị read-only) vì là login key.
- */
+/** Màn sửa thông tin cá nhân — cho phép đổi họ tên, SĐT, ngày sinh, giới tính. */
 export default function EditProfileScreen({ navigation }) {
   const { user, updateUser } = useAuth();
+  const insets = useSafeAreaInsets();
   const [form, setForm] = useState({
     fullName: user?.fullName || '',
     phone: user?.phoneNumber || user?.phone || '',
@@ -60,7 +60,7 @@ export default function EditProfileScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.topBar}>
+      <View style={[styles.topBar, { paddingTop: insets.top + 4 }]}>
         <IconButton icon="arrow-left" iconColor={colors.text} onPress={() => navigation.goBack()} />
         <View>
           <Text style={styles.kicker}>CHỈNH SỬA</Text>
@@ -103,7 +103,7 @@ export default function EditProfileScreen({ navigation }) {
         />
 
         <Text style={styles.label}>Ngày sinh</Text>
-        <DateField value={form.dateOfBirth} onChange={set('dateOfBirth')} placeholder="Chọn ngày sinh" />
+        <BirthDateField value={form.dateOfBirth} onChange={set('dateOfBirth')} placeholder="Chọn ngày sinh" />
 
         <Text style={[styles.label, { marginTop: 14 }]}>Giới tính</Text>
         <SegmentedButtons

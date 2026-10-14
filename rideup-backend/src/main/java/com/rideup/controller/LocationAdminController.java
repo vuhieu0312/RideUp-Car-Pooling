@@ -15,14 +15,6 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/**
- * Admin endpoints cho Location (Province/Ward):
- * - GET  /api/admin/locations/stats — xem số province/ward trong DB
- * - POST /api/admin/locations/refresh — trigger refresh static data (khi cập nhật DB)
- *
- * Auto-seed (chạy lúc app khởi động) xử lý bởi LocationDataSeeder.seedIfEmpty()
- * qua ApplicationReadyEvent — không cần endpoint manual.
- */
 @RestController
 @RequestMapping("/admin/locations")
 @RequiredArgsConstructor

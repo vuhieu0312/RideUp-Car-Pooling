@@ -1,12 +1,17 @@
 import { useState } from 'react';
-import { Image, ImageBackground, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Image, ImageBackground, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { registerDriver } from '../api/api';
 import { useAuth } from '../auth/AuthContext';
 import { colors, FONT, HERO_IMAGE, shadow } from '../theme';
+import IconText from '../components/IconText';
+import { Text, TextInput } from '../components/Typography';
+import Logo from '../components/Logo';
 
 export default function DriverRegisterScreen() {
+  const insets = useSafeAreaInsets();
   const { saveSession } = useAuth();
   const [form, setForm] = useState({
     fullName: '', email: '', password: '', phone: '',
@@ -59,9 +64,9 @@ export default function DriverRegisterScreen() {
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={false}>
-        <ImageBackground source={{ uri: HERO_IMAGE }} style={styles.hero} imageStyle={{ resizeMode: 'cover' }}>
+        <ImageBackground source={{ uri: HERO_IMAGE }} style={[styles.hero, { paddingTop: insets.top + 28 }]} imageStyle={{ resizeMode: 'cover' }}>
           <View style={styles.heroOverlay} />
-          <Text style={styles.brand}>RIDEUP · TÀI XẾ</Text>
+          <Logo tag="TÀI XẾ" />
           <Text style={styles.title}>Cùng RideUp{'\n'}lăn bánh mỗi ngày.</Text>
           <Text style={styles.subtitle}>Đăng ký hồ sơ, nhận chuyến và chủ động thời gian của bạn.</Text>
           <LinearGradient pointerEvents="none" colors={['rgba(247,250,249,0)', colors.bg]} style={styles.heroFade} />
@@ -84,19 +89,19 @@ export default function DriverRegisterScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>1. Thông tin cá nhân</Text>
             <View style={styles.field}>
-              <Text style={styles.fieldLabel}>👤  Họ và tên *</Text>
+              <IconText name="account-outline" size={14} textStyle={styles.fieldLabel}>Họ và tên *</IconText>
               <TextInput style={styles.input} value={form.fullName} onChangeText={set('fullName')} />
             </View>
             <View style={styles.field}>
-              <Text style={styles.fieldLabel}>✉  Email *</Text>
+              <IconText name="email-outline" size={14} textStyle={styles.fieldLabel}>Email *</IconText>
               <TextInput style={styles.input} keyboardType="email-address" autoCapitalize="none" value={form.email} onChangeText={set('email')} />
             </View>
             <View style={styles.field}>
-              <Text style={styles.fieldLabel}>📞  Số điện thoại *</Text>
+              <IconText name="phone-outline" size={14} textStyle={styles.fieldLabel}>Số điện thoại *</IconText>
               <TextInput style={styles.input} keyboardType="phone-pad" placeholder="0912345678" placeholderTextColor="#a4b2ae" value={form.phone} onChangeText={set('phone')} />
             </View>
             <View style={styles.field}>
-              <Text style={styles.fieldLabel}>🔒  Mật khẩu (≥ 8 ký tự) *</Text>
+              <IconText name="lock-outline" size={14} textStyle={styles.fieldLabel}>Mật khẩu (≥ 8 ký tự) *</IconText>
               <TextInput style={styles.input} secureTextEntry value={form.password} onChangeText={set('password')} />
             </View>
           </View>
@@ -105,15 +110,15 @@ export default function DriverRegisterScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>2. Giấy tờ tùy thân</Text>
             <View style={styles.field}>
-              <Text style={styles.fieldLabel}>🪪  Số CCCD (12 số) *</Text>
+              <IconText name="card-account-details-outline" size={14} textStyle={styles.fieldLabel}>Số CCCD (12 số) *</IconText>
               <TextInput style={styles.input} keyboardType="numeric" maxLength={12} value={form.cccd} onChangeText={set('cccd')} />
             </View>
             <View style={styles.field}>
-              <Text style={styles.fieldLabel}>🪪  Số GPLX *</Text>
+              <IconText name="credit-card-outline" size={14} textStyle={styles.fieldLabel}>Số GPLX *</IconText>
               <TextInput style={styles.input} value={form.gplx} onChangeText={set('gplx')} />
             </View>
             <View style={styles.field}>
-              <Text style={styles.fieldLabel}>🪪  Ngày hết hạn GPLX *</Text>
+              <IconText name="calendar-outline" size={14} textStyle={styles.fieldLabel}>Ngày hết hạn GPLX *</IconText>
               <TextInput style={styles.input} placeholder="2030-12-31" placeholderTextColor="#a4b2ae" value={form.gplxExpiryDate} onChangeText={set('gplxExpiryDate')} />
             </View>
           </View>
@@ -138,26 +143,26 @@ export default function DriverRegisterScreen() {
 function ImageField({ label, file, onPick, onCapture }) {
   return (
     <View style={styles.field}>
-      <Text style={styles.fieldLabel}>📷  {label}</Text>
+      <IconText name="camera-outline" size={14} textStyle={styles.fieldLabel}>{label}</IconText>
       {file?.uri ? (
         <View style={{ marginTop: 6 }}>
           <Image source={{ uri: file.uri }} style={{ width: '100%', height: 160, borderRadius: 8 }} />
           <View style={{ flexDirection: 'row', marginTop: 6, gap: 6 }}>
             <TouchableOpacity style={[styles.imageBtn, { flex: 1 }]} onPress={onPick}>
-              <Text style={styles.imageBtnText}>🖼  Chọn ảnh khác</Text>
+              <IconText name="image-multiple-outline" size={15} center textStyle={styles.imageBtnText}>Chọn ảnh khác</IconText>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.imageBtn, { flex: 1 }]} onPress={onCapture}>
-              <Text style={styles.imageBtnText}>📷  Chụp lại</Text>
+              <IconText name="camera-outline" size={15} center textStyle={styles.imageBtnText}>Chụp lại</IconText>
             </TouchableOpacity>
           </View>
         </View>
       ) : (
         <View style={{ flexDirection: 'row', gap: 6, marginTop: 4 }}>
           <TouchableOpacity style={[styles.imageBtn, { flex: 1 }]} onPress={onPick}>
-            <Text style={styles.imageBtnText}>🖼  Chọn ảnh</Text>
+            <IconText name="image-multiple-outline" size={15} center textStyle={styles.imageBtnText}>Chọn ảnh</IconText>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.imageBtn, { flex: 1 }]} onPress={onCapture}>
-            <Text style={styles.imageBtnText}>📷  Chụp ảnh</Text>
+            <IconText name="camera-outline" size={15} center textStyle={styles.imageBtnText}>Chụp ảnh</IconText>
           </TouchableOpacity>
         </View>
       )}

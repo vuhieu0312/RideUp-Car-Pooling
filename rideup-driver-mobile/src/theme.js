@@ -1,18 +1,33 @@
 import { MD3LightTheme, configureFonts } from 'react-native-paper';
-import { Platform } from 'react-native';
 
-/** Bảng màu lấy từ web app — driver theme với green primary #08b85c. */
-export const colors = {
-  primary: '#08b85c',
+/** RIDEUP DESIGN TOKENS — file này GIỐNG HỆT nhau ở 3 app (customer / driver / admin). */
+
+/* ---------- PALETTE (khác nhau theo app) ---------- */
+const PALETTE = {
+  primary: '#0caf63',
   primaryDark: '#078d50',
-  primaryAccent: '#0a9c5a',
+  primaryAccent: '#0a9c5a',   // green dùng cho link / icon / nhấn
+  bg: '#f7faf9',
+  heroOverlay: 'rgba(4, 45, 38, 0.62)',
+  authOverlay: 'rgba(4, 45, 38, 0.67)',
+};
+
+/* ---------- MÀU (dùng chung) ---------- */
+export const colors = {
+  // Brand
+  primary: PALETTE.primary,
+  primaryDark: PALETTE.primaryDark,
+  primaryAccent: PALETTE.primaryAccent,
   primaryLight: '#eaf9f1',
+  primaryLighter: '#d7f2eb',
   primaryFaintest: '#eaf7f0',
 
-  bg: '#f7faf9',
+  // Background
+  bg: PALETTE.bg,
   surface: '#ffffff',
   surfaceMuted: '#fbfdfc',
 
+  // Text
   text: '#17312c',
   textSecondary: '#527067',
   textMuted: '#78908a',
@@ -21,11 +36,13 @@ export const colors = {
   textOnPrimary: '#ffffff',
   textDark: '#26473e',
 
+  // Borders
   border: '#e5eeeb',
   borderMuted: '#dfece6',
   borderLight: '#dceae4',
   borderDate: '#d8e8e1',
 
+  // Status
   success: '#16a34a',
   successBg: '#dcfce7',
   successDark: '#166534',
@@ -39,17 +56,15 @@ export const colors = {
   pending: '#f59e0b',
   pendingBg: '#fef3c7',
 
+  // Shadow / overlay
   shadowColor: '#183730',
   cardShadow: 'rgba(24, 55, 48, 0.07)',
   cardShadowStrong: 'rgba(24, 55, 48, 0.12)',
-  heroOverlay: 'rgba(4, 45, 38, 0.62)',
-  authOverlay: 'rgba(4, 45, 38, 0.67)',
+  heroOverlay: PALETTE.heroOverlay,
+  authOverlay: PALETTE.authOverlay,
 };
 
-/* ============================================================
- * FONT INTER — bảng map weight → fontFamily
- * Load từ @expo-google-fonts/inter trong App.js.
- * ============================================================ */
+/* FONT INTER — bảng map weight → fontFamily Load từ @expo-google-fonts/inter trong App.js. */
 export const FONT = {
   400: 'Inter_400Regular',
   500: 'Inter_500Medium',
@@ -59,19 +74,31 @@ export const FONT = {
   900: 'Inter_900Black',
 };
 
+/** Thang cỡ chữ chuẩn — dùng thay cho số "lẻ" khi viết style mới. */
+export const fontSize = {
+  eyebrow: 9,    // kicker / nhãn nhỏ viết hoa
+  caption: 10,
+  small: 11,
+  body: 12,
+  bodyLg: 13,
+  subtitle: 14,
+  section: 16,
+  titleSm: 20,
+  title: 22,
+  display: 27,
+};
+
 /** Helper tạo style text nhanh: text('600', 13, colors.text) */
 export const text = (weight = '400', size = 14, color = colors.text, opts = {}) => ({
   fontFamily: FONT[weight] || FONT[400],
   fontSize: size,
   color,
+  // giữ fontWeight để một số engine vẫn nhận diện
   fontWeight: String(weight),
   ...opts,
 });
 
-/**
- * Helper tạo style shadow chuẩn cho cả native (iOS/Android) lẫn web.
- * Dùng: `card: { ...shadow(8, 0.12, 24) }` hoặc `...shadow(4, 0.2, 12, '#000')`.
- */
+/** Helper tạo style shadow chuẩn cho cả native (iOS/Android) lẫn web. */
 export const shadow = (offsetY = 2, opacity = 0.07, blur = 8, color = colors.shadowColor) => {
   const r = parseInt(color.slice(1, 3), 16);
   const g = parseInt(color.slice(3, 5), 16);
@@ -98,10 +125,7 @@ export const typography = {
 
 export const HERO_IMAGE = 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=900&q=85';
 
-/**
- * Paper theme — override fonts để mọi <Text variant="..."> từ Paper
- * đều dùng Inter thay vì font mặc định MD3.
- */
+/** Paper theme — mỗi variant của <Text variant="..."> dùng đúng weight Inter (MD3 mặc định: title/label = Medium, còn lại Regular). */
 export const paperTheme = {
   ...MD3LightTheme,
   colors: {
@@ -115,7 +139,21 @@ export const paperTheme = {
   },
   fonts: configureFonts({
     config: {
-      fontFamily: FONT[400],
+      displayLarge: { fontFamily: FONT[400] },
+      displayMedium: { fontFamily: FONT[400] },
+      displaySmall: { fontFamily: FONT[400] },
+      headlineLarge: { fontFamily: FONT[400] },
+      headlineMedium: { fontFamily: FONT[400] },
+      headlineSmall: { fontFamily: FONT[400] },
+      titleLarge: { fontFamily: FONT[400] },
+      titleMedium: { fontFamily: FONT[500] },
+      titleSmall: { fontFamily: FONT[500] },
+      labelLarge: { fontFamily: FONT[500] },
+      labelMedium: { fontFamily: FONT[500] },
+      labelSmall: { fontFamily: FONT[500] },
+      bodyLarge: { fontFamily: FONT[400] },
+      bodyMedium: { fontFamily: FONT[400] },
+      bodySmall: { fontFamily: FONT[400] },
     },
   }),
 };

@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { listProvinces, listWards, searchTrips } from '../api/api';
 import { colors, FONT, shadow } from '../theme';
-import DateField from '../components/DateField';
+import DateField, { todayIso } from '../components/DateField';
 import Picker from '../components/Picker';
+import IconText from '../components/IconText';
+import { Text, TextInput } from '../components/Typography';
 
 export default function TripSearchScreen({ navigation }) {
   const [provinces, setProvinces] = useState([]);
@@ -13,7 +15,7 @@ export default function TripSearchScreen({ navigation }) {
   const [endWardId, setEndWardId] = useState('');
   const [startWards, setStartWards] = useState([]);
   const [endWards, setEndWards] = useState([]);
-  const [date, setDate] = useState('');
+  const [date, setDate] = useState(todayIso());
   const [seats, setSeats] = useState('1');
   const [trips, setTrips] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -35,6 +37,10 @@ export default function TripSearchScreen({ navigation }) {
   async function runSearch() {
     if (!fromProvinceId || !startWardId || !toProvinceId || !endWardId || !date) {
       setError('Vui lòng chọn đủ tỉnh, phường/xã và ngày đi');
+      return;
+    }
+    if (date < todayIso()) {
+      setError('Không thể tìm chuyến ở ngày đã qua');
       return;
     }
     if (fromProvinceId === toProvinceId) {
@@ -63,7 +69,7 @@ export default function TripSearchScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <View style={styles.heading}>
-        <Text style={styles.title}>🔍 Tìm chuyến xe ghép</Text>
+        <IconText name="magnify" size={20} textStyle={styles.title}>Tìm chuyến xe ghép</IconText>
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 14 }}>
@@ -100,7 +106,7 @@ export default function TripSearchScreen({ navigation }) {
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.fieldLabel}>Ngày đi *</Text>
-                <View style={styles.dateInput}><DateField value={date} onChange={setDate} /></View>
+                <View style={styles.dateInput}><DateField value={date} onChange={setDate} minDate={todayIso()} /></View>
               </View>
               <View style={{ width: 80 }}>
                 <Text style={styles.fieldLabel}>Ghế</Text>
@@ -121,8 +127,16 @@ export default function TripSearchScreen({ navigation }) {
           <View key={t.id} style={[styles.card, { marginTop: 8 }]}>
             <View style={styles.tripHead}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.tripRoute}>🚌 {t.startProvinceName} → {t.endProvinceName}</Text>
-                <Text style={styles.muted}>Tài xế: {t.driverName}{t.driverRating > 0 ? ` · ⭐ ${t.driverRating}` : ''}{t.vehiclePlate ? ` · 🚗 ${t.vehiclePlate}` : ''}</Text>
+                <IconText name="bus" size={16} textStyle={styles.tripRoute}>{t.startProvinceName} → {t.endProvinceName}</IconText>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <Text style={styles.muted}>Tài xế: {t.driverName}</Text>
+                  {t.driverRating > 0 && (
+                    <IconText name="star" size={12} color="#f59e0b" gap={3} style={{ marginLeft: 10 }} textStyle={styles.muted}>{t.driverRating}</IconText>
+                  )}
+                  {!!t.vehiclePlate && (
+                    <IconText name="car-outline" size={13} gap={3} style={{ marginLeft: 10 }} textStyle={styles.muted}>{t.vehiclePlate}</IconText>
+                  )}
+                </View>
               </View>
               <View style={{ alignItems: 'flex-end' }}>
                 <Text style={styles.tripPrice}>{fmtMoney(t.priceVnd)}</Text>

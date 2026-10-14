@@ -11,6 +11,7 @@ import DriverRegisterScreen from '../screens/DriverRegisterScreen';
 import DriverStatusScreen from '../screens/DriverStatusScreen';
 import HomeScreen from '../screens/HomeScreen';
 import AllTripsScreen from '../screens/AllTripsScreen';
+import BookingsScreen from '../screens/BookingsScreen';
 import TripCreateScreen from '../screens/TripCreateScreen';
 import VehicleRegisterScreen from '../screens/VehicleRegisterScreen';
 import VehicleListScreen from '../screens/VehicleListScreen';
@@ -39,10 +40,7 @@ function AuthFlow() {
   );
 }
 
-/**
- * Stack trong tab "Trang chủ" — chỉ chứa Home. Sub-screen (TripCreate, VehicleList,
- * VehicleRegister) mở như modal ở RootStack để có thể truy cập từ nhiều tab.
- */
+/** Stack trong tab "Trang chủ" — chỉ chứa Home. */
 function HomeTabs() {
   return (
     <HomeStack.Navigator screenOptions={{ headerShown: false }}>
@@ -55,6 +53,7 @@ function AllTripsTab() {
   return (
     <AllTripsStack.Navigator screenOptions={{ headerShown: false }}>
       <AllTripsStack.Screen name="AllTrips" component={AllTripsScreen} />
+      <AllTripsStack.Screen name="Bookings" component={BookingsScreen} />
     </AllTripsStack.Navigator>
   );
 }
@@ -89,10 +88,7 @@ function AccountTab() {
   );
 }
 
-/**
- * Bottom tab navigator — 5 tab khi đã đăng nhập và được duyệt.
- * height = 60 + safe area inset phía dưới để icon + label không bị che.
- */
+/** Bottom tab navigator — 5 tab khi đã đăng nhập và được duyệt. */
 function MainTabs() {
   const insets = useSafeAreaInsets();
   const bottomInset = Math.max(insets.bottom, 6);
@@ -188,11 +184,7 @@ function MainTabs() {
   );
 }
 
-/**
- * Stack root — khi đã login + approved:
- * - MainTabs ở dưới cùng
- * - TripCreate / VehicleList / VehicleRegister là modal mở từ RootStack (truy cập từ mọi tab)
- */
+/** Stack root — khi đã login + approved */
 function MainFlow() {
   return (
     <RootStack.Navigator screenOptions={{ headerShown: false }}>
@@ -204,12 +196,7 @@ function MainFlow() {
   );
 }
 
-/**
- * Stack root tổng — chọn 1 trong 3 flow tùy trạng thái user:
- * - Chưa login → AuthFlow
- * - Đã login nhưng chưa được duyệt → DriverStatusScreen
- * - Đã login + APPROVED → MainFlow (tabs + modal sub-screens)
- */
+/** Stack root tổng — chọn 1 trong 3 flow tùy trạng thái user */
 export default function AppNavigator() {
   const { user, loading } = useAuth();
   const [driverStatus, setDriverStatus] = useState(null);

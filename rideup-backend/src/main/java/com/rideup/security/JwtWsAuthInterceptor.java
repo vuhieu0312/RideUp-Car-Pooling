@@ -23,20 +23,7 @@ import org.springframework.web.socket.server.HandshakeInterceptor;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Xử lý JWT cho WebSocket ở cả 2 giai đoạn:
- *
- * <ol>
- *   <li><b>Handshake</b> (WebSocket upgrade): validate JWT trong query/header.
- *       Nếu fail → return false → handshake reject, client nhận 401.</li>
- *   <li><b>STOMP CONNECT</b> (message phase): set Authentication principal
- *       từ session attributes đã lưu ở handshake. KHÔNG validate lại JWT.</li>
- * </ol>
- *
- * Gộp 2 interceptor thành 1 class vì cùng chung mục đích (auth WebSocket)
- * và cùng dùng JwtService + Redis. Implementation 2 interface tiện hơn tách
- * 2 class (chung lifecycle, copy-paste code).
- */
+/** Xử lý JWT cho WebSocket ở cả 2 giai đoạn */
 @Component
 @RequiredArgsConstructor
 @Slf4j
@@ -45,9 +32,7 @@ public class JwtWsAuthInterceptor implements HandshakeInterceptor, ChannelInterc
     private final JwtService jwtService;
     private final RedisTemplate<String, Object> redisTemplate;
 
-    // ============================================================
     // HandshakeInterceptor (gọi 1 lần khi client upgrade WebSocket)
-    // ============================================================
     @Override
     public boolean beforeHandshake(ServerHttpRequest request,
                                    ServerHttpResponse response,
@@ -95,9 +80,7 @@ public class JwtWsAuthInterceptor implements HandshakeInterceptor, ChannelInterc
         // no-op
     }
 
-    // ============================================================
     // ChannelInterceptor (gọi trên từng STOMP message)
-    // ============================================================
     @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
         StompHeaderAccessor accessor = StompHeaderAccessor.wrap(message);
@@ -134,9 +117,7 @@ public class JwtWsAuthInterceptor implements HandshakeInterceptor, ChannelInterc
         return message;
     }
 
-    // ============================================================
     // Helpers
-    // ============================================================
     private String extractToken(ServerHttpRequest request) {
         // 1. Query param: ws://host/ws?token=xxx
         String query = request.getURI().getQuery();

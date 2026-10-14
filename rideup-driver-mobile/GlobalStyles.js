@@ -1,11 +1,7 @@
 import { useEffect } from 'react';
 import { Platform } from 'react-native';
 
-/**
- * Inject global CSS chỉ trên web để bỏ viền focus mặc định của trình duyệt
- * trên <input>/<textarea> (react-native-web render TextInput thành <input>).
- * Trên iOS/Android native, prop này không có hiệu lực và không cần thiết.
- */
+/** Inject global CSS chỉ trên web để bỏ viền focus mặc định của trình duyệt trên / (react-native-web render TextInput thành ). */
 const FOCUS_RESET_CSS = `
   /* Font mặc định cho toàn trang — fix inline Text không có fontFamily. */
   body, div, span, p, h1, h2, h3, h4, h5, h6, button, input, textarea, select {

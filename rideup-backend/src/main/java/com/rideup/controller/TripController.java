@@ -13,9 +13,11 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -57,16 +59,46 @@ public class TripController {
                 tripService.searchTrips(req));
     }
 
-    /**
-     * Customer tìm chuyến với thuật toán ranking (weighted sum).
-     * 4 tiêu chí: thời gian (35%) + giá (30%) + rating (20%) + khoảng cách (15%).
-     * Xem {@link TripService#searchTripsRanked} để biết chi tiết.
-     */
+    /** Customer tìm chuyến với thuật toán ranking (weighted sum). */
     @PostMapping("/search-ranking")
     @PreAuthorize("hasRole('CUSTOMER')")
     public ApiResponse<List<TripResponse>> searchRanking(
             @Valid @RequestBody SearchTripsRequest req) {
         return ApiResponse.success(tripService.searchTripsRanked(req));
+    }
+
+    /** Driver bắt đầu chuyến (OPEN/FULL → STARTED). */
+    @PostMapping("/{id}/start")
+    @PreAuthorize("hasRole('DRIVER')")
+    public ApiResponse<TripResponse> start(
+            @PathVariable("id") String tripId,
+            Authentication auth) {
+        return ApiResponse.success(
+                "Đã bắt đầu chuyến",
+                tripService.startTrip(tripId, currentUserId(auth)));
+    }
+
+    /** Driver kết thúc chuyến (STARTED → COMPLETED) + auto-capture Stripe payment. */
+    @PostMapping("/{id}/complete")
+    @PreAuthorize("hasRole('DRIVER')")
+    public ApiResponse<TripResponse> complete(
+            @PathVariable("id") String tripId,
+            Authentication auth) {
+        return ApiResponse.success(
+                "Đã kết thúc chuyến",
+                tripService.completeTrip(tripId, currentUserId(auth)));
+    }
+
+    /** Driver huỷ chuyến (OPEN/FULL/STARTED → CANCELED) + auto-refund tất cả booking STRIPE đang active. */
+    @PostMapping("/{id}/cancel")
+    @PreAuthorize("hasRole('DRIVER')")
+    public ApiResponse<TripResponse> cancel(
+            @PathVariable("id") String tripId,
+            @RequestParam(required = false, defaultValue = "Tài xế không thể thực hiện chuyến") String reason,
+            Authentication auth) {
+        return ApiResponse.success(
+                "Đã huỷ chuyến, hoàn tiền cho khách",
+                tripService.cancelTrip(tripId, currentUserId(auth), reason));
     }
 
     private String currentUserId(Authentication auth) {

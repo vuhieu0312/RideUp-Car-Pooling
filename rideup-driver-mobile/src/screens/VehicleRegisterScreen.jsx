@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import {
-  Button, Card, HelperText, IconButton, Menu, TextInput,
-} from 'react-native-paper';
+import { Button, Card, HelperText, IconButton, Menu, TextInput } from 'react-native-paper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { registerVehicle } from '../api/api';
+import IconText from '../components/IconText';
+import { Text } from '../components/Typography';
 
 const VEHICLE_TYPES = [
   { value: 'CAR', label: 'Ô tô con (4 chỗ)' },
@@ -12,6 +13,7 @@ const VEHICLE_TYPES = [
 ];
 
 export default function VehicleRegisterScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const [form, setForm] = useState({
     plateNumber: '', vehicleBrand: '', vehicleModel: '',
     vehicleYear: '', vehicleColor: '',
@@ -50,11 +52,11 @@ export default function VehicleRegisterScreen({ navigation }) {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#f9fafb' }}>
-      <View style={styles.topBar}>
+      <View style={[styles.topBar, { paddingTop: insets.top + 4 }]}>
         <IconButton icon="arrow-left" onPress={() => navigation.goBack()} />
       </View>
       <ScrollView contentContainerStyle={{ padding: 16 }}>
-        <Text variant="headlineSmall" style={{ fontWeight: '700' }}>🚌 Đăng ký phương tiện</Text>
+        <IconText name="bus" size={24} variant="headlineSmall" textStyle={{ fontWeight: '700' }}>Đăng ký phương tiện</IconText>
         <HelperText type="info" visible>Sau khi đăng ký, admin sẽ duyệt. Bạn có thể tạo chuyến sau khi duyệt xong.</HelperText>
 
         <Card>

@@ -1,15 +1,14 @@
 import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { Button, HelperText, IconButton, Snackbar, Text, TextInput } from 'react-native-paper';
+import { Button, HelperText, IconButton, Snackbar, TextInput } from 'react-native-paper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { changePassword } from '../api/api';
 import { colors } from '../theme';
+import { Text } from '../components/Typography';
 
-/**
- * Màn đổi mật khẩu — yêu cầu mật khẩu cũ để xác nhận.
- * Validate client: mật khẩu mới ≥ 6 ký tự + xác nhận khớp.
- * BE sẽ verify oldPassword và re-hash newPassword.
- */
+/** Màn đổi mật khẩu — yêu cầu mật khẩu cũ để xác nhận. */
 export default function ChangePasswordScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const [form, setForm] = useState({ oldPassword: '', newPassword: '', confirmPassword: '' });
   const [show, setShow] = useState({ old: false, new: false, confirm: false });
   const [saving, setSaving] = useState(false);
@@ -45,7 +44,7 @@ export default function ChangePasswordScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.topBar}>
+      <View style={[styles.topBar, { paddingTop: insets.top + 4 }]}>
         <IconButton icon="arrow-left" iconColor={colors.text} onPress={() => navigation.goBack()} />
         <View>
           <Text style={styles.kicker}>BẢO MẬT</Text>

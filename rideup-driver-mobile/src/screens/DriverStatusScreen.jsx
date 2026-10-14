@@ -1,9 +1,13 @@
 import { useEffect, useState } from 'react';
 import { DeviceEventEmitter, ScrollView, StyleSheet, View } from 'react-native';
-import { ActivityIndicator, Text } from 'react-native-paper';
+import { ActivityIndicator } from 'react-native-paper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getDriverProfile, getDriverStatus } from '../api/api';
+import IconText from '../components/IconText';
+import { Text } from '../components/Typography';
 
 export default function DriverStatusScreen() {
+  const insets = useSafeAreaInsets();
   const [status, setStatus] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -42,18 +46,18 @@ export default function DriverStatusScreen() {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView contentContainerStyle={[styles.container, { paddingTop: insets.top + 16 }]}>
       <Text variant="headlineSmall" style={{ fontWeight: '700' }}>Hồ sơ tài xế đang được xét duyệt</Text>
 
       {status?.status === 'PENDING' && (
         <View style={[styles.alert, { backgroundColor: '#fef3c7' }]}>
-          <Text>⏳ Hồ sơ của bạn đang được admin xét duyệt. Trang này sẽ tự động cập nhật mỗi 10 giây.</Text>
+          <IconText name="clock-outline" size={18} color="#92400e">Hồ sơ của bạn đang được admin xét duyệt. Trang này sẽ tự động cập nhật mỗi 10 giây.</IconText>
         </View>
       )}
 
       {status?.status === 'REJECTED' && (
         <View style={[styles.alert, { backgroundColor: '#fee2e2' }]}>
-          <Text>❌ Hồ sơ bị từ chối. Lý do: <Text style={{ fontWeight: '700' }}>{status.rejectionReason || 'Không có'}</Text></Text>
+          <IconText name="close-circle-outline" size={18} color="#991b1b">Hồ sơ bị từ chối. Lý do: <Text style={{ fontWeight: '700' }}>{status.rejectionReason || 'Không có'}</Text></IconText>
         </View>
       )}
 

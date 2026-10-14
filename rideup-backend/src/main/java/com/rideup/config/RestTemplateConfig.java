@@ -10,10 +10,7 @@ import java.time.Duration;
 @Configuration
 public class RestTemplateConfig {
 
-    /**
-     * Bean RestTemplate dùng cho HTTP ngoài (Overpass API, payment gateway sau này).
-     * Timeout 15s connect, 60s read (Overpass query ward có thể lâu).
-     */
+    /** Bean RestTemplate dùng cho HTTP ngoài (Overpass API, payment gateway sau này). */
     @Bean
     public RestTemplate restTemplate(RestTemplateBuilder builder) {
         return builder

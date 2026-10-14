@@ -1,23 +1,32 @@
-import { useEffect, useState } from 'react';
-import { ImageBackground, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useCallback, useState } from 'react';
+import { ImageBackground, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Avatar } from 'react-native-paper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../auth/AuthContext';
 import { listMyTrips, listProvinces } from '../api/api';
 import { colors, FONT, HERO_IMAGE, shadow, typography } from '../theme';
+import { Text } from '../components/Typography';
+import Logo from '../components/Logo';
 
 export default function HomeScreen({ navigation }) {
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
   const [trips, setTrips] = useState([]);
   const [provinces, setProvinces] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    Promise.all([listMyTrips().catch(() => []), listProvinces().catch(() => [])])
-      .then(([t, p]) => { setTrips(t); setProvinces(p); })
-      .finally(() => setLoading(false));
-  }, []);
+  // Refetch mỗi lần HomeScreen được focus (sau khi tạo chuyến xong, quay về sẽ thấy chuyến mới)
+  useFocusEffect(
+    useCallback(() => {
+      setLoading(true);
+      Promise.all([listMyTrips().catch(() => []), listProvinces().catch(() => [])])
+        .then(([t, p]) => { setTrips(t); setProvinces(p); })
+        .finally(() => setLoading(false));
+    }, [])
+  );
 
   const running = trips.filter((t) => t.status === 'STARTED');
   const scheduled = trips.filter((t) => t.status === 'OPEN' || t.status === 'FULL');
@@ -27,12 +36,12 @@ export default function HomeScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
-        <ImageBackground source={{ uri: HERO_IMAGE }} style={styles.hero} imageStyle={{ resizeMode: 'cover' }}>
+        <ImageBackground source={{ uri: HERO_IMAGE }} style={[styles.hero, { paddingTop: insets.top + 18 }]} imageStyle={{ resizeMode: 'cover' }}>
           <View style={styles.heroOverlay} />
           <View style={styles.heroTop}>
             <View>
-              <Text style={styles.brand}>RIDEUP</Text>
-              <Text style={styles.greeting}>Xin chào, {user?.fullName || 'tài xế'} <Text style={styles.greetingEmoji}>👋</Text></Text>
+              <Logo size="sm" tag="TÀI XẾ" />
+              <Text style={styles.greeting}>Xin chào, {user?.fullName || 'tài xế'}</Text>
             </View>
             <TouchableOpacity
               onPress={() => navigation.navigate('AccountTab', { screen: 'Account' })}

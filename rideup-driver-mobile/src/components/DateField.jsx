@@ -1,13 +1,10 @@
 import { useState } from 'react';
-import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors, shadow } from '../theme';
+import { Text } from './Typography';
 
-/**
- * Date picker dạng lịch tháng — grid 6×7 với prev/next tháng.
- * - value: 'YYYY-MM-DD' hoặc ''
- * - onChange: (newValue: 'YYYY-MM-DD') => void
- */
+/** Date picker dạng lịch tháng — grid 6×7 với prev/next tháng. */
 export default function DateField({ value, onChange, placeholder = 'Chọn ngày' }) {
   const [open, setOpen] = useState(false);
   const current = value ? new Date(`${value}T00:00:00`) : new Date();

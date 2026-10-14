@@ -14,11 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.List;
 
-/**
- * Sinh và verify JWT token cho access + refresh.
- *
- * <p>Token type dùng {@link JwtClaim} (enum) để tránh hardcode "access"/"refresh" rải rác.</p>
- */
+/** Sinh và verify JWT token cho access + refresh. */
 @Service
 @RequiredArgsConstructor
 public class JwtService {

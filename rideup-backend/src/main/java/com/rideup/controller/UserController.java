@@ -21,17 +21,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-/**
- * Endpoint cho user tự quản lý profile. Tất cả đều yêu cầu JWT hợp lệ
- * (kế thừa .anyRequest().authenticated() trong SecurityConfig).
- *
- * <ul>
- *   <li>GET    /api/users/me               — xem thông tin cá nhân</li>
- *   <li>PATCH  /api/users/me               — sửa tên / SĐT / ngày sinh / giới tính</li>
- *   <li>POST   /api/users/me/change-password — đổi mật khẩu (cần mật khẩu cũ)</li>
- *   <li>POST   /api/users/me/avatar        — upload avatar (multipart)</li>
- * </ul>
- */
+/** Endpoint cho user tự quản lý profile. */
 @RestController
 @RequestMapping("/users")
 @RequiredArgsConstructor

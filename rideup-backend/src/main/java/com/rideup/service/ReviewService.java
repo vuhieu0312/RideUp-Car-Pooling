@@ -26,16 +26,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
 
-/**
- * Đánh giá tài xế sau chuyến đi.
- *
- * <p>Luồng xử lý:</p>
- * <ol>
- *   <li>Validate trip COMPLETED + customer đã booking trip</li>
- *   <li>Lưu Review record</li>
- *   <li>Cập nhật driverRating = trung bình cộng dồn + tăng totalDriverRides</li>
- * </ol>
- */
+/** Đánh giá tài xế sau chuyến đi. */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -62,7 +53,7 @@ public class ReviewService {
 
         boolean hasBooked = bookingRepository.existsByCustomerIdAndTripIdAndStatusIn(
             userId, tripId,
-            List.of(BookingStatus.PENDING, BookingStatus.CONFIRMED, BookingStatus.COMPLETED)
+            List.of(BookingStatus.PENDING_PAYMENT, BookingStatus.WAITING_DRIVER_APPROVAL, BookingStatus.CONFIRMED, BookingStatus.COMPLETED)
         );
         if (!hasBooked) {
             throw AppException.forbidden("Bạn không có booking cho chuyến này");
@@ -88,17 +79,17 @@ public class ReviewService {
         // Cập nhật driver rating: newAvg = (oldAvg * count + newRating) / (count + 1)
         BigDecimal currentAvg = profile.getDriverRating();
         long count = profile.getTotalDriverRides();
-        BigDecimal newRating = currentAvg
+        BigDecimal newAvg = currentAvg
             .multiply(BigDecimal.valueOf(count))
             .add(BigDecimal.valueOf(req.getRating()))
             .divide(BigDecimal.valueOf(count + 1), 2, RoundingMode.HALF_UP);
 
-        profile.setDriverRating(newRating);
-        profile.setTotalDriverRides(profile.getTotalDriverRides() + 1);
+        profile.setDriverRating(newAvg);
+        //profile.setTotalDriverRides(count + 1);
         driverProfileRepository.save(profile);
 
         log.info("Review created id={} trip={} driver={} rating={} newAvg={}",
-            review.getId(), tripId, driver.getId(), req.getRating(), newRating);
+            review.getId(), tripId, driver.getId(), req.getRating(), newAvg);
 
         return toResponse(review);
     }

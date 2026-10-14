@@ -26,10 +26,7 @@ const AccountStack = createNativeStackNavigator();
 
 const TAB_ICON_SIZE = 22;
 
-/**
- * Stack trong tab "Trang chủ" — chứa Home + các sub-screen đặt xe (TripSearch, BookingCreate).
- * Các sub-screen này không có tab bar.
- */
+/** Stack trong tab "Trang chủ" — chứa Home + các sub-screen đặt xe (TripSearch, BookingCreate). */
 function HomeTabs() {
   return (
     <HomeStack.Navigator screenOptions={{ headerShown: false }}>
@@ -48,10 +45,7 @@ function MyBookingsTab() {
   );
 }
 
-/**
- * Stack dùng chung cho 3 tab placeholder (Tin nhắn, Thông báo, Tài khoản).
- * Mỗi tab truyền param` title`/`icon`/`subtitle` khác nhau qua initialParams.
- */
+/** Stack dùng chung cho 3 tab placeholder (Tin nhắn, Thông báo, Tài khoản). */
 function makePlaceholderTab(title, icon, subtitle) {
   return function PlaceholderTab() {
     return (
@@ -69,10 +63,7 @@ function makePlaceholderTab(title, icon, subtitle) {
 const MessagesTab = makePlaceholderTab('Tin nhắn', 'message-text-outline', 'Hộp thư với tài xế và admin sẽ có ở đây');
 const NotificationsTab = makePlaceholderTab('Thông báo', 'bell-outline', 'Cập nhật về chuyến xe và booking');
 
-/**
- * Tab Tài khoản — stack chứa Account + 2 màn con (sửa profile, đổi mật khẩu).
- * Header ẩn vì mỗi screen tự vẽ topBar với IconButton back.
- */
+/** Tab Tài khoản — stack chứa Account + 2 màn con (sửa profile, đổi mật khẩu). */
 function AccountTab() {
   return (
     <AccountStack.Navigator screenOptions={{ headerShown: false }}>
@@ -83,11 +74,7 @@ function AccountTab() {
   );
 }
 
-/**
- * Bottom tab navigator — 5 tab khi đã đăng nhập.
- * height = 60 + safe area inset phía dưới (Android navigation bar, iOS home indicator)
- * để icon + label không bị che.
- */
+/** Bottom tab navigator — 5 tab khi đã đăng nhập. */
 function MainTabs() {
   const insets = useSafeAreaInsets();
   const bottomInset = Math.max(insets.bottom, 6);
@@ -192,11 +179,7 @@ function AuthFlow() {
   );
 }
 
-/**
- * Stack root:
- * - Khi chưa login → Auth flow
- * - Khi đã login → MainTabs (Bottom tab navigator)
- */
+/** Stack root */
 export default function AppNavigator() {
   const { user, loading } = useAuth();
 

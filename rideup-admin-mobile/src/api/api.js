@@ -1,8 +1,37 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 import { DeviceEventEmitter } from 'react-native';
 
-const baseURL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8080/api';
+/** Tự detect base URL theo thứ tự ưu tiên — đổi WiFi không cần sửa file */
+const DEV_PORT = 8080;
+
+function resolveBaseUrl() {
+  // 1. Web (browser) → dùng localhost, browser cùng máy backend
+  if (typeof window !== 'undefined' && typeof window.document !== 'undefined') {
+    return `http://localhost:${DEV_PORT}/api`;
+  }
+  // 2. Native (Expo Go qua QR LAN) → lấy IP LAN của máy dev từ hostUri
+  const hostUri = Constants.expoConfig?.hostUri;
+  if (hostUri) {
+    const host = hostUri.split(':')[0];
+    if (host && host !== 'localhost' && host !== '127.0.0.1') {
+      return `http://${host}:${DEV_PORT}/api`;
+    }
+  }
+  // 3. Override thủ công qua env hoặc extra (prod/tunnel/IP tĩnh)
+  if (process.env.EXPO_PUBLIC_API_URL) {
+    return process.env.EXPO_PUBLIC_API_URL;
+  }
+  const extra = Constants.expoConfig?.extra?.apiUrl;
+  if (extra && extra !== `http://localhost:${DEV_PORT}/api`) {
+    return extra;
+  }
+  return `http://localhost:${DEV_PORT}/api`;
+}
+
+const baseURL = resolveBaseUrl();
+
 const api = axios.create({ baseURL, timeout: 30000 });
 
 api.interceptors.request.use(async (config) => {

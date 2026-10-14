@@ -126,10 +126,7 @@ public class DriverService {
         }
     }
 
-    /**
-     * Trả về toàn bộ DriverProfile của user hiện tại (kèm status duyệt).
-     * Hoạt động ở mọi trạng thái PENDING/APPROVED/REJECTED.
-     */
+    /** Trả về toàn bộ DriverProfile của user hiện tại (kèm status duyệt). */
     @Transactional(readOnly = true)
     public DriverResponse getMyProfile(String userId) {
         DriverProfile profile = requireDriverProfile(userId);
@@ -159,10 +156,7 @@ public class DriverService {
                 .build();
     }
 
-    /**
-     * Endpoint nhẹ cho driver app poll trạng thái duyệt.
-     * Trả message tiếng Việt đã format sẵn, kèm rejectionReason nếu có.
-     */
+    /** Endpoint nhẹ cho driver app poll trạng thái duyệt. */
     public DriverStatusResponse getMyStatus(String userId) {
         DriverProfile profile = requireDriverProfile(userId);
 
@@ -182,10 +176,7 @@ public class DriverService {
                 .build();
     }
 
-    /**
-     * Helper cho mọi endpoint driver-only (POST /trips, POST /vehicles, accept booking).
-     * Throw 403 nếu driver chưa được admin duyệt.
-     */
+    /** Helper cho mọi endpoint driver-only (POST /trips, POST /vehicles, accept booking). */
     public DriverProfile requireApprovedDriver(String userId) {
         DriverProfile profile = driverProfileRepository.findByUserId(userId)
                 .orElseThrow(() -> AppException.forbidden("Tài khoản chưa đăng ký hồ sơ tài xế"));

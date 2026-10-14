@@ -13,11 +13,7 @@ import java.nio.file.Paths;
 import java.util.Set;
 import java.util.UUID;
 
-/**
- * Lưu file upload vào thư mục cấu hình (mặc định uploads/).
- * Trả về URL tương đối (/uploads/xxx.jpg) để gán vào các cột VARCHAR(500) của DriverProfile.
- * WebMvcConfig ánh xạ /uploads/** → file:{uploadDir}/.
- */
+/** Lưu file upload vào thư mục cấu hình (mặc định uploads/). */
 @Service
 @Slf4j
 public class FileService {
@@ -33,13 +29,7 @@ public class FileService {
         this.uploadDir = uploadDir;
     }
 
-    /**
-     * Upload fileảnh vào thư mục uploads/.
-     *
-     * @param file   MultipartFile từ request
-     * @param prefix tiền tố để phân biệt folder logic (cccd, gplx...)
-     * @return URL tương đối kiểu "/uploads/cccd-uuid.jpg"
-     */
+    /** Upload fileảnh vào thư mục uploads/. */
     public String upload(MultipartFile file, String prefix) {
         validate(file);
         String ext = extensionOf(file.getContentType());

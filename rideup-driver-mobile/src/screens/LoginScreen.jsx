@@ -1,10 +1,16 @@
 import { useState } from 'react';
-import { ImageBackground, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ImageBackground, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../auth/AuthContext';
 import { colors, FONT, HERO_IMAGE, shadow } from '../theme';
+import IconText from '../components/IconText';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Text, TextInput } from '../components/Typography';
+import Logo from '../components/Logo';
 
 export default function LoginScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const { doLogin } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -31,9 +37,9 @@ export default function LoginScreen({ navigation }) {
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={false}>
-        <ImageBackground source={{ uri: HERO_IMAGE }} style={styles.hero} imageStyle={{ resizeMode: 'cover' }}>
+        <ImageBackground source={{ uri: HERO_IMAGE }} style={[styles.hero, { paddingTop: insets.top + 28 }]} imageStyle={{ resizeMode: 'cover' }}>
           <View style={styles.heroOverlay} />
-          <Text style={styles.brand}>RIDEUP · TÀI XẾ</Text>
+          <Logo tag="TÀI XẾ" />
           <Text style={styles.title}>Chủ động hành trình,{'\n'}tăng thêm thu nhập.</Text>
           <Text style={styles.subtitle}>Quản lý chuyến xe dễ dàng, kết nối hành khách đúng lúc.</Text>
           <LinearGradient pointerEvents="none" colors={['rgba(247,250,249,0)', colors.bg]} style={styles.heroFade} />
@@ -53,7 +59,7 @@ export default function LoginScreen({ navigation }) {
           )}
 
           <View style={styles.field}>
-            <Text style={styles.fieldLabel}>✉  Email</Text>
+            <IconText name="email-outline" size={14} textStyle={styles.fieldLabel}>Email</IconText>
             <TextInput
               style={styles.input}
               placeholder="you@example.com"
@@ -66,7 +72,7 @@ export default function LoginScreen({ navigation }) {
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.fieldLabel}>🔒  Mật khẩu</Text>
+            <IconText name="lock-outline" size={14} textStyle={styles.fieldLabel}>Mật khẩu</IconText>
             <View style={styles.passwordWrap}>
               <TextInput
                 style={[styles.input, { paddingRight: 42 }]}
@@ -77,7 +83,7 @@ export default function LoginScreen({ navigation }) {
                 onChangeText={setPassword}
               />
               <TouchableOpacity style={styles.eyeButton} onPress={() => setShowPassword((v) => !v)}>
-                <Text style={styles.eyeIcon}>{showPassword ? '🙈' : '👁'}</Text>
+                <MaterialCommunityIcons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={colors.textSubtle} />
               </TouchableOpacity>
             </View>
           </View>

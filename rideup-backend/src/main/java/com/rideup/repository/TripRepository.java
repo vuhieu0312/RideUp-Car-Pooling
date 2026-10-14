@@ -61,21 +61,7 @@ public interface TripRepository extends JpaRepository<Trip, String> {
             @Param("from") LocalDateTime from,
             @Param("to") LocalDateTime to);
 
-    /**
-     * Dùng OPTIMISTIC lock (dựa trên {@code @Version} của {@link Trip}) thay
-     * vì PESSIMISTIC để tránh giữ row quá lâu. Khi commit mà version đã bị
-     * transaction khác cập nhật, Hibernate sẽ ném
-     * {@link org.springframework.orm.ObjectOptimisticLockingFailureException}
-     * — caller cần retry.
-     *
-     * <p>Vì sao KHÔNG dùng PESSIMISTIC_WRITE:
-     * <ul>
-     *   <li>Giữ row lock tới khi transaction commit → giảm concurrency</li>
-     *   <li>Customer phải chờ trong khi transaction khác xử lý</li>
-     *   <li>Với lượng truy cập lớn có thể gây lock contention / deadlock</li>
-     * </ul>
-     * </p>
-     */
+    /** Dùng OPTIMISTIC lock (dựa trên @Version của Trip) thay vì PESSIMISTIC để tránh giữ row quá lâu. */
     @Lock(LockModeType.OPTIMISTIC)
     @Query("SELECT t FROM Trip t WHERE t.id = :id")
     java.util.Optional<Trip> findByIdForUpdate(@Param("id") String id);

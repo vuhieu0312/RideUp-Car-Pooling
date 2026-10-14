@@ -22,11 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-/**
- * Booking endpoints dành cho CUSTOMER.
- * Tài xế (DRIVER) không thể gọi các endpoint này — tránh nhầm lẫn
- * giữa app khách và app tài xế.
- */
+/** Booking endpoints dành cho CUSTOMER. */
 @RestController
 @RequestMapping("/customer/bookings")
 @RequiredArgsConstructor
@@ -42,7 +38,7 @@ public class BookingCustomerController {
         Authentication auth
     ) {
         return ApiResponse.success(
-            "Đặt chỗ thành công, đang chờ tài xế xác nhận",
+            "Đặt chỗ thành công, vui lòng thanh toán để giữ chỗ",
             bookingService.createBooking(currentUserId(auth), req)
         );
     }

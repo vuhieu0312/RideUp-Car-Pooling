@@ -4,13 +4,7 @@
     "slug": "rideup-driver-mobile",
     "version": "0.1.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#08b85c"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.rideup.driver",
@@ -21,10 +15,6 @@
       }
     },
     "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/icon.png",
-        "backgroundColor": "#08b85c"
-      },
       "package": "com.rideup.driver",
       "permissions": [
         "CAMERA",
@@ -38,7 +28,9 @@
         {
           "photosPermission": "RideUp cần quyền truy cập thư viện ảnh để chọn ảnh CCCD/GPLX."
         }
-      ]
+      ],
+      "expo-status-bar",
+      "expo-font"
     ],
     "extra": {
       "apiUrl": "http://localhost:8080/api"

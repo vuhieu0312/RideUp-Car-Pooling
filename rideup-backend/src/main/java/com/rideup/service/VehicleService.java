@@ -22,14 +22,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @Slf4j
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
-/**
- * Nghiệp vụ phương tiện của tài xế.
- *
- * <p>UC13: Tài xế đăng ký xe. UC17: Admin duyệt xe.</p>
- *
- * <p>Constraint: mỗi tài xế chỉ có TỐI ĐA 1 xe. Đã có xe thì không
- * đăng ký thêm được — phải liên hệ admin.</p>
- */
+/** Nghiệp vụ phương tiện của tài xế. */
 public class VehicleService {
 
     VehicleRepository vehicleRepository;
@@ -37,10 +30,7 @@ public class VehicleService {
     DriverService driverService;
     FileService fileService;
 
-    /**
-     * Driver đăng ký xe mới. Yêu cầu driver đã được APPROVED.
-     * Xe mới tạo mặc định isVerified=false (chờ admin duyệt).
-     */
+    /** Driver đăng ký xe mới. */
     @Transactional
     public VehicleResponse registerVehicle(String userId, RegisterVehicleRequest req) {
         DriverProfile driver = driverService.requireApprovedDriver(userId);

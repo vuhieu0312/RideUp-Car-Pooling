@@ -1,22 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
-import {
-  KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
-} from 'react-native';
+import { KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Button, HelperText, IconButton } from 'react-native-paper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createTrip, listMyVehicles, listProvinces, listWards } from '../api/api';
 import { colors, FONT, shadow, typography } from '../theme';
 import WardMultiPicker from '../components/WardMultiPicker';
 import DateField from '../components/DateField';
 import TimeField from '../components/TimeField';
+import { Text, TextInput } from '../components/Typography';
 
-/**
- * Tạo chuyến xe.
- * Lưu ý: KHÔNG dùng Paper Menu / Paper Card ở đây vì cả hai dùng Portal + Animated.View
- * khiến ScrollView tự nhảy xuống dưới khi screen mount. Thay bằng Modal RN thuần
- * và View styling thủ công.
- */
+/** Tạo chuyến xe. */
 export default function TripCreateScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const [provinces, setProvinces] = useState([]);
   const [pickupWards, setPickupWards] = useState([]);
   const [dropoffWards, setDropoffWards] = useState([]);
@@ -101,7 +97,7 @@ export default function TripCreateScreen({ navigation }) {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <View style={styles.topBar}>
+      <View style={[styles.topBar, { paddingTop: insets.top + 4 }]}>
         <IconButton icon="arrow-left" iconColor={colors.textDark} onPress={() => navigation.goBack()} />
         <View>
           <Text style={styles.headerTitle}>Tạo chuyến xe</Text>
@@ -270,50 +266,57 @@ function PickerField({ label, value, options, isOpen, onOpen, onClose, onSelect 
       </TouchableOpacity>
 
       <Modal visible={isOpen} transparent animationType="fade" onRequestClose={onClose}>
-        <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={onClose}>
-          <TouchableOpacity activeOpacity={1} style={styles.modalSheet}>
-            <Text style={styles.modalHeader}>{label}</Text>
-            <View style={styles.pickerSearchWrap}>
-              <MaterialCommunityIcons name="magnify" size={16} color={colors.textSubtle} style={styles.pickerSearchIcon} />
-              <TextInput
-                value={keyword}
-                onChangeText={setKeyword}
-                placeholder="Tìm kiếm..."
-                placeholderTextColor={colors.textSubtle}
-                style={styles.pickerSearchInput}
-                autoFocus
-                underlineColorAndroid="transparent"
-              />
-              {keyword.length > 0 && (
-                <TouchableOpacity onPress={() => setKeyword('')} hitSlop={8}>
-                  <MaterialCommunityIcons name="close-circle" size={16} color={colors.textSubtle} />
-                </TouchableOpacity>
-              )}
-            </View>
-            <ScrollView style={styles.modalList} keyboardShouldPersistTaps="handled">
-              {filtered.length === 0 ? (
-                <Text style={styles.modalEmpty}>
-                  {keyword ? `Không tìm thấy "${keyword}"` : 'Không có dữ liệu'}
-                </Text>
-              ) : (
-                filtered.map((opt) => (
-                  <TouchableOpacity
-                    key={opt.id}
-                    style={[styles.modalOption, value === opt.id && styles.modalOptionActive]}
-                    onPress={() => onSelect(opt.id)}
-                  >
-                    <Text style={[styles.modalOptionText, value === opt.id && styles.modalOptionTextActive]}>
-                      {opt.name}
-                    </Text>
-                    {value === opt.id && (
-                      <MaterialCommunityIcons name="check" size={18} color={colors.primaryAccent} />
-                    )}
+        <View style={styles.modalBackdrop}>
+          <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onClose} />
+          <KeyboardAvoidingView
+            style={styles.modalCenter}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            pointerEvents="box-none"
+          >
+            <View style={styles.modalSheet}>
+              <Text style={styles.modalHeader}>{label}</Text>
+              <View style={styles.pickerSearchWrap}>
+                <MaterialCommunityIcons name="magnify" size={16} color={colors.textSubtle} style={styles.pickerSearchIcon} />
+                <TextInput
+                  value={keyword}
+                  onChangeText={setKeyword}
+                  placeholder="Tìm kiếm..."
+                  placeholderTextColor={colors.textSubtle}
+                  style={styles.pickerSearchInput}
+                  autoFocus
+                  underlineColorAndroid="transparent"
+                />
+                {keyword.length > 0 && (
+                  <TouchableOpacity onPress={() => setKeyword('')} hitSlop={8}>
+                    <MaterialCommunityIcons name="close-circle" size={16} color={colors.textSubtle} />
                   </TouchableOpacity>
-                ))
-              )}
-            </ScrollView>
-          </TouchableOpacity>
-        </TouchableOpacity>
+                )}
+              </View>
+              <ScrollView style={styles.modalList} keyboardShouldPersistTaps="handled">
+                {filtered.length === 0 ? (
+                  <Text style={styles.modalEmpty}>
+                    {keyword ? `Không tìm thấy "${keyword}"` : 'Không có dữ liệu'}
+                  </Text>
+                ) : (
+                  filtered.map((opt) => (
+                    <TouchableOpacity
+                      key={opt.id}
+                      style={[styles.modalOption, value === opt.id && styles.modalOptionActive]}
+                      onPress={() => onSelect(opt.id)}
+                    >
+                      <Text style={[styles.modalOptionText, value === opt.id && styles.modalOptionTextActive]}>
+                        {opt.name}
+                      </Text>
+                      {value === opt.id && (
+                        <MaterialCommunityIcons name="check" size={18} color={colors.primaryAccent} />
+                      )}
+                    </TouchableOpacity>
+                  ))
+                )}
+              </ScrollView>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
       </Modal>
     </View>
   );
@@ -374,6 +377,9 @@ const styles = StyleSheet.create({
   modalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  modalCenter: {
+    flex: 1,
     justifyContent: 'center',
     paddingHorizontal: 20,
   },

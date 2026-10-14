@@ -16,21 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/**
- * Nghiệp vụ duyệt/từ chối hồ sơ tài xế.
- * Driver app nhận status mới qua polling tại GET /api/driver/status
- *
- * Endpoint require role=ADMIN (@PreAuthorize ở AdminController class level).
- *
- * === Bootstrap admin lần đầu ===
- * Chưa có admin nào trong DB, nên cần insert thủ công một lần:
- *
- *   INSERT INTO app_user (id, full_name, phone, email, password, created_at, updated_at)
- *   VALUES (UUID(), 'Admin', '0900000000', 'admin@rideup.com',
- *           '<BCrypt hash của password>', NOW(), NOW());
- *   INSERT INTO user_roles (user_id, role)
- *   VALUES ('<uuid ở trên>', 'ADMIN');
- */
+/** Nghiệp vụ duyệt/từ chối hồ sơ tài xế. */
 @Service
 @RequiredArgsConstructor
 @Slf4j

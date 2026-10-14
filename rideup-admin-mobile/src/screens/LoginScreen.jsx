@@ -1,10 +1,15 @@
 import { useState } from 'react';
-import { ImageBackground, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ImageBackground, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../auth/AuthContext';
 import { colors, HERO_IMAGE } from '../theme';
+import IconText from '../components/IconText';
+import { Text, TextInput } from '../components/Typography';
+import Logo from '../components/Logo';
 
 export default function LoginScreen() {
+  const insets = useSafeAreaInsets();
   const { doLogin } = useAuth();
   const [email, setEmail] = useState('admin@rideup.com');
   const [password, setPassword] = useState('admin123');
@@ -26,11 +31,11 @@ export default function LoginScreen() {
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={false}>
-        <ImageBackground source={{ uri: HERO_IMAGE }} style={styles.hero} imageStyle={{ resizeMode: 'cover' }}>
+        <ImageBackground source={{ uri: HERO_IMAGE }} style={[styles.hero, { paddingTop: insets.top + 28 }]} imageStyle={{ resizeMode: 'cover' }}>
           <View style={styles.heroOverlay} />
-          <Text style={styles.brand}>RIDEUP · ADMIN</Text>
-          <Text style={styles.title}>🛡️ Đăng nhập{'\n'}quản trị hệ thống.</Text>
-          <Text style={styles.subtitle}>Dành cho quản trị viên. Nếu là khách hoặc tài xế, vui lòng dùng app phù hợp.</Text>
+          <Logo tag="ADMIN" />
+          <Text style={styles.title}>Đăng nhập{'\n'}quản trị hệ thống.</Text>
+          <Text style={styles.subtitle}>Dành cho quản trị viên.</Text>
           <LinearGradient pointerEvents="none" colors={['rgba(247,250,249,0)', colors.bg]} style={styles.heroFade} />
         </ImageBackground>
 
@@ -48,7 +53,7 @@ export default function LoginScreen() {
           )}
 
           <View style={styles.field}>
-            <Text style={styles.fieldLabel}>✉  Email</Text>
+            <IconText name="email-outline" size={14} textStyle={styles.fieldLabel}>Email</IconText>
             <TextInput
               style={styles.input}
               keyboardType="email-address"
@@ -58,7 +63,7 @@ export default function LoginScreen() {
             />
           </View>
           <View style={styles.field}>
-            <Text style={styles.fieldLabel}>🔒  Mật khẩu</Text>
+            <IconText name="lock-outline" size={14} textStyle={styles.fieldLabel}>Mật khẩu</IconText>
             <TextInput
               style={styles.input}
               secureTextEntry

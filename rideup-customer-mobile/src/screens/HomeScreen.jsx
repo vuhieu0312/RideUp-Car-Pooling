@@ -2,14 +2,15 @@ import { useEffect, useState } from 'react';
 import { Image, ImageBackground, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Avatar, Card, IconButton, Text } from 'react-native-paper';
+import { Avatar, Card, IconButton } from 'react-native-paper';
 import { useAuth } from '../auth/AuthContext';
 import { listProvinces, listWards, searchTrips } from '../api/api';
 import { colors, FONT, HERO_IMAGE, shadow } from '../theme';
 import Picker from '../components/Picker';
-import DateField from '../components/DateField';
+import DateField, { todayIso, tomorrowIso } from '../components/DateField';
+import { Text } from '../components/Typography';
+import Logo from '../components/Logo';
 
-const TRIP_ICONS = ['🚕', '▣', '★'];
 
 export default function HomeScreen({ navigation }) {
   const { user } = useAuth();
@@ -20,7 +21,7 @@ export default function HomeScreen({ navigation }) {
   const [toProvinceId, setToProvinceId] = useState('');
   const [pickupWardId, setPickupWardId] = useState('');
   const [dropoffWardId, setDropoffWardId] = useState('');
-  const [date, setDate] = useState('');
+  const [date, setDate] = useState(todayIso());
   const [searchError, setSearchError] = useState('');
   const [trips, setTrips] = useState([]);
   const [searched, setSearched] = useState(false);
@@ -48,6 +49,10 @@ export default function HomeScreen({ navigation }) {
     const to = provinces.find((p) => p.id === toProvinceId);
     if (!fromProvinceId || !toProvinceId || !pickupWardId || !dropoffWardId || !date) {
       setSearchError('Vui lòng chọn đủ tỉnh, phường/xã và ngày khởi hành');
+      return;
+    }
+    if (date < todayIso()) {
+      setSearchError('Không thể tìm chuyến ở ngày đã qua');
       return;
     }
     if (!from || !to || from.code === to.code) {
@@ -86,8 +91,8 @@ export default function HomeScreen({ navigation }) {
           <View style={styles.heroOverlay} />
           <View style={styles.heroTop}>
             <View>
-              <Text style={styles.brand}>RIDEUP</Text>
-              <Text style={styles.greeting}>Xin chào, {user?.fullName || 'bạn'} <Text style={{ fontSize: 16 }}>👋</Text></Text>
+              <Logo size="sm" />
+              <Text style={styles.greeting}>Xin chào, {user?.fullName || 'bạn'}</Text>
             </View>
             <TouchableOpacity
               onPress={() => navigation.navigate('AccountTab', { screen: 'Account' })}
@@ -160,10 +165,9 @@ export default function HomeScreen({ navigation }) {
             placeholder="Chọn quận/huyện, phường/xã trả"
           />
 
-          <DateField value={date} onChange={setDate} />
+          <DateField value={date} onChange={setDate} minDate={todayIso()} />
 
           <View style={styles.dateShortcuts}>
-            <ShortcutButton label="Tất cả ngày" onPress={() => setDate('')} />
             <ShortcutButton label="Hôm nay" onPress={() => setDate(todayIso())} />
             <ShortcutButton label="Ngày mai" onPress={() => setDate(tomorrowIso())} />
           </View>
@@ -278,14 +282,6 @@ function TripCard({ trip, provinceName, fmtTime, fmtMoney, onBook }) {
       </TouchableOpacity>
     </View>
   );
-}
-
-function todayIso() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function tomorrowIso() {
-  return new Date(Date.now() + 86400000).toISOString().slice(0, 10);
 }
 
 /** Avatar nhỏ ở góc phải header — ưu tiên ảnh từ user.avatarUrl, fallback initials. */

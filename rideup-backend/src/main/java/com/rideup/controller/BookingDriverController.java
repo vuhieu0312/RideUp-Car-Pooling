@@ -19,10 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-/**
- * Booking endpoints dành cho DRIVER (đã APPROVED).
- * Tài xế xem các booking cho chuyến của mình, xác nhận hoặc từ chối.
- */
+/** Booking endpoints dành cho DRIVER (đã APPROVED). */
 @RestController
 @RequestMapping("/driver/bookings")
 @RequiredArgsConstructor
@@ -42,7 +39,7 @@ public class BookingDriverController {
     @GetMapping("/pending")
     public ApiResponse<List<BookingResponse>> listPending(Authentication auth) {
         return ApiResponse.success(
-            bookingService.listMyTripBookings(currentUserId(auth), BookingStatus.PENDING)
+            bookingService.listMyTripBookings(currentUserId(auth), BookingStatus.WAITING_DRIVER_APPROVAL)
         );
     }
 
@@ -68,6 +65,21 @@ public class BookingDriverController {
             bookingService.reject(bookingId, currentUserId(auth), reason)
         );
     }
+
+    /** Driver xác nhận đã nhận tiền mặt từ customer (per spec 6.1 step 24). */
+    @PostMapping("/{id}/confirm-cash")
+    public ApiResponse<BookingResponse> confirmCash(
+        @PathVariable("id") String bookingId,
+        Authentication auth
+    ) {
+        return ApiResponse.success(
+            "Đã xác nhận nhận tiền mặt",
+            bookingService.confirmCashPayment(bookingId, currentUserId(auth))
+        );
+    }
+
+    /** Endpoint "pickup" đã bị xoá — flow mới không có PICKED_UP. */
+    // @PostMapping("/{id}/pickup") — removed
 
     private String currentUserId(Authentication auth) {
         return ((UserDetails) auth.getPrincipal()).getUsername();

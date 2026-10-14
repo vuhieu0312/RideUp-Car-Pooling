@@ -14,12 +14,7 @@ import org.springframework.web.socket.server.HandshakeInterceptor;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Validate JWT trong WebSocket handshake.
- * Đọc token từ query param `?token=...` (ưu tiên) hoặc `Authorization: Bearer ...` header.
- * Nếu hợp lệ + còn trong Redis → lưu userId/roles vào session attributes.
- * Nếu không → return false → handshake fail, client nhận 401.
- */
+/** Validate JWT trong WebSocket handshake. */
 @Component
 @RequiredArgsConstructor
 @Slf4j

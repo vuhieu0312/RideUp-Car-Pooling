@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Avatar, Button, IconButton, Snackbar, Text } from 'react-native-paper';
+import { Avatar, Button, IconButton, Snackbar } from 'react-native-paper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../auth/AuthContext';
 import { getDriverProfile, getMyProfile, listMyVehicles, uploadAvatar } from '../api/api';
 import { colors, FONT } from '../theme';
+import { Text } from '../components/Typography';
 
 const GENDER_LABEL = { MALE: 'Nam', FEMALE: 'Nữ', OTHER: 'Khác' };
 
@@ -14,6 +16,7 @@ const GENDER_LABEL = { MALE: 'Nam', FEMALE: 'Nữ', OTHER: 'Khác' };
  */
 export default function AccountScreen({ navigation }) {
   const { user, doLogout, updateUser } = useAuth();
+  const insets = useSafeAreaInsets();
   const [profile, setProfile] = useState(user);
   const [driver, setDriver] = useState(null);
   const [vehicle, setVehicle] = useState(null);
@@ -22,9 +25,7 @@ export default function AccountScreen({ navigation }) {
   const [snack, setSnack] = useState('');
 
   useEffect(() => {
-    // Chỉ set state local — KHÔNG gọi updateUser ở đây vì sẽ trigger re-render
-    // toàn bộ AuthProvider → React Navigation reset tab state → giật về Home.
-    // updateUser chỉ gọi khi thật sự thay đổi (sau upload avatar, lưu edit).
+    // Chỉ set state local — KHÔNG gọi updateUser ở đây vì sẽ trigger re-render toàn bộ AuthProvider → React Navigation reset tab state → giật về Home.
     Promise.all([
       getMyProfile().catch(() => null),
       getDriverProfile().catch(() => null),
@@ -82,7 +83,7 @@ export default function AccountScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: insets.top + 4 }]}>
           <IconButton icon="arrow-left" iconColor={colors.textDark} onPress={() => navigation.goBack()} />
           <View>
             <Text style={styles.kicker}>HỒ SƠ TÀI XẾ</Text>

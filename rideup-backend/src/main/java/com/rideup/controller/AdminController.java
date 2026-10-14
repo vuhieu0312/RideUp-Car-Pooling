@@ -24,12 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-/**
- * Admin endpoints — yêu cầu role=ADMIN (class-level @PreAuthorize).
- *
- * <p>Approve driver: KHÔNG gọi {@code driverProfile.setUser(approver)} —
- * approver là admin, driverProfile.user phải luôn trỏ về driver.</p>
- */
+/** Admin endpoints — yêu cầu role=ADMIN (class-level @PreAuthorize). */
 @RestController
 @RequestMapping("/admin")
 @RequiredArgsConstructor

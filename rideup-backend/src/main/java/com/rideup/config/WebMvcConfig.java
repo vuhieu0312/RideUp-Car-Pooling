@@ -7,11 +7,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import java.nio.file.Paths;
 
-/**
- * Serve file upload trong uploads/ ra ngoài qua URL /uploads/**.
- * FileService lưu file vào app.upload.dir (mặc định uploads/),
- * trả URL tương đối "/uploads/xxx.jpg" để gán vào DB.
- */
+/** Serve file upload trong uploads/ ra ngoài qua URL /uploads/**. */
 @Configuration
 public class WebMvcConfig implements WebMvcConfigurer {
 

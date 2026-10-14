@@ -6,16 +6,7 @@ import lombok.experimental.FieldDefaults;
 
 import java.math.BigDecimal;
 
-/**
- * Phường / xã / thị trấn thuộc 1 Province.
- *
- * Dùng {@link ManyToOne} tới Province thay vì lưu provinceId string — JPA quản lý
- * quan hệ tự động, cascade xóa theo province.
- *
- * Trước đây entity này có `code` NOT NULL UNIQUE — vô tình làm seeder Overpass
- * crash (không set code → mọi INSERT bị reject). Sửa: code nullable, dùng index
- * thường (không UNIQUE) để tra cứu nhanh mà không chặn insert từ nguồn khác.
- */
+/** Phường / xã / thị trấn thuộc 1 Province. */
 @Entity
 @Table(name = "ward", indexes = {
     @Index(name = "idx_ward_province", columnList = "province_id"),

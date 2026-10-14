@@ -1,13 +1,31 @@
 import { useState } from 'react';
-import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { colors, shadow } from '../theme';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Text } from './Typography';
 
-/**
- * Date picker giống CustomerHomePage web:
- * - Hiển thị "DD/MM/YYYY" hoặc placeholder
- * - Click mở modal lịch tháng với prev/next + grid 6×7
- */
-export default function DateField({ value, onChange }) {
+/** Date picker giống CustomerHomePage web */
+function pad(n) {
+  return String(n).padStart(2, '0');
+}
+
+/** Ngày theo giờ máy (không dùng toISOString vì bị lệch UTC). */
+export function toIso(d) {
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+export function todayIso() {
+  return toIso(new Date());
+}
+
+export function tomorrowIso() {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  return toIso(d);
+}
+
+/** minDate (YYYY-MM-DD): ngày sớm nhất được chọn. Không truyền thì không giới hạn (vd: ngày sinh). */
+export default function DateField({ value, onChange, minDate = '' }) {
   const [open, setOpen] = useState(false);
   const current = value ? new Date(`${value}T00:00:00`) : new Date();
   const [month, setMonth] = useState(current.getMonth());
@@ -16,7 +34,8 @@ export default function DateField({ value, onChange }) {
   const days = new Date(year, month + 1, 0).getDate();
   const firstDay = (new Date(year, month, 1).getDay() + 6) % 7; // Thứ 2 = 0
   const monthLabel = new Intl.DateTimeFormat('vi-VN', { month: 'long', year: 'numeric' }).format(new Date(year, month, 1));
-  const selectedDay = value ? Number(value.slice(8, 10)) : null;
+  const monthPrefix = `${year}-${pad(month + 1)}`;
+  const canGoPrev = monthPrefix > minDate.slice(0, 7); // không lùi về tháng đã qua
 
   function moveMonth(offset) {
     const next = new Date(year, month + offset, 1);
@@ -24,8 +43,9 @@ export default function DateField({ value, onChange }) {
     setYear(next.getFullYear());
   }
 
-  function chooseDay(day) {
-    onChange(`${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`);
+  function chooseDay(iso) {
+    if (iso < minDate) return;
+    onChange(iso);
     setOpen(false);
   }
 
@@ -35,14 +55,14 @@ export default function DateField({ value, onChange }) {
         <Text style={value ? styles.selectedText : styles.placeholder}>
           {value ? `${value.slice(8, 10)}/${value.slice(5, 7)}/${value.slice(0, 4)}` : 'Chọn ngày khởi hành'}
         </Text>
-        <Text style={styles.chevron}>⌄</Text>
+        <MaterialCommunityIcons name="chevron-down" size={16} color="#9aaca6" style={{ marginLeft: 4 }} />
       </TouchableOpacity>
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
         <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={() => setOpen(false)}>
           <View style={styles.menu} onStartShouldSetResponder={() => true}>
             <View style={styles.header}>
-              <TouchableOpacity style={styles.navBtn} onPress={() => moveMonth(-1)}>
+              <TouchableOpacity style={[styles.navBtn, !canGoPrev && styles.navBtnDisabled]} disabled={!canGoPrev} onPress={() => moveMonth(-1)}>
                 <Text style={styles.navBtnText}>‹</Text>
               </TouchableOpacity>
               <Text style={styles.monthLabel}>{monthLabel}</Text>
@@ -62,13 +82,17 @@ export default function DateField({ value, onChange }) {
                 ))}
                 {Array.from({ length: days }, (_, i) => {
                   const day = i + 1;
+                  const iso = `${monthPrefix}-${pad(day)}`;
+                  const isPast = iso < minDate;
+                  const isSelected = iso === value;
                   return (
                     <TouchableOpacity
                       key={day}
-                      style={[styles.dayCell, day === selectedDay && styles.dayCellSelected]}
-                      onPress={() => chooseDay(day)}
+                      style={[styles.dayCell, isSelected && styles.dayCellSelected]}
+                      disabled={isPast}
+                      onPress={() => chooseDay(iso)}
                     >
-                      <Text style={[styles.dayText, day === selectedDay && styles.dayTextSelected]}>{day}</Text>
+                      <Text style={[styles.dayText, isPast && styles.dayTextPast, isSelected && styles.dayTextSelected]}>{day}</Text>
                     </TouchableOpacity>
                   );
                 })}
@@ -92,6 +116,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
   monthLabel: { color: colors.textDark, fontSize: 11, textTransform: 'capitalize', fontWeight: '600' },
   navBtn: { width: 25, height: 25, borderRadius: 12.5, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
+  navBtnDisabled: { opacity: 0.35 },
   navBtnText: { color: colors.primaryAccent, fontSize: 17, lineHeight: 19 },
 
   weekdays: { flexDirection: 'row', marginBottom: 4 },
@@ -100,5 +125,6 @@ const styles = StyleSheet.create({
   dayCell: { width: '14.28%', aspectRatio: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 5 },
   dayText: { fontSize: 10, color: colors.textDark },
   dayCellSelected: { backgroundColor: colors.primary, borderRadius: 6 },
+  dayTextPast: { color: '#c5cfcb' },
   dayTextSelected: { color: 'white', fontWeight: '700' },
 });
