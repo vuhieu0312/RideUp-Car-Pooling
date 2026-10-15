@@ -23,11 +23,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
                 .addInterceptors(jwtHandshakeInterceptor)
-                .setAllowedOrigins(
-                    "http://localhost:5173",
-                    "http://localhost:3000",
-                    "http://localhost:8080"
-                );
+                .setAllowedOriginPatterns("http://localhost:*", "http://127.0.0.1:*");
         // Không bật SockJS — client thường dùng stomp.js thuần.
         // Nếu cần fallback cho browser cũ: .withSockJS();
     }

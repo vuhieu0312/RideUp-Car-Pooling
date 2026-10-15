@@ -7,6 +7,7 @@ import {
   listDrivers, listPendingVehicles, rejectDriver, rejectVehicle,
 } from '../api/api';
 import { useAuth } from '../auth/AuthContext';
+import DetailModal from '../components/DetailModal';
 import IconText from '../components/IconText';
 import { Text } from '../components/Typography';
 import Logo from '../components/Logo';
@@ -22,6 +23,7 @@ export default function DashboardScreen() {
   const [msg, setMsg] = useState('');
   const [rejectTarget, setRejectTarget] = useState(null); // { type, id }
   const [rejectReason, setRejectReason] = useState('');
+  const [detail, setDetail] = useState(null); // { type, item }
 
   async function loadDrivers() {
     setLoading(true);
@@ -76,6 +78,57 @@ export default function DashboardScreen() {
 
   const fmtDate = (s) => (s ? s.substring(0, 10) : '—');
 
+  function detailInfo() {
+    if (!detail) return { title: '', rows: [], images: [] };
+    const x = detail.item;
+    if (detail.type === 'driver') {
+      return {
+        title: 'Hồ sơ tài xế',
+        rows: [
+          ['Họ tên', x.fullName], ['Email', x.email], ['Số điện thoại', x.phone],
+          ['CCCD', x.cccd], ['GPLX', x.gplx], ['Hạn GPLX', fmtDate(x.gplxExpiryDate)],
+          ['Đánh giá', x.driverRating], ['Số chuyến đã chạy', x.totalDriverRides],
+          ['Trạng thái', x.status], ['Ngày đăng ký', fmtDate(x.createdAt)],
+        ],
+        images: [
+          { label: 'CCCD mặt trước', path: x.cccdImageFront },
+          { label: 'CCCD mặt sau', path: x.cccdImageBack },
+          { label: 'Giấy phép lái xe', path: x.gplxImage },
+        ],
+      };
+    }
+    return {
+      title: 'Hồ sơ phương tiện',
+      rows: [
+        ['Biển số', x.plateNumber], ['Tài xế', x.driverName], ['Hãng xe', x.vehicleBrand],
+        ['Dòng xe', x.vehicleModel], ['Năm sản xuất', x.vehicleYear], ['Màu sắc', x.vehicleColor],
+        ['Loại xe', x.vehicleType], ['Số chỗ', x.seatCapacity],
+        ['Hạn đăng ký', fmtDate(x.registrationExpiryDate)], ['Hạn bảo hiểm', fmtDate(x.insuranceExpiryDate)],
+        ['Ngày đăng ký', fmtDate(x.createdAt)],
+      ],
+      images: [
+        { label: 'Ảnh xe', path: x.vehicleImage },
+        { label: 'Giấy đăng ký xe', path: x.registrationImage },
+        { label: 'Giấy bảo hiểm', path: x.insuranceImage },
+      ],
+    };
+  }
+
+  function approveFromDetail() {
+    const { type, item } = detail;
+    setDetail(null);
+    if (type === 'driver') approveD(item.id); else approveV(item.id);
+  }
+
+  function rejectFromDetail() {
+    const { type, item } = detail;
+    setDetail(null);
+    setRejectTarget({ type, id: item.id });
+    setRejectReason('');
+  }
+
+  const info = detailInfo();
+
   return (
     <View style={{ flex: 1, backgroundColor: '#f1f5f9' }}>
       {/* Top bar */}
@@ -118,6 +171,7 @@ export default function DashboardScreen() {
                   <Text variant="bodySmall" style={{ color: '#6b7280' }}>Ngày tạo: {fmtDate(d.createdAt)}</Text>
                 </Card.Content>
                 <Card.Actions>
+                  <Button onPress={() => setDetail({ type: 'driver', item: d })}>Chi tiết</Button>
                   <Button mode="contained" buttonColor="#10b981" onPress={() => approveD(d.id)}>Duyệt</Button>
                   <Button mode="outlined" textColor="#dc2626" onPress={() => { setRejectTarget({ type: 'driver', id: d.id }); setRejectReason(''); }}>
                     Từ chối
@@ -141,6 +195,7 @@ export default function DashboardScreen() {
                   <Text variant="bodySmall" style={{ color: '#6b7280' }}>Hạn ĐK: {fmtDate(v.registrationExpiryDate)}</Text>
                 </Card.Content>
                 <Card.Actions>
+                  <Button onPress={() => setDetail({ type: 'vehicle', item: v })}>Chi tiết</Button>
                   <Button mode="contained" buttonColor="#10b981" onPress={() => approveV(v.id)}>Duyệt</Button>
                   <Button mode="outlined" textColor="#dc2626" onPress={() => { setRejectTarget({ type: 'vehicle', id: v.id }); setRejectReason(''); }}>
                     Từ chối
@@ -163,6 +218,16 @@ export default function DashboardScreen() {
           </Card.Content></Card>
         )}
       </ScrollView>
+
+      <DetailModal
+        visible={!!detail}
+        title={info.title}
+        rows={info.rows}
+        images={info.images}
+        onClose={() => setDetail(null)}
+        onApprove={approveFromDetail}
+        onReject={rejectFromDetail}
+      />
 
       <Portal>
         <Dialog visible={!!rejectTarget} onDismiss={() => setRejectTarget(null)}>

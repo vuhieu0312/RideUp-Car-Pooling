@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, FlatList, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { FlatList, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../auth/AuthContext';
 import { cancelBooking, listMyBookings } from '../api/api';
 import { usePayment } from '../hooks/usePayment';
+import { useDialog } from '../components/AppDialog';
+import { useRealtimeRefresh } from '../realtime/useRealtime';
 import { colors, shadow } from '../theme';
 import { Text } from '../components/Typography';
 
@@ -41,13 +43,15 @@ export default function MyBookingsScreen({ navigation }) {
   const { doLogout } = useAuth();
   const insets = useSafeAreaInsets();
   const { pay: payWithStripe, loading: payLoading } = usePayment();
+  const dialog = useDialog();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('ALL');
   const [actionMsg, setActionMsg] = useState('');
 
-  function load() {
-    setLoading(true);
+  // silent = true: tải ngầm khi có cập nhật realtime, không nháy vòng xoay
+  function load(silent = false) {
+    if (!silent) setLoading(true);
     listMyBookings()
       .then(setBookings)
       .catch(() => setActionMsg('Lỗi tải booking'))
@@ -61,6 +65,9 @@ export default function MyBookingsScreen({ navigation }) {
     return () => setActionMsg('');
   }, []));
 
+  // Server báo booking đổi trạng thái (tài xế xác nhận, thanh toán xong...) → tự tải lại
+  useRealtimeRefresh(() => load(true), ['BOOKING_UPDATED']);
+
   // Banner tự tắt sau 3 giây (trước đây không bao giờ biến mất)
   useEffect(() => {
     if (!actionMsg) return undefined;
@@ -73,6 +80,46 @@ export default function MyBookingsScreen({ navigation }) {
 
   const fmtMoney = (v) => `${new Intl.NumberFormat('vi-VN').format(v || 0)} đ`;
   const fmtTime = (iso) => (iso ? iso.replace('T', ' ').substring(0, 16) : '');
+
+  // "2026-10-15T08:00:00" -> "08:00 · 15/10"
+  const fmtDeparture = (iso) => {
+    if (!iso) return '';
+    const [date, time] = iso.split('T');
+    const [, month, day] = date.split('-');
+    return `${time.substring(0, 5)} · ${day}/${month}`;
+  };
+
+  // "Ân Thi, Hưng Yên"
+  const place = (ward, province, fallback) => [ward || fallback, province].filter(Boolean).join(', ');
+
+  function routeText(b) {
+    const from = place(b.pickupWardName, b.tripStartProvince, b.pickupAddressText);
+    const to = place(b.dropoffWardName, b.tripEndProvince, b.dropoffAddressText);
+    return `${from} → ${to}`;
+  }
+
+  function showDetail(b) {
+    const meta = STATUS_META[b.status] || { label: b.status };
+    const pm = PAYMENT_STATUS_META[b.paymentStatus] || {};
+    const lines = [
+      `Mã: ${b.bookingCode}`,
+      `Trạng thái: ${meta.label}`,
+      `Khởi hành: ${fmtDeparture(b.tripDeparture)}`,
+      `Điểm đón: ${place(b.pickupWardName, b.tripStartProvince, b.pickupAddressText)}`,
+      `Điểm trả: ${place(b.dropoffWardName, b.tripEndProvince, b.dropoffAddressText)}`,
+      `Tài xế: ${b.driverName || '—'}`,
+    ];
+    if (b.driverPhone) lines.push(`Điện thoại tài xế: ${b.driverPhone}`);
+    if (b.tripPlate) lines.push(`Xe: ${[b.tripVehicle, b.tripPlate].filter(Boolean).join(' · ')}`);
+    lines.push(
+      `Số ghế: ${b.seatCount} × ${fmtMoney(b.pricePerSeat)}`,
+      `Tổng tiền: ${fmtMoney(b.totalAmount)}`,
+      `Thanh toán: ${pm.label || b.paymentStatus || '—'}`,
+    );
+    if (b.note) lines.push(`Ghi chú: ${b.note}`);
+    if (b.cancelReason) lines.push(`Lý do huỷ: ${b.cancelReason}`);
+    dialog.alert('Chi tiết booking', lines.join('\n'));
+  }
 
   function matchesFilter(b) {
     if (filter === 'ALL') return true;
@@ -99,7 +146,7 @@ export default function MyBookingsScreen({ navigation }) {
     ].includes(b.status)).length,
   };
 
-  function doCancel(b) {
+  async function doCancel(b) {
     // Cho phép huỷ khi: PENDING_PAYMENT (chưa trả), WAITING_DRIVER_APPROVAL (đã trả nhưng chờ duyệt), CONFIRMED (đã duyệt)
     const cancellable = ['PENDING_PAYMENT', 'WAITING_DRIVER_APPROVAL', 'CONFIRMED'].includes(b.status);
     if (!cancellable) return;
@@ -109,35 +156,31 @@ export default function MyBookingsScreen({ navigation }) {
     const hasMoney = ['HOLDING', 'PAID'].includes(b.paymentStatus);
     let detail = 'Bạn có chắc muốn huỷ booking này?';
     if (isStripe && hasMoney) {
-      detail = 'Bạn sẽ được hoàn tiền 100% qua Stripe trong 5-10 ngày làm việc.';
+      detail = 'Bạn sẽ được hoàn lại toàn bộ tiền đặt cọc.';
     } else if (isStripe && b.paymentStatus === 'PENDING') {
       detail = 'Bạn chưa thanh toán. Booking sẽ được huỷ và không có giao dịch nào xảy ra.';
     }
 
-    Alert.alert(
-      'Xác nhận huỷ booking',
-      detail,
-      [
-        { text: 'Không', style: 'cancel' },
-        {
-          text: 'Huỷ & hoàn tiền',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await cancelBooking(b.id, 'Khách hủy từ app');
-              setActionMsg(
-                isStripe && hasMoney
-                  ? 'Đã huỷ. Tiền sẽ được hoàn về trong vài ngày.'
-                  : 'Đã huỷ booking'
-              );
-              load();
-            } catch (e) {
-              setActionMsg(e.response?.data?.message || 'Lỗi huỷ');
-            }
-          },
-        },
-      ]
-    );
+    const ok = await dialog.confirm({
+      title: 'Xác nhận huỷ booking',
+      message: detail,
+      confirmText: hasMoney ? 'Huỷ & hoàn tiền' : 'Huỷ booking',
+      cancelText: 'Không',
+      danger: true,
+    });
+    if (!ok) return;
+
+    try {
+      await cancelBooking(b.id, 'Khách hủy từ app');
+      setActionMsg(
+        isStripe && hasMoney
+          ? 'Đã huỷ. Tiền sẽ được hoàn về trong vài ngày.'
+          : 'Đã huỷ booking'
+      );
+      load();
+    } catch (e) {
+      setActionMsg(e.response?.data?.message || 'Lỗi huỷ');
+    }
   }
 
   async function doPay(b) {
@@ -215,8 +258,9 @@ export default function MyBookingsScreen({ navigation }) {
                   <Text style={styles.code}>Mã: <Text style={{ fontWeight: '700' }}>{b.bookingCode}</Text></Text>
                   <View style={styles.tripTimeRow}>
                     <MaterialCommunityIcons name="bus" size={15} color={colors.textDark} />
-                    <Text style={styles.tripTime}>Khởi hành: {fmtTime(b.tripDeparture)}</Text>
+                    <Text style={styles.tripTime}>Khởi hành {fmtDeparture(b.tripDeparture)}</Text>
                   </View>
+                  <Text style={styles.route} numberOfLines={2}>{routeText(b)}</Text>
                   {!!b.tripPlate && <Text style={styles.muted}>Xe: {b.tripPlate}</Text>}
                 </View>
                 <View style={[styles.badge, { backgroundColor: meta.bg }]}>
@@ -249,8 +293,10 @@ export default function MyBookingsScreen({ navigation }) {
                 <Text style={styles.cancelReason}>Lý do: {b.cancelReason}</Text>
               )}
 
-              {(canPay || canCancel) && (
-                <View style={styles.actionsRow}>
+              <View style={styles.actionsRow}>
+                  <TouchableOpacity style={styles.detailBtn} onPress={() => showDetail(b)}>
+                    <Text style={styles.detailBtnText}>Xem chi tiết</Text>
+                  </TouchableOpacity>
                   {canPay && (
                     <TouchableOpacity
                       style={[styles.payBtn, payLoading && styles.payBtnDisabled]}
@@ -268,7 +314,6 @@ export default function MyBookingsScreen({ navigation }) {
                     </TouchableOpacity>
                   )}
                 </View>
-              )}
             </View>
           );
         }}
@@ -328,6 +373,9 @@ const styles = StyleSheet.create({
   cancelReason: { marginTop: 8, fontSize: 11, color: colors.dangerText },
 
   actionsRow: { marginTop: 12, flexDirection: 'row', justifyContent: 'flex-end', gap: 8 },
+  route: { fontSize: 12, color: colors.textDark, marginTop: 3 },
+  detailBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 6, borderWidth: 1, borderColor: colors.primaryAccent },
+  detailBtnText: { color: colors.primaryAccent, fontSize: 11, fontWeight: '700' },
   dangerBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 6, backgroundColor: colors.dangerBg, borderWidth: 1, borderColor: '#fecaca' },
   dangerBtnText: { color: colors.danger, fontSize: 11, fontWeight: '700' },
   payBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 6, backgroundColor: colors.primary },

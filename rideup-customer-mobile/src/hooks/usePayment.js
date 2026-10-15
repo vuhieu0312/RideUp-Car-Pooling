@@ -1,19 +1,20 @@
 // usePayment.js — Gom logic thanh toán Stripe PaymentSheet vào 1 hook.
 
 import { useState, useCallback } from 'react';
-import { Alert } from 'react-native';
 import * as Linking from 'expo-linking';
 import { useStripe } from '@stripe/stripe-react-native';
 import { authorizePayment, createPaymentIntent } from '../api/api';
+import { useDialog } from '../components/AppDialog';
 
 export function usePayment() {
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
+  const dialog = useDialog();
   const [loading, setLoading] = useState(false);
 
   /** Mở PaymentSheet cho booking hiện có. */
   const pay = useCallback(async ({ bookingId, paymentId }) => {
     if (!bookingId || !paymentId) {
-      Alert.alert('Lỗi', 'Thiếu bookingId hoặc paymentId');
+      dialog.alert('Không thể thanh toán', 'Vui lòng thử lại sau.');
       return { success: false };
     }
     if (loading) {
@@ -25,7 +26,7 @@ export function usePayment() {
       // (1) Gọi backend tạo PaymentIntent — backend tự validate ownership + tính amount từ DB
       const { clientSecret } = await createPaymentIntent(bookingId);
       if (!clientSecret) {
-        Alert.alert('Lỗi', 'Không nhận được client secret từ server');
+        dialog.alert('Không thể thanh toán', 'Vui lòng thử lại sau.');
         return { success: false };
       }
       // clientSecret luôn có dạng "pi_XXXX_secret_YYYY" — PaymentIntent ID là phần trước "_secret_".
@@ -42,7 +43,7 @@ export function usePayment() {
       if (initError) {
         // initError.code === 'Canceled' hiếm khi xảy ra, nhưng handle cho chắc
         if (initError.code !== 'Canceled') {
-          Alert.alert('Lỗi khởi tạo thanh toán', initError.message);
+          dialog.alert('Không thể thanh toán', 'Vui lòng thử lại sau.');
         }
         return { success: false };
       }
@@ -55,7 +56,7 @@ export function usePayment() {
         if (presentError.code === 'Canceled') {
           return { success: false, canceled: true };
         }
-        Alert.alert('Lỗi thanh toán', presentError.message);
+        dialog.alert('Thanh toán không thành công', presentError.message || 'Vui lòng kiểm tra lại thẻ và thử lại.');
         return { success: false };
       }
 
@@ -67,23 +68,18 @@ export function usePayment() {
         });
       } catch (authErr) {
         console.warn('authorizePayment failed:', authErr);
-        Alert.alert(
-          'Đã thanh toán nhưng chưa đồng bộ',
-          'Thẻ của bạn đã được xác nhận (tiền đang giữ phía Stripe), nhưng ứng dụng ' +
-          'chưa cập nhật được trạng thái booking. Vui lòng kéo refresh ở "Chuyến xe của ' +
-          'tôi" sau ít phút, hoặc liên hệ hỗ trợ nếu vẫn thấy "Chờ thanh toán".'
-        );
+        dialog.alert('Đang xử lý thanh toán', 'Giao dịch của bạn đang được xác nhận.');
         return { success: false, paymentIntentId, authorizeFailed: true };
       }
       return { success: true, paymentIntentId };
     } catch (err) {
-      const message = err?.response?.data?.message || err?.message || 'Không rõ lỗi';
-      Alert.alert('Lỗi', message);
+      const message = err?.response?.data?.message || 'Đã có lỗi xảy ra. Vui lòng thử lại.';
+      dialog.alert('Không thể thanh toán', message);
       return { success: false };
     } finally {
       setLoading(false);
     }
-  }, [loading, initPaymentSheet, presentPaymentSheet]);
+  }, [loading, initPaymentSheet, presentPaymentSheet, dialog]);
 
   return { pay, loading };
 }

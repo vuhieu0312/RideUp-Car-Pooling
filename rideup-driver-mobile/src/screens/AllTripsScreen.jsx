@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, FlatList, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { FlatList, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { cancelTrip, completeTrip, listMyTrips, listProvinces, startTrip } from '../api/api';
+import { cancelTrip, completeTrip, listMyTrips, listProvinces, listWards, startTrip } from '../api/api';
 import { colors, FONT, shadow } from '../theme';
 import IconText from '../components/IconText';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Text } from '../components/Typography';
+import { useDialog } from '../components/AppDialog';
+import { useRealtimeRefresh } from '../realtime/useRealtime';
 
 const FILTERS = [
   { key: 'ALL', label: 'Tất cả' },
@@ -24,17 +26,28 @@ const STATUS_META = {
 };
 
 export default function AllTripsScreen({ navigation }) {
+  const dialog = useDialog();
   const insets = useSafeAreaInsets();
   const [trips, setTrips] = useState([]);
   const [provinces, setProvinces] = useState([]);
   const [filter, setFilter] = useState('ALL');
   const [loading, setLoading] = useState(true);
   const [actionMsg, setActionMsg] = useState('');
+  const [wardNames, setWardNames] = useState({}); // wardId -> tên phường/xã
 
-  function load() {
-    setLoading(true);
+  // Tải tên phường/xã của các tỉnh có trong danh sách chuyến (dùng API sẵn có listWards)
+  async function loadWardNames(list) {
+    const provinceIds = [...new Set(list.flatMap((t) => [t.startProvinceId, t.endProvinceId]).filter(Boolean))];
+    const results = await Promise.all(provinceIds.map((id) => listWards(id).catch(() => [])));
+    const map = {};
+    results.flat().forEach((w) => { map[w.id] = w.name; });
+    setWardNames(map);
+  }
+
+  function load(silent = false) {
+    if (!silent) setLoading(true);
     Promise.all([listMyTrips(), listProvinces()])
-      .then(([t, p]) => { setTrips(t); setProvinces(p); })
+      .then(([t, p]) => { setTrips(t); setProvinces(p); loadWardNames(t); })
       .finally(() => setLoading(false));
   }
 
@@ -51,74 +64,49 @@ export default function AllTripsScreen({ navigation }) {
     }
   }
 
-  function doCompleteTrip(t) {
-    Alert.alert(
-      'Kết thúc chuyến',
-      'Xác nhận kết thúc chuyến? Hệ thống sẽ tự động thanh toán (capture) cho các booking Stripe.',
-      [
-        { text: 'Huỷ', style: 'cancel' },
-        {
-          text: 'Kết thúc',
-          onPress: async () => {
-            try {
-              await completeTrip(t.id);
-              setActionMsg(`Đã kết thúc chuyến ${t.id.slice(0, 6)}…`);
-              load();
-            } catch (e) {
-              setActionMsg(`${e.response?.data?.message || 'Lỗi kết thúc'}`);
-            }
-          },
-        },
-      ]
-    );
+  async function doCompleteTrip(t) {
+    const ok = await dialog.confirm({
+      title: 'Kết thúc chuyến',
+      message: 'Bạn xác nhận đã hoàn thành chuyến đi này?',
+      confirmText: 'Kết thúc',
+      cancelText: 'Huỷ',
+    });
+    if (!ok) return;
+
+    try {
+      await completeTrip(t.id);
+      setActionMsg(`Đã kết thúc chuyến ${t.id.slice(0, 6)}…`);
+      load();
+    } catch (e) {
+      setActionMsg(`${e.response?.data?.message || 'Lỗi kết thúc'}`);
+    }
   }
 
-  function doCancelTrip(t) {
+  async function doCancelTrip(t) {
     const booked = Math.max(0, (t.seatTotal || 0) - (t.seatAvailable || 0));
-    Alert.prompt?.(
-      'Huỷ chuyến',
-      `Sẽ hoàn tiền cho tất cả khách đã đặt chuyến này.${booked > 0 ? ` Có ${booked} ghế đã đặt.` : ''}\n\nNhập lý do huỷ chuyến:`,
-      [
-        { text: 'Không', style: 'cancel' },
-        {
-          text: 'Huỷ chuyến & hoàn tiền',
-          style: 'destructive',
-          onPress: async (reasonText) => {
-            try {
-              await cancelTrip(t.id, reasonText || 'Tài xế huỷ chuyến');
-              setActionMsg(`Đã huỷ chuyến ${t.id.slice(0, 6)}… và hoàn tiền cho khách.`);
-              load();
-            } catch (e) {
-              setActionMsg(`${e.response?.data?.message || 'Lỗi huỷ chuyến'}`);
-            }
-          },
-        },
-      ],
-      'plain-text',
-      'Tài xế không thể thực hiện chuyến'
-    ) || Alert.alert(
-      'Huỷ chuyến',
-      `Sẽ hoàn tiền cho tất cả khách đã đặt.${booked > 0 ? ` Có ${booked} ghế đã đặt.` : ''} Xác nhận?`,
-      [
-        { text: 'Không', style: 'cancel' },
-        {
-          text: 'Huỷ chuyến',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await cancelTrip(t.id, 'Tài xế huỷ chuyến');
-              setActionMsg(`Đã huỷ chuyến ${t.id.slice(0, 6)}…`);
-              load();
-            } catch (e) {
-              setActionMsg(`${e.response?.data?.message || 'Lỗi'}`);
-            }
-          },
-        },
-      ]
-    );
+    const reason = await dialog.prompt({
+      title: 'Huỷ chuyến',
+      message: `Sẽ hoàn tiền cho tất cả khách đã đặt chuyến này.${booked > 0 ? ` Có ${booked} ghế đã đặt.` : ''}\n\nNhập lý do huỷ chuyến:`,
+      defaultValue: 'Tài xế không thể thực hiện chuyến',
+      confirmText: 'Huỷ chuyến & hoàn tiền',
+      cancelText: 'Không',
+      danger: true,
+    });
+    if (reason === null) return;
+
+    try {
+      await cancelTrip(t.id, reason || 'Tài xế huỷ chuyến');
+      setActionMsg(`Đã huỷ chuyến ${t.id.slice(0, 6)}… và hoàn tiền cho khách.`);
+      load();
+    } catch (e) {
+      setActionMsg(`${e.response?.data?.message || 'Lỗi huỷ chuyến'}`);
+    }
   }
 
   useEffect(() => { load(); }, []);
+
+  // Số ghế / trạng thái chuyến đổi → tự tải lại
+  useRealtimeRefresh(() => load(true), ['TRIP_UPDATED', 'BOOKING_UPDATED']);
 
   // Thông báo tự tắt sau 3 giây
   useEffect(() => {
@@ -144,6 +132,35 @@ export default function AllTripsScreen({ navigation }) {
   const provinceName = (id) => provinces.find((p) => p.id === id)?.name || id || '?';
   const fmtMoney = (v) => `${new Intl.NumberFormat('vi-VN').format(v || 0)} đ`;
   const fmtTime = (iso) => (iso ? iso.replace('T', ' ').substring(0, 16) : '');
+
+  // Danh sách khu vực đón/trả của chuyến, ví dụ "Ân Thi, Văn Giang"
+  function stopNames(t, type) {
+    const names = (t.stops || [])
+      .filter((s) => s.stopType === type)
+      .map((s) => wardNames[s.wardId] || s.addressText)
+      .filter(Boolean);
+    return names.length ? names.join(', ') : 'Chưa chọn';
+  }
+
+  function showTripDetail(t) {
+    const booked = Math.max(0, (t.seatTotal || 0) - (t.seatAvailable || 0));
+    const meta = STATUS_META[t.status] || { label: t.status };
+    const lines = [
+      `${provinceName(t.startProvinceId)} → ${provinceName(t.endProvinceId)}`,
+      `Trạng thái: ${meta.label}`,
+      `Khởi hành: ${fmtTime(t.departureTime)}`,
+    ];
+    if (t.estimatedArrivalTime) lines.push(`Dự kiến đến: ${fmtTime(t.estimatedArrivalTime)}`);
+    lines.push(
+      `Khu vực đón (${provinceName(t.startProvinceId)}): ${stopNames(t, 'PICKUP')}`,
+      `Khu vực trả (${provinceName(t.endProvinceId)}): ${stopNames(t, 'DROPOFF')}`,
+      `Ghế đã đặt: ${booked}/${t.seatTotal}`,
+      `Giá vé: ${fmtMoney(t.priceVnd)}/ghế`,
+      `Doanh thu: ${fmtMoney((t.priceVnd || 0) * booked)}`,
+    );
+    if (t.note) lines.push(`Ghi chú: ${t.note}`);
+    dialog.alert('Chi tiết chuyến', lines.join('\n'));
+  }
 
   return (
     <View style={styles.container}>
@@ -218,6 +235,8 @@ export default function AllTripsScreen({ navigation }) {
                     {provinceName(t.startProvinceId)} → {provinceName(t.endProvinceId)}
                   </Text>
                   <IconText name="clock-outline" size={14} textStyle={styles.tripTime}>{fmtTime(t.departureTime)}</IconText>
+                  <Text style={styles.stopLine} numberOfLines={1}>Đón: {stopNames(t, 'PICKUP')}</Text>
+                  <Text style={styles.stopLine} numberOfLines={1}>Trả: {stopNames(t, 'DROPOFF')}</Text>
                 </View>
                 <View style={[styles.badge, { backgroundColor: meta.bg }]}>
                   <Text style={[styles.badgeText, { color: meta.fg }]}>{meta.label}</Text>
@@ -242,6 +261,12 @@ export default function AllTripsScreen({ navigation }) {
               </View>
 
               <View style={styles.actions}>
+                <TouchableOpacity
+                  style={[styles.actionBtn, styles.actionSecondary]}
+                  onPress={() => showTripDetail(t)}
+                >
+                  <IconText name="information-outline" size={14} center textStyle={styles.actionSecondaryText}>Chi tiết</IconText>
+                </TouchableOpacity>
                 {(t.status === 'OPEN' || t.status === 'FULL') && (
                   <>
                     <TouchableOpacity
@@ -252,7 +277,7 @@ export default function AllTripsScreen({ navigation }) {
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[styles.actionBtn, styles.actionSecondary]}
-                      onPress={() => navigation.navigate('Bookings', { tripId: null })}
+                      onPress={() => navigation.navigate('Bookings', { tripId: t.id })}
                     >
                       <IconText name="format-list-bulleted" size={14} center textStyle={styles.actionSecondaryText}>Xem booking</IconText>
                     </TouchableOpacity>
@@ -345,6 +370,7 @@ const styles = StyleSheet.create({
   card: { marginBottom: 9, padding: 12, borderWidth: 1, borderColor: '#e3ece8', borderRadius: 10, backgroundColor: 'white', ...shadow(2, 0.07, 7) },
   cardHead: { flexDirection: 'row', alignItems: 'flex-start' },
   tripRoute: { fontFamily: FONT[700], fontSize: 13, fontWeight: '700', color: colors.textDark },
+  stopLine: { fontSize: 12, color: colors.textDark, marginTop: 3 },
   tripTime: { fontSize: 12, color: colors.textSubtle, marginTop: 4 },
   badge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999, alignSelf: 'flex-start' },
   badgeText: { fontFamily: FONT[700], fontSize: 10, fontWeight: '700' },

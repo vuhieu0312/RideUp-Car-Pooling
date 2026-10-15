@@ -10,13 +10,15 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
-      ddl-auto: update
-    show-sql: true
+      ddl-auto: ${DDL_AUTO:update}
+    show-sql: ${SHOW_SQL:false}
     open-in-view: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
-        format_sql: true
+        default_batch_fetch_size: 50
+        order_inserts: true
+        order_updates: true
         jdbc:
           time_zone: Asia/Ho_Chi_Minh
   flyway:
@@ -42,12 +44,33 @@ spring:
       max-file-size: 5MB
       max-request-size: 30MB
 
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    default-encoding: UTF-8
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.timeout: 5000
+      mail.smtp.writetimeout: 5000
+
 server:
   port: 8080
+  compression:
+    enabled: true
+    mime-types: application/json,text/html,text/plain
+    min-response-size: 1024
   servlet:
     context-path: /api
 
 app:
+  mail:
+    # Tắt thì chỉ ghi log, không gửi mail thật
+    enabled: ${MAIL_ENABLED:false}
+    from: ${MAIL_FROM:}
   upload:
     dir: ${UPLOAD_DIR:uploads/}
   booking:
@@ -83,4 +106,4 @@ springdoc:
 logging:
   level:
     root: INFO
-    com.rideup: DEBUG
+    com.rideup: ${APP_LOG_LEVEL:INFO}

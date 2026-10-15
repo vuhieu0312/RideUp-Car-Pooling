@@ -29,6 +29,8 @@ public class VehicleService {
     DriverProfileRepository driverProfileRepository;
     DriverService driverService;
     FileService fileService;
+    MailService mailService;
+    RealtimeService realtimeService;
 
     /** Driver đăng ký xe mới. */
     @Transactional
@@ -98,6 +100,11 @@ public class VehicleService {
         vehicle = vehicleRepository.save(vehicle);
         log.info("Admin {} approved vehicleId={} driverProfile={}",
             adminUserId, vehicle.getId(), vehicle.getDriverId());
+        DriverProfile owner = driverProfileRepository.findById(vehicle.getDriverId()).orElse(null);
+        if (owner != null) {
+            mailService.sendVehicleApproved(owner.getUser().getEmail(), owner.getUser().getFullName(), vehicle.getPlateNumber());
+            realtimeService.vehicleChanged(owner.getUser().getId());
+        }
         return toResponse(vehicle);
     }
 
@@ -113,6 +120,11 @@ public class VehicleService {
         vehicle.setApprovedBy(null);
         vehicle = vehicleRepository.save(vehicle);
         log.info("Admin {} rejected vehicleId={} reason='{}'", adminUserId, vehicle.getId(), reason);
+        DriverProfile owner = driverProfileRepository.findById(vehicle.getDriverId()).orElse(null);
+        if (owner != null) {
+            mailService.sendVehicleRejected(owner.getUser().getEmail(), owner.getUser().getFullName(), vehicle.getPlateNumber(), reason);
+            realtimeService.vehicleChanged(owner.getUser().getId());
+        }
         return toResponse(vehicle);
     }
 

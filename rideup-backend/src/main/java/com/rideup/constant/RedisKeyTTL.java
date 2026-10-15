@@ -8,5 +8,7 @@ public final class RedisKeyTTL {
 
     public static final Duration REFRESH_TOKEN_TTL = Duration.ofDays(30);
 
+    public static final Duration STRIPE_EVENT_TTL  = Duration.ofDays(7);
+
     private RedisKeyTTL() {}
 }

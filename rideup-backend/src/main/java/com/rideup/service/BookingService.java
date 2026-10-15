@@ -53,6 +53,7 @@ public class BookingService {
     final WardRepository wardRepository;
     final PaymentRepository paymentRepository;
     final PaymentService paymentService;
+    final RealtimeService realtimeService;
 
     /** Booking PENDING_PAYMENT quá expiresAt sẽ bị scheduler huỷ. */
     @Value("${app.booking.pending-expiration-minutes:15}")
@@ -69,7 +70,8 @@ public class BookingService {
                           DriverProfileRepository driverProfileRepository,
                           WardRepository wardRepository,
                           PaymentRepository paymentRepository,
-                          PaymentService paymentService) {
+                          PaymentService paymentService,
+                          RealtimeService realtimeService) {
         this.bookingRepository = bookingRepository;
         this.tripRepository = tripRepository;
         this.tripService = tripService;
@@ -78,6 +80,7 @@ public class BookingService {
         this.wardRepository = wardRepository;
         this.paymentRepository = paymentRepository;
         this.paymentService = paymentService;
+        this.realtimeService = realtimeService;
     }
 
     /** Số lần retry tối đa khi gặp optimistic lock conflict. */
@@ -257,6 +260,7 @@ public class BookingService {
 
         booking.setStatus(BookingStatus.CONFIRMED);
         booking = bookingRepository.save(booking);
+        realtimeService.bookingChanged(booking);
         log.info("Driver {} confirmed booking {}", driverUserId, bookingId);
         return toResponse(booking);
     }
@@ -281,6 +285,7 @@ public class BookingService {
         booking.setCancelledAt(LocalDateTime.now());
         booking.setCancelReason("Tài xế từ chối: " + reason);
         booking = bookingRepository.save(booking);
+        realtimeService.bookingChanged(booking);
 
         // Huỷ Stripe hold nếu customer đã trả → tiền tự động refund về customer
         paymentService.cancelPayment(bookingId);
@@ -300,16 +305,24 @@ public class BookingService {
             throw AppException.forbidden("Bạn không có quyền huỷ booking này");
         }
         BookingStatus prevBookingStatus = booking.getStatus();
-        if (prevBookingStatus == BookingStatus.COMPLETED
-            || prevBookingStatus == BookingStatus.CANCELLED_BY_USER
-            || prevBookingStatus == BookingStatus.CANCELLED_BY_DRIVER) {
+        boolean cancellable = prevBookingStatus == BookingStatus.PENDING_PAYMENT
+            || prevBookingStatus == BookingStatus.WAITING_DRIVER_APPROVAL
+            || prevBookingStatus == BookingStatus.CONFIRMED;
+        if (!cancellable) {
             throw AppException.badRequest("Booking không thể huỷ");
+        }
+        // Đã duyệt mà chuyến đã chạy thì không được huỷ (tránh đi xe rồi huỷ để lấy lại tiền)
+        TripStatus tripStatus = booking.getTrip().getStatus();
+        if (prevBookingStatus == BookingStatus.CONFIRMED
+            && (tripStatus == TripStatus.STARTED || tripStatus == TripStatus.COMPLETED)) {
+            throw AppException.badRequest("Chuyến đã khởi hành, không thể huỷ booking");
         }
 
         booking.setStatus(BookingStatus.CANCELLED_BY_USER);
         booking.setCancelledAt(LocalDateTime.now());
         booking.setCancelReason(reason);
         booking = bookingRepository.save(booking);
+        realtimeService.bookingChanged(booking);
 
         // Huỷ Stripe hold nếu đang giữ tiền (release tiền về customer)
         paymentService.cancelPayment(bookingId);
@@ -353,6 +366,7 @@ public class BookingService {
         paymentRepository.save(payment);
         booking.setPaymentStatus(PaymentStatus.PAID);
         bookingRepository.save(booking);
+        realtimeService.bookingChanged(booking);
 
         log.info("Driver {} confirmed cash payment for booking {}", driverUserId, bookingId);
         return toResponse(booking);
@@ -421,6 +435,7 @@ public class BookingService {
             booking.setCancelledAt(LocalDateTime.now());
             booking.setCancelReason("Hết hạn thanh toán");
             bookingRepository.save(booking);
+            realtimeService.bookingChanged(booking);
             log.info("Booking {} EXPIRED", bookingId);
         } catch (org.springframework.dao.DataIntegrityViolationException ex) {
             // Đã có 1 booking EXPIRED khác cho cùng (customer, trip) từ lần chạy
@@ -459,6 +474,7 @@ public class BookingService {
             booking.setCancelledAt(LocalDateTime.now());
             booking.setCancelReason("Tài xế không duyệt trong " + waitingApprovalHours + "h");
             bookingRepository.save(booking);
+            realtimeService.bookingChanged(booking);
             log.info("Booking {} EXPIRED (was WAITING_DRIVER_APPROVAL, prev={})",
                 bookingId, prevStatus);
         } catch (org.springframework.dao.DataIntegrityViolationException ex) {
@@ -485,6 +501,7 @@ public class BookingService {
         }
         booking.setStatus(BookingStatus.WAITING_DRIVER_APPROVAL);
         bookingRepository.save(booking);
+        realtimeService.bookingChanged(booking);
         log.info("Booking {} → WAITING_DRIVER_APPROVAL (payment authorized)", bookingId);
     }
 
@@ -521,6 +538,7 @@ public class BookingService {
             .status(b.getStatus())
             .paymentId(payment != null ? payment.getId() : null)
             .paymentStatus(b.getPaymentStatus())
+            .paymentMethod(payment != null ? payment.getMethod() : null)
             .paymentUrl(payment != null ? payment.getPaymentUrl() : null)
             .seatCount(b.getSeatCount())
             .pricePerSeat(b.getPricePerSeat())
@@ -542,6 +560,25 @@ public class BookingService {
             .cancelReason(b.getCancelReason())
             .createdAt(b.getCreatedAt())
             .updatedAt(b.getUpdatedAt())
+            .tripDeparture(trip.getDepartureTime())
+            .tripStatus(trip.getStatus())
+            .tripStartProvince(trip.getStartProvince() != null ? trip.getStartProvince().getName() : null)
+            .tripEndProvince(trip.getEndProvince() != null ? trip.getEndProvince().getName() : null)
+            .pickupWardName(pickupWard != null ? pickupWard.getName() : null)
+            .dropoffWardName(dropoffWard != null ? dropoffWard.getName() : null)
+            .driverName(trip.getDriver() != null ? trip.getDriver().getFullName() : null)
+            .driverPhone(b.getStatus() == BookingStatus.CONFIRMED && trip.getDriver() != null
+                ? trip.getDriver().getPhone() : null)
+            .tripPlate(trip.getVehicle() != null ? trip.getVehicle().getPlateNumber() : null)
+            .tripVehicle(vehicleLabel(trip))
             .build();
+    }
+
+    private String vehicleLabel(Trip trip) {
+        if (trip.getVehicle() == null) return null;
+        String brand = trip.getVehicle().getVehicleBrand() == null ? "" : trip.getVehicle().getVehicleBrand();
+        String model = trip.getVehicle().getVehicleModel() == null ? "" : trip.getVehicle().getVehicleModel();
+        String label = (brand + " " + model).trim();
+        return label.isEmpty() ? null : label;
     }
 }

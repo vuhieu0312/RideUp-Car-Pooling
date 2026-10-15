@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, FlatList, RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { FlatList, RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -13,6 +13,8 @@ import IconText from '../components/IconText';
 import BookingMap from '../components/BookingMap';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Text } from '../components/Typography';
+import { useDialog } from '../components/AppDialog';
+import { useRealtimeRefresh } from '../realtime/useRealtime';
 
 const STATUS_META = {
   PENDING_PAYMENT: { icon: 'credit-card-outline', label: 'Chờ thanh toán', bg: colors.pendingBg, fg: '#92400e' },
@@ -34,7 +36,8 @@ const FILTERS = [
 ];
 
 export default function BookingsScreen({ navigation, route }) {
-  // Mở từ chuyến đang chạy: chỉ hiện khách đã duyệt (người đi chuyến đó)
+  const dialog = useDialog();
+  // Mở từ một chuyến: chỉ hiện khách của chuyến đó (đang chờ duyệt hoặc đã duyệt)
   const tripId = route?.params?.tripId || null;
   const insets = useSafeAreaInsets();
   const [bookings, setBookings] = useState([]);
@@ -58,8 +61,18 @@ export default function BookingsScreen({ navigation, route }) {
   useEffect(() => { load(); }, []);
   useFocusEffect(useCallback(() => { load(); }, []));
 
+  // Có khách đặt / thanh toán / huỷ → tự tải lại
+  useRealtimeRefresh(load, ['BOOKING_UPDATED']);
+
+  // Thông báo tự tắt sau 3 giây
+  useEffect(() => {
+    if (!actionMsg) return undefined;
+    const timer = setTimeout(() => setActionMsg(''), 3000);
+    return () => clearTimeout(timer);
+  }, [actionMsg]);
+
   const visible = bookings.filter((b) => {
-    if (tripId) return b.tripId === tripId && b.status === 'CONFIRMED';
+    if (tripId) return b.tripId === tripId && ['WAITING_DRIVER_APPROVAL', 'CONFIRMED'].includes(b.status);
     if (filter === 'PENDING') return b.status === 'WAITING_DRIVER_APPROVAL';
     if (filter === 'CONFIRMED') return b.status === 'CONFIRMED';
     if (filter === 'COMPLETED') return b.status === 'COMPLETED';
@@ -85,29 +98,31 @@ export default function BookingsScreen({ navigation, route }) {
     }
   }
 
-  function doReject(b) {
+  async function doReject(b) {
     const refundNote = b.paymentMethod === 'STRIPE'
-      ? '\n\nKhách hàng sẽ được hoàn tiền 100% nếu đã thanh toán (qua Stripe).'
+      ? '\n\nKhách sẽ được hoàn lại tiền nếu đã thanh toán.'
       : '';
-    Alert.prompt?.(
-      'Từ chối booking',
-      `Lý do từ chối booking ${b.bookingCode}?${refundNote}`,
-      async (reason) => {
-        try {
-          await rejectBooking(b.id, reason || 'Tài xế từ chối');
-          setActionMsg(
-            b.paymentMethod === 'STRIPE' && b.paymentStatus === 'HOLDING'
-              ? 'Đã từ chối. Tiền sẽ được hoàn về cho khách.'
-              : 'Đã từ chối booking'
-          );
-          load();
-        } catch (e) {
-          setActionMsg(`${e.response?.data?.message || 'Lỗi'}`);
-        }
-      },
-      'plain-text',
-      'Tài xế không nhận'
-    ) || Alert.alert('Từ chối', 'Chức năng nhập lý do chưa khả dụng trên web. Vui lòng dùng điện thoại.');
+    const reason = await dialog.prompt({
+      title: 'Từ chối booking',
+      message: `Lý do từ chối booking ${b.bookingCode}?${refundNote}`,
+      defaultValue: 'Tài xế không nhận',
+      confirmText: 'Từ chối',
+      cancelText: 'Không',
+      danger: true,
+    });
+    if (reason === null) return;
+
+    try {
+      await rejectBooking(b.id, reason || 'Tài xế từ chối');
+      setActionMsg(
+        b.paymentMethod === 'STRIPE' && b.paymentStatus === 'HOLDING'
+          ? 'Đã từ chối. Tiền sẽ được hoàn về cho khách.'
+          : 'Đã từ chối booking'
+      );
+      load();
+    } catch (e) {
+      setActionMsg(`${e.response?.data?.message || 'Lỗi'}`);
+    }
   }
 
   async function doConfirmCash(b) {
@@ -130,7 +145,7 @@ export default function BookingsScreen({ navigation, route }) {
         )}
         <View style={{ flex: 1 }}>
           <Text style={styles.kicker}>RIDEUP</Text>
-          <Text style={styles.title}>{tripId ? 'Khách đi chuyến này' : 'Booking của tôi'}</Text>
+          <Text style={styles.title}>{tripId ? 'Booking của chuyến này' : 'Booking của tôi'}</Text>
         </View>
         <TouchableOpacity onPress={() => { setRefreshing(true); load(); }} style={styles.refreshBtn}>
           <MaterialCommunityIcons name="refresh" size={18} color={colors.primaryAccent} />
@@ -163,7 +178,7 @@ export default function BookingsScreen({ navigation, route }) {
         ListEmptyComponent={
           !loading ? (
             <View style={styles.emptyBox}>
-              <Text style={styles.muted}>{tripId ? 'Chuyến này chưa có khách nào được duyệt.' : 'Không có booking nào trong nhóm này.'}</Text>
+              <Text style={styles.muted}>{tripId ? 'Chuyến này chưa có khách đặt.' : 'Không có booking nào trong nhóm này.'}</Text>
             </View>
           ) : <Text style={styles.muted}>Đang tải...</Text>
         }

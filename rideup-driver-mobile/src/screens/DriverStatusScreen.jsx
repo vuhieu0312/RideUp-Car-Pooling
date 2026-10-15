@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { DeviceEventEmitter, ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getDriverProfile, getDriverStatus } from '../api/api';
 import IconText from '../components/IconText';
 import { Text } from '../components/Typography';
+import { useRealtimeRefresh } from '../realtime/useRealtime';
 
 export default function DriverStatusScreen() {
   const insets = useSafeAreaInsets();
@@ -12,32 +13,35 @@ export default function DriverStatusScreen() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let cancelled = false;
-    async function check() {
-      try {
-        const s = await getDriverStatus();
-        if (cancelled) return;
-        setStatus(s);
-        if (s.status === 'APPROVED') {
-          DeviceEventEmitter.emit('rideup-driver-approved');
-          return;
-        }
-        if (s.status !== 'APPROVED') {
-          const p = await getDriverProfile();
-          if (!cancelled) setProfile(p);
-        }
-      } catch (e) {
-        // ignore
-      } finally {
-        if (!cancelled) setLoading(false);
+  const aliveRef = useRef(true);
+
+  const check = useCallback(async () => {
+    try {
+      const s = await getDriverStatus();
+      if (!aliveRef.current) return;
+      setStatus(s);
+      if (s.status === 'APPROVED') {
+        // AppNavigator lắng nghe sự kiện này để chuyển sang màn hình chính
+        DeviceEventEmitter.emit('rideup-driver-approved');
+        return;
       }
+      const p = await getDriverProfile();
+      if (aliveRef.current) setProfile(p);
+    } catch (e) {
+      // ignore
+    } finally {
+      if (aliveRef.current) setLoading(false);
     }
-    check();
-    // Poll mỗi 10 giây — khi APPROVED, AppNavigator sẽ tự chuyển sang Home stack
-    const interval = setInterval(check, 10000);
-    return () => { cancelled = true; clearInterval(interval); };
   }, []);
+
+  useEffect(() => {
+    aliveRef.current = true;
+    check();
+    return () => { aliveRef.current = false; };
+  }, [check]);
+
+  // Admin duyệt / từ chối hồ sơ hoặc xe → server đẩy về ngay (mất kết nối thì tự hỏi lại mỗi 30 giây)
+  useRealtimeRefresh(check, ['DRIVER_PROFILE_UPDATED', 'VEHICLE_UPDATED']);
 
   if (loading) {
     return (
@@ -51,7 +55,7 @@ export default function DriverStatusScreen() {
 
       {status?.status === 'PENDING' && (
         <View style={[styles.alert, { backgroundColor: '#fef3c7' }]}>
-          <IconText name="clock-outline" size={18} color="#92400e">Hồ sơ của bạn đang được admin xét duyệt. Trang này sẽ tự động cập nhật mỗi 10 giây.</IconText>
+          <IconText name="clock-outline" size={18} color="#92400e">Hồ sơ của bạn đang được admin xét duyệt. Trang này sẽ tự động cập nhật khi có kết quả.</IconText>
         </View>
       )}
 

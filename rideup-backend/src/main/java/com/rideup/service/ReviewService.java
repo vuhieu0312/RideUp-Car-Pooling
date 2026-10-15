@@ -74,18 +74,15 @@ public class ReviewService {
             .rating(req.getRating())
             .comment(req.getComment())
             .build();
-        review = reviewRepository.save(review);
+        review = reviewRepository.saveAndFlush(review);
 
         // Cập nhật driver rating: newAvg = (oldAvg * count + newRating) / (count + 1)
-        BigDecimal currentAvg = profile.getDriverRating();
-        long count = profile.getTotalDriverRides();
-        BigDecimal newAvg = currentAvg
-            .multiply(BigDecimal.valueOf(count))
-            .add(BigDecimal.valueOf(req.getRating()))
-            .divide(BigDecimal.valueOf(count + 1), 2, RoundingMode.HALF_UP);
+        // Điểm trung bình tính lại từ toàn bộ review của tài xế (đã gồm review vừa lưu)
+        Double avg = reviewRepository.avgRatingByDriverId(driver.getId());
+        BigDecimal newAvg = BigDecimal.valueOf(avg == null ? req.getRating() : avg)
+            .setScale(2, RoundingMode.HALF_UP);
 
         profile.setDriverRating(newAvg);
-        //profile.setTotalDriverRides(count + 1);
         driverProfileRepository.save(profile);
 
         log.info("Review created id={} trip={} driver={} rating={} newAvg={}",

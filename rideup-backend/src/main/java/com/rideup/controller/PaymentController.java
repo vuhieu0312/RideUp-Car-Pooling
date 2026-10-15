@@ -30,9 +30,9 @@ public class PaymentController {
     PaymentService paymentService;
 
     @GetMapping("/booking/{bookingId}")
-    public ApiResponse<Payment> getPaymentByBookingId(@PathVariable String bookingId) {
+    public ApiResponse<Payment> getPaymentByBookingId(@PathVariable String bookingId, Authentication auth) {
         return ApiResponse.success("Payment retrieved successfully",
-            paymentService.getPaymentByBookingId(bookingId));
+            paymentService.getPaymentByBookingId(bookingId, currentUserId(auth)));
     }
 
     /** Tạo Stripe PaymentIntent cho booking hiện có — mobile gọi khi user bấm "Thanh toán ngay". */
@@ -63,21 +63,23 @@ public class PaymentController {
     @PostMapping("/{id}/authorize")
     public ApiResponse<Payment> authorizePayment(
             @PathVariable("id") String paymentId,
-            @RequestBody(required = false) Map<String, String> request) {
+            @RequestBody(required = false) Map<String, String> request,
+            Authentication auth) {
         String transactionId = request == null ? "" : request.getOrDefault("transactionId", "");
         return ApiResponse.success("Payment authorized successfully",
-            paymentService.authorizePayment(paymentId, transactionId));
+            paymentService.authorizePayment(paymentId, transactionId, currentUserId(auth)));
     }
 
     @PostMapping("/{id}/failed")
     public ApiResponse<Payment> markPaymentFailed(
             @PathVariable("id") String paymentId,
-            @RequestBody(required = false) Map<String, String> request) {
+            @RequestBody(required = false) Map<String, String> request,
+            Authentication auth) {
         String reason = (request == null || request.get("reason") == null)
             ? "Payment failed"
             : request.get("reason");
         return ApiResponse.success("Payment marked as failed",
-            paymentService.markPaymentFailed(paymentId, reason));
+            paymentService.markPaymentFailed(paymentId, reason, currentUserId(auth)));
     }
 
     /** Driver gọi để tạo PaymentIntent cho việc trả nợ hoa hồng platform. */

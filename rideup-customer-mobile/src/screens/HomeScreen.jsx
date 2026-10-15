@@ -1,15 +1,20 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Image, ImageBackground, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useFocusEffect } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Avatar, Card, IconButton } from 'react-native-paper';
 import { useAuth } from '../auth/AuthContext';
-import { listProvinces, listWards, searchTrips } from '../api/api';
+import { listMyBookings, listProvinces, listWards, searchTrips } from '../api/api';
 import { colors, FONT, HERO_IMAGE, shadow } from '../theme';
 import Picker from '../components/Picker';
 import DateField, { todayIso, tomorrowIso } from '../components/DateField';
 import { Text } from '../components/Typography';
 import Logo from '../components/Logo';
+import { useRealtimeRefresh } from '../realtime/useRealtime';
+
+// Booking đã đặt nhưng chưa đi và chưa huỷ
+const UPCOMING_STATUSES = ['PENDING_PAYMENT', 'WAITING_DRIVER_APPROVAL', 'CONFIRMED'];
 
 
 export default function HomeScreen({ navigation }) {
@@ -28,9 +33,26 @@ export default function HomeScreen({ navigation }) {
   const [searching, setSearching] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(null); // 'from' | 'pickup' | 'to' | 'dropoff'
 
+  const [upcomingCount, setUpcomingCount] = useState(0);
+  const [completedCount, setCompletedCount] = useState(0);
+
   useEffect(() => {
     listProvinces().then(setProvinces).catch(() => {});
   }, []);
+
+  // Đếm booking của khách cho 2 ô thống kê
+  const loadStats = useCallback(() => {
+    listMyBookings()
+      .then((list) => {
+        const all = list || [];
+        setUpcomingCount(all.filter((b) => UPCOMING_STATUSES.includes(b.status)).length);
+        setCompletedCount(all.filter((b) => b.status === 'COMPLETED').length);
+      })
+      .catch(() => {});
+  }, []);
+
+  useFocusEffect(loadStats);
+  useRealtimeRefresh(loadStats, ['BOOKING_UPDATED']);
 
   useEffect(() => {
     setPickupWardId('');
@@ -108,8 +130,8 @@ export default function HomeScreen({ navigation }) {
 
         {/* Stats */}
         <View style={styles.statsRow}>
-          <Stat icon="car-outline" value="0" label="Chuyến đang mở" />
-          <Stat icon="clipboard-text-outline" value="0" label="Lượt đã đi" />
+          <Stat icon="car-outline" value={String(upcomingCount)} label="Chuyến đã đặt" />
+          <Stat icon="clipboard-text-outline" value={String(completedCount)} label="Lượt đã đi" />
           <Stat icon="star-outline" value="5.0" label="Đánh giá" accent />
         </View>
 

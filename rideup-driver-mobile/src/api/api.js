@@ -89,6 +89,9 @@ api.interceptors.response.use(
   }
 );
 
+/** URL WebSocket cho realtime: http(s)://host/api → ws(s)://host/api/ws */
+export const getWsUrl = () => `${baseURL.replace(/^http/, 'ws')}/ws`;
+
 export default api;
 
 // ===== Auth =====

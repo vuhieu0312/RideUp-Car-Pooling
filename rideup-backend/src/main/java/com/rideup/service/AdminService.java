@@ -24,6 +24,8 @@ import java.util.List;
 public class AdminService {
 
     DriverProfileRepository driverProfileRepository;
+    MailService mailService;
+    RealtimeService realtimeService;
 
     @Transactional(readOnly = true)
     public List<DriverResponse> listDrivers(DriverStatus status) {
@@ -51,6 +53,9 @@ public class AdminService {
 
         log.info("Admin {} approved driverProfile={} userId={}",
             adminUserId, profile.getId(), profile.getUser().getId());
+        User u = profile.getUser();
+        mailService.sendDriverApproved(u.getEmail(), u.getFullName());
+        realtimeService.driverProfileChanged(profile);
         return toResponse(profile);
     }
 
@@ -72,6 +77,9 @@ public class AdminService {
 
         log.info("Admin {} rejected driverProfile={} userId={} reason='{}'",
             adminUserId, profile.getId(), profile.getUser().getId(), reason);
+        User u = profile.getUser();
+        mailService.sendDriverRejected(u.getEmail(), u.getFullName(), reason);
+        realtimeService.driverProfileChanged(profile);
         return toResponse(profile);
     }
 

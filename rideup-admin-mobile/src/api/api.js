@@ -32,6 +32,12 @@ function resolveBaseUrl() {
 
 const baseURL = resolveBaseUrl();
 
+/** Ghép đường dẫn ảnh (/uploads/...) với địa chỉ server (đã gồm /api). */
+export const fileUrl = (path) => {
+  if (!path) return '';
+  return /^https?:/.test(path) ? path : `${baseURL}${path}`;
+};
+
 const api = axios.create({ baseURL, timeout: 30000 });
 
 api.interceptors.request.use(async (config) => {

@@ -17,6 +17,7 @@ import com.rideup.enums.TripStatus;
 import com.rideup.exception.AppException;
 import com.rideup.exception.ErrorCode;
 import com.rideup.repository.BookingRepository;
+import com.rideup.repository.DriverProfileRepository;
 import com.rideup.repository.ProvinceRepository;
 import com.rideup.repository.TripRepository;
 import com.rideup.repository.WardRepository;
@@ -51,6 +52,8 @@ public class TripService {
     LocationService locationService;
     BookingRepository bookingRepository;
     PaymentService paymentService;
+    DriverProfileRepository driverProfileRepository;
+    RealtimeService realtimeService;
 
     @Transactional
     public TripResponse createTrip(String userId, CreateTripRequest req) {
@@ -234,6 +237,7 @@ public class TripService {
             trip.setStatus(TripStatus.OPEN);
         }
         tripRepository.save(trip);
+        realtimeService.tripChanged(trip);
     }
 
     @Transactional
@@ -287,6 +291,7 @@ public class TripService {
             b.setCancelledAt(LocalDateTime.now(VN_ZONE));
             b.setCancelReason("Chuyến đã khởi hành, tài xế chưa duyệt booking");
             bookingRepository.save(b);
+            realtimeService.bookingChanged(b);
             try {
                 paymentService.cancelPayment(b.getId());
             } catch (Exception ex) {
@@ -312,6 +317,13 @@ public class TripService {
         trip.setStatus(TripStatus.COMPLETED);
         trip = tripRepository.save(trip);
 
+        // Cộng 1 vào số chuyến đã chạy của tài xế
+        driverProfileRepository.findByUserId(driverUserId).ifPresent(p -> {
+            int rides = p.getTotalDriverRides() == null ? 0 : p.getTotalDriverRides();
+            p.setTotalDriverRides(rides + 1);
+            driverProfileRepository.save(p);
+        });
+
         // Auto-capture Stripe payments của booking STRIPE đang giữ
         try {
             java.util.List<Booking> bookings = bookingRepository.findByTripIdAndStatusIn(tripId,
@@ -325,6 +337,7 @@ public class TripService {
                 // Flip booking → COMPLETED
                 b.setStatus(BookingStatus.COMPLETED);
                 bookingRepository.save(b);
+                realtimeService.bookingChanged(b);
             }
         } catch (Exception ex) {
             log.warn("Failed to auto-capture payments for trip {}: {}", tripId, ex.getMessage());
@@ -369,6 +382,7 @@ public class TripService {
             b.setCancelledAt(LocalDateTime.now(VN_ZONE));
             b.setCancelReason(cancelReason);
             bookingRepository.save(b);
+            realtimeService.bookingChanged(b);
 
             // Cancel payment (HOLDING → PI.cancel() → tiền release về customer;
             // PENDING → set VOIDED local; CASH → set VOIDED local)

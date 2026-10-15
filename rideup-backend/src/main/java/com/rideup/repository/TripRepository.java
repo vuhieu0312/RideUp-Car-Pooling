@@ -3,6 +3,7 @@ package com.rideup.repository;
 import com.rideup.entity.Trip;
 import com.rideup.enums.TripStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -15,12 +16,15 @@ import java.util.List;
 @Repository
 public interface TripRepository extends JpaRepository<Trip, String> {
 
+    @EntityGraph(attributePaths = {"driver"})
     List<Trip> findByDriverIdOrderByDepartureTimeDesc(String driverId);
 
+    @EntityGraph(attributePaths = {"driver"})
     List<Trip> findByDriverIdAndStatusIn(String driverId, List<TripStatus> statuses);
 
     List<Trip> findByStatusAndDepartureTimeBetween(TripStatus status, LocalDateTime from, LocalDateTime to);
 
+    @EntityGraph(attributePaths = {"driver"})
     @Query("""
                 SELECT t FROM Trip t
                 WHERE t.status = :status
@@ -38,6 +42,7 @@ public interface TripRepository extends JpaRepository<Trip, String> {
             @Param("to") LocalDateTime to,
             @Param("seatRequired") Integer seatRequired);
 
+    @EntityGraph(attributePaths = {"driver"})
     @Query("""
                 SELECT DISTINCT t FROM Trip t
                 JOIN t.stops pickupStop

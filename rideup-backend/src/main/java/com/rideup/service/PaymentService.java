@@ -1,5 +1,7 @@
 package com.rideup.service;
 
+import com.rideup.constant.RedisKey;
+import com.rideup.constant.RedisKeyTTL;
 import com.rideup.entity.Booking;
 import com.rideup.entity.Payment;
 import com.rideup.entity.User;
@@ -25,13 +27,15 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.util.concurrent.CompletableFuture;
 import java.time.LocalDateTime;
 import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 /** Nghiệp vụ thanh toán Stripe cho booking fare (Phase A). */
 @Service
@@ -42,22 +46,15 @@ public class PaymentService {
 
     final PaymentRepository paymentRepository;
     final BookingRepository bookingRepository;
+    final RedisTemplate<String, Object> redisTemplate;
+    final RealtimeService realtimeService;
 
     @Value("${stripe.currency-code:vnd}")
     String currencyCode;
 
-    @Value("${stripe.success-url:rideupcustomer://payment-success}")
-    String successUrl;
-
-    @Value("${stripe.cancel-url:rideupcustomer://payment-cancel}")
-    String cancelUrl;
-
     /** Webhook signing secret — set qua env STRIPE_WEBHOOK_SECRET (whsec_...). */
     @Value("${stripe.webhook-secret:}")
     String webhookSecret;
-
-    /** Idempotency cache cho webhook events — tránh xử lý trùng khi Stripe retry. */
-    private final Set<String> processedWebhookEvents = ConcurrentHashMap.newKeySet();
 
     public boolean isStripeConfigured() {
         return Stripe.apiKey != null && !Stripe.apiKey.isBlank();
@@ -104,6 +101,32 @@ public class PaymentService {
         }
     }
 
+    /** Payment phải thuộc booking của chính user này, nếu không trả 404 để không lộ thông tin. */
+    private Payment requireOwnPayment(String paymentId, String userId) {
+        Payment payment = paymentRepository.findById(paymentId)
+            .orElseThrow(() -> new AppException(ErrorCode.PAYMENT_NOT_FOUND));
+        Booking booking = payment.getBooking();
+        if (booking == null || booking.getCustomer() == null
+            || !booking.getCustomer().getId().equals(userId)) {
+            throw new AppException(ErrorCode.PAYMENT_NOT_FOUND);
+        }
+        return payment;
+    }
+
+    /** Authorize có kiểm tra quyền sở hữu — dùng cho API mobile gọi. */
+    @Transactional
+    public Payment authorizePayment(String paymentId, String transactionId, String userId) {
+        requireOwnPayment(paymentId, userId);
+        return authorizePayment(paymentId, transactionId);
+    }
+
+    /** Đánh dấu thất bại có kiểm tra quyền sở hữu — dùng cho API mobile gọi. */
+    @Transactional
+    public Payment markPaymentFailed(String paymentId, String reason, String userId) {
+        requireOwnPayment(paymentId, userId);
+        return markPaymentFailed(paymentId, reason);
+    }
+
     /** Mobile-driven authorize — mobile gọi SAU khi presentPaymentSheet() trả paymentIntent success. */
     @Transactional
     public Payment authorizePayment(String paymentId, String transactionId) {
@@ -135,6 +158,17 @@ public class PaymentService {
                     paymentId, transactionId, intent.getStatus());
                 throw new AppException(ErrorCode.PAYMENT_STATUS_INVALID);
             }
+            // PaymentIntent phải đúng là cái đã tạo cho payment này và đủ số tiền
+            boolean sameIntent = payment.getTransactionId() == null
+                || payment.getTransactionId().equals(transactionId);
+            boolean samePayment = paymentId.equals(intent.getMetadata().get("paymentId"));
+            boolean sameAmount = payment.getAmount() != null
+                && intent.getAmount() != null
+                && intent.getAmount().longValue() == payment.getAmount().longValue();
+            if (!sameIntent || !samePayment || !sameAmount) {
+                log.warn("Từ chối authorize: PI={} không khớp payment={}", transactionId, paymentId);
+                throw new AppException(ErrorCode.STRIPE_PAYMENT_FAILED);
+            }
         } catch (StripeException e) {
             log.error("Error retrieving Stripe PaymentIntent {}: {}", transactionId, e.getMessage());
             throw new AppException(ErrorCode.STRIPE_PAYMENT_FAILED);
@@ -151,6 +185,7 @@ public class PaymentService {
             booking.setStatus(BookingStatus.WAITING_DRIVER_APPROVAL);
             booking.setPaymentStatus(PaymentStatus.HOLDING);
             bookingRepository.save(booking);
+            realtimeService.bookingChanged(booking);
         }
 
         log.info("Payment {} authorized → HOLDING (PI={}); booking {} → WAITING_DRIVER_APPROVAL",
@@ -224,33 +259,62 @@ public class PaymentService {
             return;
         }
 
+        // Gọi Stripe mất vài giây nên làm SAU khi commit và ở luồng riêng,
+        // để API huỷ trả về nhanh và các sự kiện realtime không bị chậm theo.
         String tid = payment.getTransactionId();
         if (tid != null && !tid.isBlank()) {
-            try {
-                if (tid.startsWith("cs_")) {
-                    Session session = Session.retrieve(tid);
-                    if ("open".equals(session.getStatus()) || "complete".equals(session.getStatus())) {
-                        session.expire();
-                    }
-                } else if (tid.startsWith("pi_")) {
-                    PaymentIntent intent = PaymentIntent.retrieve(tid);
-                    intent.cancel();
-                }
-            } catch (StripeException e) {
-                log.warn("Stripe cancel failed for booking {} (will still mark local VOIDED): {}",
-                    bookingId, e.getMessage());
-            }
+            cancelStripeAfterCommit(tid, bookingId);
         }
         payment.setStatus(PaymentStatus.VOIDED);
         paymentRepository.save(payment);
         log.info("Payment {} VOIDED for booking={}", payment.getId(), bookingId);
     }
 
+    /** Huỷ Stripe hold sau khi transaction commit, chạy ở luồng riêng. Lỗi chỉ ghi log (bản ghi local vẫn là VOIDED). */
+    private void cancelStripeAfterCommit(String tid, String bookingId) {
+        Runnable job = () -> CompletableFuture.runAsync(() -> cancelStripe(tid, bookingId));
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    job.run();
+                }
+            });
+        } else {
+            job.run();
+        }
+    }
+
+    private void cancelStripe(String tid, String bookingId) {
+        try {
+            if (tid.startsWith("cs_")) {
+                Session session = Session.retrieve(tid);
+                if ("open".equals(session.getStatus()) || "complete".equals(session.getStatus())) {
+                    session.expire();
+                }
+            } else if (tid.startsWith("pi_")) {
+                PaymentIntent intent = PaymentIntent.retrieve(tid);
+                intent.cancel();
+            }
+        } catch (StripeException e) {
+            log.warn("Stripe cancel failed for booking {} (local payment already VOIDED): {}",
+                bookingId, e.getMessage());
+        }
+    }
+
     /**
      * Lookup payment theo booking id — dùng cho GET /payments/booking/{bookingId}.
      */
     @Transactional(readOnly = true)
-    public Payment getPaymentByBookingId(String bookingId) {
+    public Payment getPaymentByBookingId(String bookingId, String userId) {
+        Booking booking = bookingRepository.findById(bookingId)
+            .orElseThrow(() -> new AppException(ErrorCode.PAYMENT_NOT_FOUND));
+        boolean isCustomer = booking.getCustomer() != null && booking.getCustomer().getId().equals(userId);
+        boolean isDriver = booking.getTrip() != null && booking.getTrip().getDriver() != null
+            && booking.getTrip().getDriver().getId().equals(userId);
+        if (!isCustomer && !isDriver) {
+            throw new AppException(ErrorCode.PAYMENT_NOT_FOUND);
+        }
         return paymentRepository.findByBookingId(bookingId)
             .orElseThrow(() -> new AppException(ErrorCode.PAYMENT_NOT_FOUND));
     }
@@ -353,16 +417,32 @@ public class PaymentService {
             throw new AppException(ErrorCode.STRIPE_PAYMENT_FAILED);
         }
 
-        // Idempotency check
+        // Idempotency: đánh dấu event đã xử lý trong Redis (SET NX + TTL), chạy được cả khi restart/nhiều instance
         String eventId = event.getId();
-        if (eventId != null && !processedWebhookEvents.add(eventId)) {
-            log.info("Webhook event {} already processed, skip (idempotent)", eventId);
-            return;
+        String eventKey = RedisKey.STRIPE_EVENT + eventId;
+        if (eventId != null) {
+            Boolean first = redisTemplate.opsForValue()
+                .setIfAbsent(eventKey, "1", RedisKeyTTL.STRIPE_EVENT_TTL);
+            if (!Boolean.TRUE.equals(first)) {
+                log.info("Webhook event {} already processed, skip (idempotent)", eventId);
+                return;
+            }
         }
 
-        String type = event.getType();
-        log.info("Webhook received: id={} type={}", eventId, type);
+        log.info("Webhook received: id={} type={}", eventId, event.getType());
+        try {
+            dispatchEvent(event);
+        } catch (RuntimeException e) {
+            // Xử lý lỗi thì bỏ đánh dấu để Stripe gửi lại còn xử lý được
+            if (eventId != null) {
+                redisTemplate.delete(eventKey);
+            }
+            throw e;
+        }
+    }
 
+    private void dispatchEvent(Event event) {
+        String type = event.getType();
         switch (type) {
             case "payment_intent.amount_capturable_updated":
                 handleAmountCapturableUpdated(event);
@@ -402,6 +482,7 @@ public class PaymentService {
             booking.setStatus(BookingStatus.WAITING_DRIVER_APPROVAL);
             booking.setPaymentStatus(PaymentStatus.HOLDING);
             bookingRepository.save(booking);
+            realtimeService.bookingChanged(booking);
         }
         log.info("Webhook: payment {} → {} (booking waits for driver)",
             paymentId, PaymentStatus.HOLDING);
@@ -433,6 +514,7 @@ public class PaymentService {
                 booking.setStatus(BookingStatus.COMPLETED);
             }
             bookingRepository.save(booking);
+            realtimeService.bookingChanged(booking);
         }
         log.info("Webhook: payment {} → PAID (booking {})", paymentId, booking.getId());
     }

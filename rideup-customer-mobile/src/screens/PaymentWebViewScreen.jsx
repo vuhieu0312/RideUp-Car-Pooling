@@ -1,13 +1,14 @@
 // PaymentWebViewScreen.jsx — Thanh toán Stripe qua WebView + Stripe.js (Payment Element).
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { authorizePayment, createPaymentIntent } from '../api/api';
 import { colors } from '../theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Text } from '../components/Typography';
+import { useDialog } from '../components/AppDialog';
 
 const STRIPE_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY;
 
@@ -82,6 +83,7 @@ function buildHtml({ clientSecret, publishableKey, amountLabel }) {
 }
 
 export default function PaymentWebViewScreen({ route, navigation }) {
+  const dialog = useDialog();
   const insets = useSafeAreaInsets();
   const { bookingId, paymentId, bookingCode, totalAmount } = route.params || {};
   const [clientSecret, setClientSecret] = useState('');
@@ -91,7 +93,7 @@ export default function PaymentWebViewScreen({ route, navigation }) {
 
   useEffect(() => {
     if (!bookingId) {
-      setError('Thiếu bookingId');
+      setError('Không tìm thấy booking');
       setLoading(false);
       return;
     }
@@ -100,7 +102,7 @@ export default function PaymentWebViewScreen({ route, navigation }) {
       .then(({ clientSecret: cs }) => {
         if (cancelled) return;
         if (!cs) {
-          setError('Không nhận được client secret từ server');
+          setError('Không khởi tạo được thanh toán');
           return;
         }
         setClientSecret(cs);
@@ -140,14 +142,14 @@ export default function PaymentWebViewScreen({ route, navigation }) {
       } finally {
         setAuthorizing(false);
       }
-      Alert.alert(
+      dialog.alert(
         'Đặt cọc thành công',
-        'Tiền đang được giữ an toàn. Sẽ capture sau khi chuyến hoàn thành.'
+        'Booking của bạn đang chờ tài xế xác nhận.'
       );
       navigation.navigate('MyBookingsTab');
     }
     // type 'error' → lỗi đã hiện ngay trong WebView (error-message), không cần Alert chồng
-  }, [paymentId, navigation]);
+  }, [paymentId, navigation, dialog]);
 
   if (!STRIPE_PUBLISHABLE_KEY) {
     return (

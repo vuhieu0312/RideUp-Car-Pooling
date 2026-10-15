@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useCallback, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Avatar, Button, IconButton, Snackbar } from 'react-native-paper';
@@ -8,6 +9,7 @@ import { useAuth } from '../auth/AuthContext';
 import { getMyProfile, uploadAvatar } from '../api/api';
 import { colors } from '../theme';
 import { Text } from '../components/Typography';
+import { useDialog } from '../components/AppDialog';
 
 const GENDER_LABEL = { MALE: 'Nam', FEMALE: 'Nữ', OTHER: 'Khác' };
 
@@ -15,6 +17,7 @@ const GENDER_LABEL = { MALE: 'Nam', FEMALE: 'Nữ', OTHER: 'Khác' };
  * Trang tài khoản — xem thông tin, đổi avatar, vào màn sửa / đổi mật khẩu, đăng xuất.
  */
 export default function AccountScreen({ navigation }) {
+  const dialog = useDialog();
   const { user, doLogout, updateUser } = useAuth();
   const insets = useSafeAreaInsets();
   const [profile, setProfile] = useState(user);
@@ -22,18 +25,21 @@ export default function AccountScreen({ navigation }) {
   const [uploading, setUploading] = useState(false);
   const [snack, setSnack] = useState('');
 
-  useEffect(() => {
-    // Chỉ set state local — KHÔNG gọi updateUser ở đây vì sẽ trigger re-render toàn bộ AuthProvider → React Navigation reset tab state → giật về Home.
-    getMyProfile()
-      .then((data) => setProfile(data))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
+  // Tải lại mỗi lần màn hình được mở lại (vd. quay về từ màn sửa thông tin) để không hiện dữ liệu cũ.
+  // Chỉ set state local — KHÔNG gọi updateUser ở đây vì sẽ trigger re-render toàn bộ AuthProvider → React Navigation reset tab state → giật về Home.
+  useFocusEffect(
+    useCallback(() => {
+      getMyProfile()
+        .then((data) => setProfile(data))
+        .catch(() => {})
+        .finally(() => setLoading(false));
+    }, [])
+  );
 
   async function pickAndUpload() {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('Cần quyền truy cập', 'Vui lòng cấp quyền truy cập thư viện ảnh trong cài đặt.');
+      dialog.alert('Cần quyền truy cập', 'Vui lòng cấp quyền truy cập thư viện ảnh trong cài đặt.');
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({

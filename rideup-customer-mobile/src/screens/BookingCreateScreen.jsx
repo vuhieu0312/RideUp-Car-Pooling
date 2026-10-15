@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createBooking, listProvinces, listWards } from '../api/api';
@@ -8,14 +8,16 @@ import LocationMapPicker from '../components/LocationMapPicker';
 import { colors, FONT, shadow } from '../theme';
 import IconText from '../components/IconText';
 import { Text, TextInput } from '../components/Typography';
+import { useDialog } from '../components/AppDialog';
 
 const EMPTY_LOC = { lat: NaN, lng: NaN, addressText: '' };
 const PAYMENT_METHODS = [
   { value: 'CASH', label: 'Tiền mặt', icon: 'cash', desc: 'Trả tài xế khi lên xe' },
-  { value: 'STRIPE', label: 'Stripe', icon: 'credit-card-outline', desc: 'Thanh toán online qua Stripe' },
+  { value: 'STRIPE', label: 'Stripe', icon: 'credit-card-outline', desc: 'Thanh toán online bằng thẻ' },
 ];
 
 export default function BookingCreateScreen({ route, navigation }) {
+  const dialog = useDialog();
   const insets = useSafeAreaInsets();
   const { pay: payWithStripe, loading: stripeLoading } = usePayment();
   const { trip, seats: defaultSeats, pickupWardId: initPickupWardId, dropoffWardId: initDropoffWardId } = route.params || {};
@@ -58,7 +60,7 @@ export default function BookingCreateScreen({ route, navigation }) {
         setPickupWards(pWards || []);
         setDropoffWards(dWards || []);
         if (!provs || provs.length === 0) {
-          setError('Không tải được danh sách tỉnh/thành. Kiểm tra backend đang chạy.');
+          setError('Không tải được danh sách tỉnh/thành. Vui lòng thử lại sau.');
         }
       })
       .catch((e) => {
@@ -133,9 +135,9 @@ export default function BookingCreateScreen({ route, navigation }) {
       if (paymentMethod === 'STRIPE' && booking?.paymentId) {
         const result = await payWithStripe({ bookingId: booking.id, paymentId: booking.paymentId });
         if (result.success) {
-          Alert.alert(
+          dialog.alert(
             'Đặt cọc thành công',
-            'Tiền đang được giữ an toàn. Sẽ capture sau khi chuyến hoàn thành.'
+            'Booking của bạn đang chờ tài xế xác nhận.'
           );
         }
         // Booking đã tạo xong dù thanh toán thành công, lỗi, hay bị huỷ — luôn chuyển sang "Chuyến xe của tôi" để xem trạng thái / trả lại tiền nếu cần (nút...
