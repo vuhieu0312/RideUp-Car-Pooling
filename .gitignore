@@ -11,6 +11,12 @@
 # ============================================
 .claude/
 .kilo/
+Claude outputs/
+
+# ============================================
+# Tài liệu tham khảo cá nhân (KHÔNG push)
+# ============================================
+thuat-toan-ranking-tim-chuyen*.md
 
 # ============================================
 # Backend (Java / Maven / Spring Boot)
