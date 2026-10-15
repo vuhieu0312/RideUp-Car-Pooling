@@ -60,3 +60,4 @@ application-local.yml
 *.swp
 *.bak
 Thumbs.db
+CLAUDE.md
