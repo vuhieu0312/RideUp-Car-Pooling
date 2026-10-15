@@ -1,7 +1,6 @@
 package com.rideup.entity;
 
 import com.rideup.enums.BookingStatus;
-import com.rideup.enums.PaymentStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -48,16 +47,12 @@ public class Booking {
     @OneToOne(mappedBy = "booking", fetch = FetchType.LAZY)
     Payment payment;
 
-    @Enumerated(EnumType.STRING)
-    @JdbcTypeCode(SqlTypes.VARCHAR)
-    @Column(nullable = false, length = 30)
-    PaymentStatus paymentStatus;
+    // paymentStatus đã bỏ — trạng thái thanh toán lấy từ payment.status (tránh lệch dữ liệu)
 
     Integer seatCount;
     BigDecimal pricePerSeat;
     BigDecimal totalAmount;
 
-    LocalDateTime reservedAt;
     LocalDateTime expiresAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -80,8 +75,6 @@ public class Booking {
 
     LocalDateTime cancelledAt;
     String cancelReason;
-
-    Integer tripVersionAtReserve;
 
     @Version
     Integer version;

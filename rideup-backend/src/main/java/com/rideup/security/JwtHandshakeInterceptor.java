@@ -30,7 +30,7 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
                                    Map<String, Object> attributes) {
         String token = extractToken(request);
         if (token == null) {
-            log.debug("WebSocket handshake rejected: no token");
+            log.warn("[RT] handshake bị từ chối: no token");
             return false;
         }
 
@@ -38,14 +38,14 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
             Claims claims = jwtService.parse(token);
             String type = claims.get("type", String.class);
             if (!JwtClaim.ACCESS.getValue().equals(type)) {
-                log.debug("WebSocket handshake rejected: wrong token type");
+                log.warn("[RT] handshake bị từ chối: wrong token type");
                 return false;
             }
 
             Object cached = redisTemplate.opsForValue()
                 .get(RedisKey.ACCESS_TOKEN + token);
             if (cached == null) {
-                log.debug("WebSocket handshake rejected: token revoked or expired");
+                log.warn("[RT] handshake bị từ chối: token revoked or expired");
                 return false;
             }
 
@@ -56,9 +56,10 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
                 List<String> typedRoles = (List<String>) list;
                 attributes.put("roles", typedRoles);
             }
+            log.info("[RT] handshake OK user={}", claims.getSubject());
             return true;
         } catch (Exception e) {
-            log.debug("WebSocket handshake rejected: {}", e.getMessage());
+            log.warn("[RT] handshake bị từ chối: {}", e.getMessage());
             return false;
         }
     }

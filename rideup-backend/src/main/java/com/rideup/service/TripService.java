@@ -25,6 +25,8 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -54,6 +56,7 @@ public class TripService {
     PaymentService paymentService;
     DriverProfileRepository driverProfileRepository;
     RealtimeService realtimeService;
+    EntityManager entityManager;
 
     @Transactional
     public TripResponse createTrip(String userId, CreateTripRequest req) {
@@ -74,12 +77,9 @@ public class TripService {
                 .vehicle(vehicle)
                 .startProvince(start)
                 .endProvince(end)
-                .startAddressText(req.getStartAddressText())
                 .pickupLat(req.getPickupLat())
                 .pickupLng(req.getPickupLng())
-                .endAddressText(req.getEndAddressText())
                 .departureTime(req.getDepartureTime())
-                .estimatedArrivalTime(req.getEstimatedArrivalTime())
                 .seatTotal(req.getSeatTotal())
                 .seatAvailable(req.getSeatTotal())
                 .priceVnd(req.getPriceVnd())
@@ -126,6 +126,7 @@ public class TripService {
                 start.getCode(), end.getCode(),
                 trip.getStops() == null ? 0 : trip.getStops().size(),
                 trip.getSeatTotal());
+        realtimeService.tripChanged(trip);
         return toResponse(trip);
     }
 
@@ -195,10 +196,7 @@ public class TripService {
                     HttpStatus.BAD_REQUEST, 400,
                     "Số ghế phải lớn hơn 0");
         }
-        Trip trip = tripRepository.findByIdForUpdate(tripId)
-                .orElseThrow(() -> new AppException(
-                        HttpStatus.NOT_FOUND, 404,
-                        "Không tìm thấy chuyến"));
+        Trip trip = lockTripForUpdate(tripId);
         if (trip.getStatus() != TripStatus.OPEN && trip.getStatus() != TripStatus.FULL) {
             throw new AppException(
                     HttpStatus.BAD_REQUEST, 400,
@@ -220,16 +218,30 @@ public class TripService {
         return tripRepository.save(trip);
     }
 
+    /**
+     * Khoá dòng trip (SELECT ... FOR UPDATE) và đọc lại số ghế mới nhất từ DB.
+     * Dùng refresh() chứ không dùng query có @Lock: nếu trip đã nằm sẵn trong persistence context
+     * (vd. confirm() đã gọi booking.getTrip()), query sẽ trả về object cũ với seatAvailable cũ.
+     * Request đồng thời thứ 2 sẽ đợi request đầu commit rồi mới đọc → không trừ ghế sai, không lỗi lock.
+     */
+    private Trip lockTripForUpdate(String tripId) {
+        Trip trip = tripRepository.findById(tripId)
+                .orElseThrow(() -> new AppException(
+                        HttpStatus.NOT_FOUND, 404,
+                        "Không tìm thấy chuyến"));
+        // flush trước: refresh() sẽ ghi đè thay đổi chưa flush trên trip (vd. cancelTrip vừa set CANCELED rồi mới gọi releaseSeat)
+        entityManager.flush();
+        entityManager.refresh(trip, LockModeType.PESSIMISTIC_WRITE);
+        return trip;
+    }
+
     /** Trả lại seatCount ghế khi huỷ booking. */
     @Transactional
     public void releaseSeat(String tripId, int seatCount) {
         if (seatCount <= 0) {
             return;
         }
-        Trip trip = tripRepository.findByIdForUpdate(tripId)
-                .orElseThrow(() -> new AppException(
-                        HttpStatus.NOT_FOUND, 404,
-                        "Không tìm thấy chuyến"));
+        Trip trip = lockTripForUpdate(tripId);
         int newAvailable = Math.min(trip.getSeatTotal(),
                 trip.getSeatAvailable() + seatCount);
         trip.setSeatAvailable(newAvailable);
@@ -298,6 +310,7 @@ public class TripService {
                 log.warn("cancelPayment failed for booking {} when starting trip: {}", b.getId(), ex.getMessage());
             }
         }
+        realtimeService.tripChanged(trip);
         return toResponse(trip);
     }
 
@@ -344,6 +357,7 @@ public class TripService {
         }
 
         log.info("Driver {} completed trip {}", driverUserId, tripId);
+        realtimeService.tripChanged(trip);
         return toResponse(trip);
     }
 
@@ -401,6 +415,7 @@ public class TripService {
 
         log.info("Driver {} cancelled trip {} — refunded {} bookings",
             driverUserId, tripId, activeBookings.size());
+        realtimeService.tripChanged(trip);
         return toResponse(trip);
     }
 
@@ -419,10 +434,7 @@ public class TripService {
                 .vehicleId(t.getVehicle().getId())
                 .startProvinceId(t.getStartProvince().getId())
                 .endProvinceId(t.getEndProvince().getId())
-                .startAddressText(t.getStartAddressText())
-                .endAddressText(t.getEndAddressText())
                 .departureTime(t.getDepartureTime())
-                .estimatedArrivalTime(t.getEstimatedArrivalTime())
                 .seatTotal(t.getSeatTotal())
                 .seatAvailable(t.getSeatAvailable())
                 .priceVnd(t.getPriceVnd())

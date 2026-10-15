@@ -4,12 +4,10 @@ import com.rideup.entity.Trip;
 import com.rideup.enums.TripStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.EntityGraph;
-import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import jakarta.persistence.LockModeType;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -65,9 +63,4 @@ public interface TripRepository extends JpaRepository<Trip, String> {
             @Param("endWardId") String endWardId,
             @Param("from") LocalDateTime from,
             @Param("to") LocalDateTime to);
-
-    /** Dùng OPTIMISTIC lock (dựa trên @Version của Trip) thay vì PESSIMISTIC để tránh giữ row quá lâu. */
-    @Lock(LockModeType.OPTIMISTIC)
-    @Query("SELECT t FROM Trip t WHERE t.id = :id")
-    java.util.Optional<Trip> findByIdForUpdate(@Param("id") String id);
 }

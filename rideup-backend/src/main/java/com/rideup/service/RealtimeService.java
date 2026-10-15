@@ -95,6 +95,7 @@ public class RealtimeService {
     private void send(String userId, Map<String, Object> event) {
         try {
             messagingTemplate.convertAndSendToUser(userId, DESTINATION, event);
+            log.info("[RT] gửi {} → user={} {}", event.get("type"), userId, event);
         } catch (Exception e) {
             log.warn("Gửi sự kiện realtime thất bại user={} type={}: {}", userId, event.get("type"), e.getMessage());
         }

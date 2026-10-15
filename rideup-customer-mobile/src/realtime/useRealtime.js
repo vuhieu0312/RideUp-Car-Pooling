@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
-import { isRealtimeConnected, subscribeEvents } from './realtime';
+import { isRealtimeConnected, rtLog, subscribeEvents } from './realtime';
 
 const FALLBACK_POLL_MS = 30000;
 const DEBOUNCE_MS = 300;
@@ -16,18 +16,24 @@ export function useRealtimeRefresh(onChange, types) {
 
   useEffect(() => {
     let timer = null;
-    const fire = () => {
+    const fire = (reason) => {
       if (timer) clearTimeout(timer);
-      timer = setTimeout(() => cbRef.current(), DEBOUNCE_MS);
+      timer = setTimeout(() => {
+        rtLog(`reload [${typesKey}] do REALTIME:`, reason);
+        cbRef.current();
+      }, DEBOUNCE_MS);
     };
 
     const unsubscribe = subscribeEvents((event) => {
       // Vừa nối lại thì tải bù những gì có thể đã lỡ
-      if (event.type === 'CONNECTED' || types.includes(event.type)) fire();
+      if (event.type === 'CONNECTED' || types.includes(event.type)) fire(event.type);
     });
 
     const poll = setInterval(() => {
-      if (!isRealtimeConnected() && AppState.currentState === 'active') cbRef.current();
+      if (!isRealtimeConnected() && AppState.currentState === 'active') {
+        rtLog(`reload [${typesKey}] do POLLING (realtime đang mất kết nối)`);
+        cbRef.current();
+      }
     }, FALLBACK_POLL_MS);
 
     return () => {

@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { FlatList, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { cancelTrip, completeTrip, listMyTrips, listProvinces, listWards, startTrip } from '../api/api';
@@ -103,7 +104,9 @@ export default function AllTripsScreen({ navigation }) {
     }
   }
 
+  // Lần đầu hiện spinner; mỗi lần quay lại tab (vd. vừa tạo chuyến xong) thì tải lại ngầm
   useEffect(() => { load(); }, []);
+  useFocusEffect(useCallback(() => { load(true); }, []));
 
   // Số ghế / trạng thái chuyến đổi → tự tải lại
   useRealtimeRefresh(() => load(true), ['TRIP_UPDATED', 'BOOKING_UPDATED']);
@@ -140,26 +143,6 @@ export default function AllTripsScreen({ navigation }) {
       .map((s) => wardNames[s.wardId] || s.addressText)
       .filter(Boolean);
     return names.length ? names.join(', ') : 'Chưa chọn';
-  }
-
-  function showTripDetail(t) {
-    const booked = Math.max(0, (t.seatTotal || 0) - (t.seatAvailable || 0));
-    const meta = STATUS_META[t.status] || { label: t.status };
-    const lines = [
-      `${provinceName(t.startProvinceId)} → ${provinceName(t.endProvinceId)}`,
-      `Trạng thái: ${meta.label}`,
-      `Khởi hành: ${fmtTime(t.departureTime)}`,
-    ];
-    if (t.estimatedArrivalTime) lines.push(`Dự kiến đến: ${fmtTime(t.estimatedArrivalTime)}`);
-    lines.push(
-      `Khu vực đón (${provinceName(t.startProvinceId)}): ${stopNames(t, 'PICKUP')}`,
-      `Khu vực trả (${provinceName(t.endProvinceId)}): ${stopNames(t, 'DROPOFF')}`,
-      `Ghế đã đặt: ${booked}/${t.seatTotal}`,
-      `Giá vé: ${fmtMoney(t.priceVnd)}/ghế`,
-      `Doanh thu: ${fmtMoney((t.priceVnd || 0) * booked)}`,
-    );
-    if (t.note) lines.push(`Ghi chú: ${t.note}`);
-    dialog.alert('Chi tiết chuyến', lines.join('\n'));
   }
 
   return (
@@ -237,6 +220,7 @@ export default function AllTripsScreen({ navigation }) {
                   <IconText name="clock-outline" size={14} textStyle={styles.tripTime}>{fmtTime(t.departureTime)}</IconText>
                   <Text style={styles.stopLine} numberOfLines={1}>Đón: {stopNames(t, 'PICKUP')}</Text>
                   <Text style={styles.stopLine} numberOfLines={1}>Trả: {stopNames(t, 'DROPOFF')}</Text>
+                  {!!t.note && <Text style={styles.stopLine} numberOfLines={2}>Ghi chú: {t.note}</Text>}
                 </View>
                 <View style={[styles.badge, { backgroundColor: meta.bg }]}>
                   <Text style={[styles.badgeText, { color: meta.fg }]}>{meta.label}</Text>
@@ -261,12 +245,6 @@ export default function AllTripsScreen({ navigation }) {
               </View>
 
               <View style={styles.actions}>
-                <TouchableOpacity
-                  style={[styles.actionBtn, styles.actionSecondary]}
-                  onPress={() => showTripDetail(t)}
-                >
-                  <IconText name="information-outline" size={14} center textStyle={styles.actionSecondaryText}>Chi tiết</IconText>
-                </TouchableOpacity>
                 {(t.status === 'OPEN' || t.status === 'FULL') && (
                   <>
                     <TouchableOpacity
@@ -310,6 +288,14 @@ export default function AllTripsScreen({ navigation }) {
                       <IconText name="check-circle-outline" size={14} center textStyle={styles.actionPrimaryText}>Kết thúc</IconText>
                     </TouchableOpacity>
                   </>
+                )}
+                {(t.status === 'COMPLETED' || t.status === 'CANCELED') && (
+                  <TouchableOpacity
+                    style={[styles.actionBtn, styles.actionSecondary]}
+                    onPress={() => navigation.navigate('Bookings', { tripId: t.id })}
+                  >
+                    <IconText name="format-list-bulleted" size={14} center textStyle={styles.actionSecondaryText}>Xem booking</IconText>
+                  </TouchableOpacity>
                 )}
               </View>
             </View>

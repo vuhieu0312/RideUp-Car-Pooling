@@ -32,8 +32,6 @@ public class Payment {
     @JoinColumn(name = "booking_id", nullable = false, unique = true)
     Booking booking;
 
-    @Column(length = 100)
-    String correlationId;
 
     @Column(nullable = false, precision = 15, scale = 2)
     BigDecimal amount;
@@ -51,16 +49,11 @@ public class Payment {
     @Column(length = 100)
     String transactionId;
 
-    @Column(length = 1000)
-    String paymentUrl;
 
     LocalDateTime paidAt;
 
     @Column(length = 500)
     String failureReason;
-
-    @Column(length = 100)
-    String payDate;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FlatList, RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -28,16 +28,23 @@ const STATUS_META = {
   EXPIRED: { icon: 'timer-sand', label: 'Hết hạn', bg: colors.dangerBg, fg: colors.dangerText },
 };
 
+// Nhóm booking theo việc tài xế cần làm. Thứ tự = thứ tự ưu tiên khi tự chọn tab.
 const FILTERS = [
-  { key: 'PENDING', label: 'Chờ duyệt' },
-  { key: 'CONFIRMED', label: 'Đã duyệt' },
-  { key: 'COMPLETED', label: 'Hoàn thành' },
-  { key: 'CANCELLED', label: 'Đã huỷ' },
+  { key: 'PENDING', label: 'Chờ duyệt', statuses: ['WAITING_DRIVER_APPROVAL'], empty: 'Không có khách nào đang chờ bạn duyệt.' },
+  { key: 'CONFIRMED', label: 'Đã nhận', statuses: ['CONFIRMED'], empty: 'Chưa có khách nào được duyệt.' },
+  { key: 'COMPLETED', label: 'Hoàn thành', statuses: ['COMPLETED'], empty: 'Chưa có chuyến đi nào hoàn thành.' },
+  { key: 'UNPAID', label: 'Chờ thanh toán', statuses: ['PENDING_PAYMENT'], empty: 'Không có khách nào đang thanh toán dở.' },
+  {
+    key: 'CANCELLED',
+    label: 'Huỷ / từ chối',
+    statuses: ['REJECTED_BY_DRIVER', 'CANCELLED_BY_USER', 'CANCELLED_BY_DRIVER', 'CANCELLED_PAYMENT_FAILED', 'EXPIRED'],
+    empty: 'Không có booking bị huỷ hoặc từ chối.',
+  },
 ];
 
 export default function BookingsScreen({ navigation, route }) {
   const dialog = useDialog();
-  // Mở từ một chuyến: chỉ hiện khách của chuyến đó (đang chờ duyệt hoặc đã duyệt)
+  // Mở từ một chuyến: chỉ hiện booking của chuyến đó (vẫn chia theo nhóm như bình thường)
   const tripId = route?.params?.tripId || null;
   const insets = useSafeAreaInsets();
   const [bookings, setBookings] = useState([]);
@@ -45,6 +52,7 @@ export default function BookingsScreen({ navigation, route }) {
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState('PENDING');
   const [actionMsg, setActionMsg] = useState('');
+  const autoPicked = useRef(false); // chỉ tự chọn tab 1 lần sau lần tải đầu
 
   async function load() {
     try {
@@ -71,19 +79,24 @@ export default function BookingsScreen({ navigation, route }) {
     return () => clearTimeout(timer);
   }, [actionMsg]);
 
-  const visible = bookings.filter((b) => {
-    if (tripId) return b.tripId === tripId && ['WAITING_DRIVER_APPROVAL', 'CONFIRMED'].includes(b.status);
-    if (filter === 'PENDING') return b.status === 'WAITING_DRIVER_APPROVAL';
-    if (filter === 'CONFIRMED') return b.status === 'CONFIRMED';
-    if (filter === 'COMPLETED') return b.status === 'COMPLETED';
-    if (filter === 'CANCELLED') {
-      return [
-        'REJECTED_BY_DRIVER', 'CANCELLED_BY_USER', 'CANCELLED_BY_DRIVER',
-        'CANCELLED_PAYMENT_FAILED', 'EXPIRED',
-      ].includes(b.status);
-    }
-    return true;
-  });
+  // Phạm vi: toàn bộ booking của tài xế, hoặc chỉ của 1 chuyến
+  const scoped = useMemo(
+    () => (tripId ? bookings.filter((b) => b.tripId === tripId) : bookings),
+    [bookings, tripId],
+  );
+  const counts = useMemo(() => Object.fromEntries(
+    FILTERS.map((f) => [f.key, scoped.filter((b) => f.statuses.includes(b.status)).length]),
+  ), [scoped]);
+  const activeFilter = FILTERS.find((f) => f.key === filter) || FILTERS[0];
+  const visible = scoped.filter((b) => activeFilter.statuses.includes(b.status));
+
+  // Lần tải đầu: mở sẵn nhóm đầu tiên có booking (vd. chuyến đang chạy → "Đã nhận")
+  useEffect(() => {
+    if (loading || autoPicked.current) return;
+    autoPicked.current = true;
+    const first = FILTERS.find((f) => counts[f.key] > 0);
+    if (first) setFilter(first.key);
+  }, [loading, counts]);
 
   const fmtMoney = (v) => `${new Intl.NumberFormat('vi-VN').format(v || 0)} đ`;
   const fmtTime = (iso) => (iso ? iso.replace('T', ' ').substring(0, 16) : '');
@@ -152,7 +165,6 @@ export default function BookingsScreen({ navigation, route }) {
         </TouchableOpacity>
       </View>
 
-      {!tripId && (
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filters} contentContainerStyle={styles.filtersContent}>
         {FILTERS.map((f) => (
           <TouchableOpacity
@@ -161,12 +173,11 @@ export default function BookingsScreen({ navigation, route }) {
             onPress={() => setFilter(f.key)}
           >
             <Text style={[styles.filterText, filter === f.key && styles.filterTextActive]}>
-              {f.label}
+              {f.label} <Text style={styles.filterCount}>{counts[f.key]}</Text>
             </Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
-      )}
 
       {!!actionMsg && <Text style={styles.actionMsg}>{actionMsg}</Text>}
 
@@ -178,7 +189,7 @@ export default function BookingsScreen({ navigation, route }) {
         ListEmptyComponent={
           !loading ? (
             <View style={styles.emptyBox}>
-              <Text style={styles.muted}>{tripId ? 'Chuyến này chưa có khách đặt.' : 'Không có booking nào trong nhóm này.'}</Text>
+              <Text style={styles.muted}>{scoped.length === 0 && tripId ? 'Chuyến này chưa có khách đặt.' : activeFilter.empty}</Text>
             </View>
           ) : <Text style={styles.muted}>Đang tải...</Text>
         }
@@ -199,7 +210,7 @@ export default function BookingsScreen({ navigation, route }) {
               <View style={styles.cardHead}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.code}>Mã: <Text style={{ fontWeight: '700' }}>{b.bookingCode}</Text></Text>
-                  <IconText name="bus" size={14} textStyle={styles.muted}>Chuyến: {fmtTime(b.reservedAt)}</IconText>
+                  <IconText name="bus" size={14} textStyle={styles.muted}>Khởi hành: {fmtTime(b.tripDeparture)}</IconText>
                   <IconText name={payMeta.icon} size={14} textStyle={styles.muted}>{payMeta.label}{isCash ? ' · Tiền mặt' : ''}</IconText>
                 </View>
                 <View style={[styles.badge, { backgroundColor: meta.bg }]}>
@@ -275,6 +286,7 @@ const styles = StyleSheet.create({
   filterActive: { borderColor: colors.primaryAccent, backgroundColor: colors.primaryLight },
   filterText: { fontSize: 11, color: colors.textMuted, fontWeight: '500' },
   filterTextActive: { color: colors.primaryAccent, fontWeight: '500' },
+  filterCount: { fontSize: 11, color: colors.textSubtle },
 
   actionMsg: { padding: 9, marginHorizontal: 12, marginBottom: 6, backgroundColor: colors.primaryFaintest, borderRadius: 6, fontSize: 11, color: colors.textDark },
   listContent: { padding: 12, paddingBottom: 24 },

@@ -43,23 +43,12 @@ public class Trip {
     @JoinColumn(name = "end_province_id", nullable = false)
     Province endProvince;
 
-    @Column(length = 500)
-    String startAddressText;
-
-    @Column(length = 500)
-    String endAddressText;
-
     /** Tọa độ GPS điểm đón (lấy từ ward đầu tiên của pickupWardIds, hoặc driver nhập). */
     Double pickupLat;
     Double pickupLng;
 
-    String startWardId;
-    String endWardId;
-
     @Column(nullable = false)
     LocalDateTime departureTime;
-
-    LocalDateTime estimatedArrivalTime;
 
     @Column(nullable = false)
     Integer seatTotal;

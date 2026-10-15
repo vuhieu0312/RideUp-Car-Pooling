@@ -30,6 +30,14 @@ export default function HomeScreen({ navigation }) {
 
   const running = trips.filter((t) => t.status === 'STARTED');
   const scheduled = trips.filter((t) => t.status === 'OPEN' || t.status === 'FULL');
+
+  // Mở danh sách khách của chuyến (màn Bookings nằm trong stack của tab "Chuyến xe").
+  // initial: false → giữ AllTrips ở dưới để nút quay lại vẫn hoạt động.
+  const openTrip = (trip) => navigation.navigate('AllTripsTab', {
+    screen: 'Bookings',
+    params: { tripId: trip.id },
+    initial: false,
+  });
   const provinceName = (id) => provinces.find((p) => p.id === id)?.name || id || '?';
   const fmtTime = (iso) => (iso ? iso.replace('T', ' ').substring(0, 16) : '');
 
@@ -74,12 +82,12 @@ export default function HomeScreen({ navigation }) {
 
         <Section title={`Chuyến đang thực hiện (${running.length})`}>
           {!loading && running.length === 0 ? <TripEmpty text="Không có chuyến đang chạy" /> :
-            running.map((trip) => <TripCard key={trip.id} trip={trip} fmtTime={fmtTime} provinceName={provinceName} running />)}
+            running.map((trip) => <TripCard key={trip.id} trip={trip} fmtTime={fmtTime} provinceName={provinceName} running onOpen={() => openTrip(trip)} />)}
         </Section>
 
         <Section title={`Chuyến đã lên lịch (${scheduled.length})`}>
           {!loading && scheduled.length === 0 ? <TripEmpty text="Chưa có chuyến nào" /> :
-            scheduled.map((trip) => <TripCard key={trip.id} trip={trip} fmtTime={fmtTime} provinceName={provinceName} />)}
+            scheduled.map((trip) => <TripCard key={trip.id} trip={trip} fmtTime={fmtTime} provinceName={provinceName} onOpen={() => openTrip(trip)} />)}
         </Section>
       </ScrollView>
     </View>
@@ -113,10 +121,10 @@ function TripEmpty({ text }) {
   );
 }
 
-function TripCard({ trip, fmtTime, provinceName, running }) {
+function TripCard({ trip, fmtTime, provinceName, running, onOpen }) {
   const booked = (trip.seatTotal || 0) - (trip.seatAvailable || 0);
   return (
-    <View style={[styles.tripCard, running && styles.runningCard]}>
+    <TouchableOpacity activeOpacity={0.85} onPress={onOpen} style={[styles.tripCard, running && styles.runningCard]}>
       <View style={styles.tripTop}>
         <Text style={styles.tripStatus}>{running ? 'Đang chạy' : 'Đã lên lịch'}</Text>
         <Text style={styles.seatCount}>{booked}/{trip.seatTotal || 0} ghế</Text>
@@ -132,7 +140,7 @@ function TripCard({ trip, fmtTime, provinceName, running }) {
         <Text style={styles.tripTime}>{fmtTime(trip.departureTime)}</Text>
       </View>
       {running ? (
-        <TouchableOpacity style={styles.detailButton}>
+        <TouchableOpacity style={styles.detailButton} onPress={onOpen}>
           <Text style={styles.detailButtonText}>Xem chi tiết</Text>
         </TouchableOpacity>
       ) : (
@@ -144,7 +152,7 @@ function TripCard({ trip, fmtTime, provinceName, running }) {
           <Text style={[styles.revenue, booked === 0 && styles.emptyRevenue]}>{booked > 0 ? `${new Intl.NumberFormat('vi-VN').format(trip.priceVnd * booked)}đ` : '0đ'}</Text>
         </View>
       )}
-    </View>
+    </TouchableOpacity>
   );
 }
 

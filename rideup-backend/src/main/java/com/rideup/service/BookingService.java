@@ -25,11 +25,13 @@ import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -37,7 +39,6 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ThreadLocalRandom;
 
 @Service
 @Slf4j
@@ -55,6 +56,13 @@ public class BookingService {
     final PaymentService paymentService;
     final RealtimeService realtimeService;
 
+    /**
+     * Transaction REQUIRES_NEW chạy thủ công. Lý do: gọi this.expireOneBooking()/expireWaitingApprovalOne()
+     * trong cùng class KHÔNG đi qua Spring proxy nên @Transactional trên các hàm đó bị bỏ qua
+     * → chạy không có transaction → LazyInitializationException. Mỗi booking 1 transaction riêng để 1 booking lỗi không kéo cả lô rollback.
+     */
+    final TransactionTemplate requiresNewTx;
+
     /** Booking PENDING_PAYMENT quá expiresAt sẽ bị scheduler huỷ. */
     @Value("${app.booking.pending-expiration-minutes:15}")
     long pendingMinutes;
@@ -71,7 +79,8 @@ public class BookingService {
                           WardRepository wardRepository,
                           PaymentRepository paymentRepository,
                           PaymentService paymentService,
-                          RealtimeService realtimeService) {
+                          RealtimeService realtimeService,
+                          PlatformTransactionManager transactionManager) {
         this.bookingRepository = bookingRepository;
         this.tripRepository = tripRepository;
         this.tripService = tripService;
@@ -81,42 +90,16 @@ public class BookingService {
         this.paymentRepository = paymentRepository;
         this.paymentService = paymentService;
         this.realtimeService = realtimeService;
+        this.requiresNewTx = new TransactionTemplate(transactionManager);
+        this.requiresNewTx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
 
-    /** Số lần retry tối đa khi gặp optimistic lock conflict. */
-    private static final int MAX_RETRY = 3;
-
-    /** Khách đặt chỗ. */
+    /**
+     * Khách đặt chỗ — 1 transaction duy nhất: lỗi ở bất kỳ bước nào (kể cả Stripe) đều rollback cả booking lẫn payment.
+     * Không cần retry optimistic lock vì bước này chỉ ĐỌC trip, không trừ ghế (ghế bị trừ khi tài xế duyệt — xem {@link #confirm}).
+     */
+    @Transactional
     public BookingResponse createBooking(String userId, CreateBookingRequest req) {
-        ObjectOptimisticLockingFailureException lastEx = null;
-        for (int attempt = 1; attempt <= MAX_RETRY; attempt++) {
-            try {
-                return createBookingInternal(userId, req);
-            } catch (ObjectOptimisticLockingFailureException ex) {
-                lastEx = ex;
-                log.warn("Optimistic lock conflict on booking attempt={}/{} user={} trip={}",
-                    attempt, MAX_RETRY, userId, req.getTripId());
-                if (attempt < MAX_RETRY) {
-                    // Jitter 10..40ms để 2 customer không retry cùng tick
-                    try {
-                        Thread.sleep(10 + ThreadLocalRandom.current().nextInt(30));
-                    } catch (InterruptedException ie) {
-                        Thread.currentThread().interrupt();
-                        throw AppException.conflict("Đặt chỗ bị gián đoạn, vui lòng thử lại");
-                    }
-                }
-            }
-        }
-        // Hết retry — trip quá hot, customer nên thử lại sau
-        log.error("Optimistic lock retries exhausted for user={} trip={}",
-            userId, req.getTripId(), lastEx);
-        throw AppException.conflict(
-            "Chuyến đang được nhiều người đặt cùng lúc, vui lòng thử lại sau");
-    }
-
-    /** Logic chính đặt vé — chạy trong 1 transaction riêng (REQUIRES_NEW) để mỗi lần retry được rollback sạch và đọc state mới từ DB. */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public BookingResponse createBookingInternal(String userId, CreateBookingRequest req) {
         User customer = userRepository.findById(userId)
             .orElseThrow(() -> AppException.notFound("Không tìm thấy khách hàng"));
 
@@ -167,16 +150,18 @@ public class BookingService {
         Ward pickupWard = resolveWard(req.getPickupWardId(), trip.getStartProvince() != null ? trip.getStartProvince().getId() : null, "đón");
         Ward dropoffWard = resolveWard(req.getDropoffWardId(), trip.getEndProvince() != null ? trip.getEndProvince().getId() : null, "trả");
 
+        // CASH: không cần thanh toán trước → vào thẳng hàng chờ tài xế duyệt.
+        // STRIPE: chờ khách giữ tiền thành công (authorize/webhook) mới sang WAITING_DRIVER_APPROVAL.
+        boolean isCash = req.getPaymentMethod() == com.rideup.enums.PaymentMethod.CASH;
+
         Booking booking = Booking.builder()
             .bookingCode("BK-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())
             .customer(customer)
             .trip(trip)
-            .status(BookingStatus.PENDING_PAYMENT)
-            .paymentStatus(PaymentStatus.PENDING)
+            .status(isCash ? BookingStatus.WAITING_DRIVER_APPROVAL : BookingStatus.PENDING_PAYMENT)
             .seatCount(seats)
             .pricePerSeat(pricePerSeat)
             .totalAmount(total)
-            .reservedAt(LocalDateTime.now())
             .expiresAt(LocalDateTime.now().plusMinutes(pendingMinutes))
             .pickupWard(pickupWard)
             .pickupAddressText(req.getPickupAddressText())
@@ -200,7 +185,6 @@ public class BookingService {
         // Tạo Payment gắn với booking (1-1).
         Payment payment = Payment.builder()
             .booking(booking)
-            .correlationId(booking.getBookingCode())
             .amount(total)
             .method(req.getPaymentMethod())
             .status(PaymentStatus.PENDING)
@@ -218,6 +202,8 @@ public class BookingService {
         log.info("Booking created id={} code={} trip={} seats={} amount={} paymentMethod={} paymentId={}",
             booking.getId(), booking.getBookingCode(),
             trip.getId(), seats, total, req.getPaymentMethod(), payment.getId());
+        // Báo tài xế (và chính khách) có booking mới — gửi sau khi commit
+        realtimeService.bookingChanged(booking);
         return toResponse(booking);
     }
 
@@ -291,7 +277,7 @@ public class BookingService {
         paymentService.cancelPayment(bookingId);
 
         // KHÔNG release ghế — booking WAITING_DRIVER_APPROVAL chưa được driver duyệt
-        // nên ghế chưa từng bị trừ (xem {@link #createBookingInternal} + {@link #confirm}).
+        // nên ghế chưa từng bị trừ (xem {@link #createBooking} + {@link #confirm}).
 
         log.info("Driver {} rejected booking {} reason={}", driverUserId, bookingId, reason);
         return toResponse(booking);
@@ -364,7 +350,6 @@ public class BookingService {
         payment.setStatus(PaymentStatus.PAID);
         payment.setPaidAt(LocalDateTime.now());
         paymentRepository.save(payment);
-        booking.setPaymentStatus(PaymentStatus.PAID);
         bookingRepository.save(booking);
         realtimeService.bookingChanged(booking);
 
@@ -382,7 +367,7 @@ public class BookingService {
         log.info("Scheduler: {} booking(s) PENDING_PAYMENT past expiresAt", expired.size());
         for (Booking booking : expired) {
             try {
-                expireOneBooking(booking.getId());
+                requiresNewTx.executeWithoutResult(status -> expireOneBooking(booking.getId()));
             } catch (Exception ex) {
                 log.error("Failed to expire booking {}: {}", booking.getId(), ex.getMessage(), ex);
             }
@@ -401,7 +386,7 @@ public class BookingService {
             expired.size(), waitingApprovalHours);
         for (Booking booking : expired) {
             try {
-                expireWaitingApprovalOne(booking.getId());
+                requiresNewTx.executeWithoutResult(status -> expireWaitingApprovalOne(booking.getId()));
             } catch (Exception ex) {
                 log.error("Failed to expire waiting-approval booking {}: {}",
                     booking.getId(), ex.getMessage(), ex);
@@ -537,9 +522,8 @@ public class BookingService {
             .tripId(trip.getId())
             .status(b.getStatus())
             .paymentId(payment != null ? payment.getId() : null)
-            .paymentStatus(b.getPaymentStatus())
+            .paymentStatus(payment != null ? payment.getStatus() : null)
             .paymentMethod(payment != null ? payment.getMethod() : null)
-            .paymentUrl(payment != null ? payment.getPaymentUrl() : null)
             .seatCount(b.getSeatCount())
             .pricePerSeat(b.getPricePerSeat())
             .totalAmount(b.getTotalAmount())
@@ -554,7 +538,7 @@ public class BookingService {
             .userAvatar(customer.getAvatarUrl())
             .userName(customer.getFullName())
             .note(b.getNote())
-            .reservedAt(b.getReservedAt())
+            .reservedAt(b.getCreatedAt())
             .expiresAt(b.getExpiresAt())
             .cancelledAt(b.getCancelledAt())
             .cancelReason(b.getCancelReason())

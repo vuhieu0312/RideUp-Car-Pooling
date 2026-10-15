@@ -88,8 +88,6 @@ public class PaymentService {
                 .build();
             PaymentIntent intent = PaymentIntent.create(params, options);
             payment.setTransactionId(intent.getId());           // pi_xxx
-            payment.setPaymentUrl(intent.getClientSecret());     // dùng cho PaymentSheet/WebView
-            payment.setCorrelationId(booking.getBookingCode());
             paymentRepository.save(payment);
             log.info("[DEBUG] Created Stripe PI={} for booking={} clientSecret prefix={}",
                 intent.getId(), booking.getId(),
@@ -183,7 +181,6 @@ public class PaymentService {
         Booking booking = payment.getBooking();
         if (booking != null && booking.getStatus() == BookingStatus.PENDING_PAYMENT) {
             booking.setStatus(BookingStatus.WAITING_DRIVER_APPROVAL);
-            booking.setPaymentStatus(PaymentStatus.HOLDING);
             bookingRepository.save(booking);
             realtimeService.bookingChanged(booking);
         }
@@ -348,10 +345,18 @@ public class PaymentService {
         }
 
         // Payment đã được tạo PaymentIntent sẵn tại thời điểm tạo booking (xem BookingService#createBookingInternal → PaymentService#createPaymentIntent).
-        if (payment.getTransactionId() != null && payment.getPaymentUrl() != null) {
-            log.info("createPaymentIntentForBooking: reuse existing PI={} for booking={} user={}",
-                payment.getTransactionId(), bookingId, userId);
-            return Map.of("clientSecret", payment.getPaymentUrl());
+        // Không lưu client_secret trong DB nữa → lấy lại từ Stripe theo PI id.
+        if (payment.getTransactionId() != null) {
+            try {
+                PaymentIntent existing = PaymentIntent.retrieve(payment.getTransactionId());
+                log.info("createPaymentIntentForBooking: reuse existing PI={} for booking={} user={}",
+                    existing.getId(), bookingId, userId);
+                return Map.of("clientSecret", existing.getClientSecret());
+            } catch (StripeException e) {
+                log.error("Retrieve PI {} failed for booking {}: {}",
+                    payment.getTransactionId(), bookingId, e.getMessage());
+                throw new AppException(ErrorCode.STRIPE_PAYMENT_FAILED);
+            }
         }
 
         try {
@@ -376,8 +381,6 @@ public class PaymentService {
 
             PaymentIntent intent = PaymentIntent.create(params, options);
             payment.setTransactionId(intent.getId());
-            payment.setPaymentUrl(intent.getClientSecret());
-            payment.setCorrelationId(booking.getBookingCode());
             paymentRepository.save(payment);
 
             log.info("createPaymentIntentForBooking: PI={} for booking={} user={}",
@@ -473,14 +476,12 @@ public class PaymentService {
             return;
         }
         payment.setStatus(PaymentStatus.HOLDING);
-        payment.setPaidAt(LocalDateTime.now());
         paymentRepository.save(payment);
 
         // Booking flip sang WAITING_DRIVER_APPROVAL
         Booking booking = payment.getBooking();
         if (booking != null && booking.getStatus() == BookingStatus.PENDING_PAYMENT) {
             booking.setStatus(BookingStatus.WAITING_DRIVER_APPROVAL);
-            booking.setPaymentStatus(PaymentStatus.HOLDING);
             bookingRepository.save(booking);
             realtimeService.bookingChanged(booking);
         }
@@ -509,7 +510,6 @@ public class PaymentService {
         // Booking flip sang COMPLETED
         Booking booking = payment.getBooking();
         if (booking != null) {
-            booking.setPaymentStatus(PaymentStatus.PAID);
             if (booking.getStatus() == BookingStatus.CONFIRMED) {
                 booking.setStatus(BookingStatus.COMPLETED);
             }
@@ -542,8 +542,8 @@ public class PaymentService {
 
         Booking booking = payment.getBooking();
         if (booking != null) {
-            booking.setPaymentStatus(PaymentStatus.FAILED);
-            // Booking giữ nguyên status — admin xử lý refund/retry
+            // Booking giữ nguyên status — admin xử lý refund/retry; chỉ báo app tải lại trạng thái thanh toán
+            realtimeService.bookingChanged(booking);
         }
         log.info("Webhook: payment {} → FAILED ({})", paymentId, reason);
     }

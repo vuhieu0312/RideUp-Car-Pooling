@@ -92,6 +92,34 @@ api.interceptors.response.use(
 /** URL WebSocket cho realtime: http(s)://host/api → ws(s)://host/api/ws */
 export const getWsUrl = () => `${baseURL.replace(/^http/, 'ws')}/ws`;
 
+/** JWT còn hạn ít hơn 30 giây (hoặc không đọc được exp) → coi như sắp hết hạn. */
+function isTokenExpiring(token) {
+  try {
+    const part = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const padded = part + '='.repeat((4 - (part.length % 4)) % 4);
+    const { exp } = JSON.parse(atob(padded));
+    return !exp || exp * 1000 - Date.now() < 30000;
+  } catch {
+    return false; // không decode được → cứ dùng token hiện có
+  }
+}
+
+/**
+ * Access token còn hạn cho WebSocket. WebSocket không đi qua interceptor 401 của axios,
+ * nên phải tự refresh trước khi kết nối (token chỉ sống 15 phút). Trả null nếu chưa đăng nhập / refresh hỏng.
+ */
+export async function getFreshAccessToken() {
+  const token = await AsyncStorage.getItem('accessToken');
+  if (!token) return null;
+  if (!isTokenExpiring(token)) return token;
+  try {
+    refreshing = refreshing || refreshAccessToken().finally(() => { refreshing = null; });
+    return await refreshing;
+  } catch {
+    return null;
+  }
+}
+
 export default api;
 
 // ===== Auth =====
