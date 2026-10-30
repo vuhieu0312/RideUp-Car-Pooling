@@ -1,7 +1,7 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
-import { DeviceEventEmitter } from 'react-native';
+import { DeviceEventEmitter, Platform } from 'react-native';
 
 /** Tự detect base URL theo thứ tự ưu tiên — đổi WiFi không cần sửa file */
 const DEV_PORT = 8080;
@@ -126,8 +126,19 @@ export default api;
 export const login = (email, password) =>
   api.post('/auth/authentication', { email, password }).then((r) => r.data.data);
 
+const appendFile = async (fd, key, file, fallbackName = `${key}.jpg`) => {
+  const name = file.name || file.fileName || fallbackName;
+  const type = file.type || file.mimeType || 'image/jpeg';
+  if (Platform.OS === 'web') {
+    const blob = await (await fetch(file.uri)).blob();
+    fd.append(key, new File([blob], name, { type: blob.type || type }));
+  } else {
+    fd.append(key, { uri: file.uri, name, type });
+  }
+};
+
 // ===== Driver =====
-export const registerDriver = (form, files) => {
+export const registerDriver = async (form, files) => {
   const fd = new FormData();
   fd.append('fullName', form.fullName);
   fd.append('email', form.email);
@@ -136,10 +147,9 @@ export const registerDriver = (form, files) => {
   fd.append('cccd', form.cccd);
   fd.append('gplx', form.gplx);
   fd.append('gplxExpiryDate', form.gplxExpiryDate);
-  // RN FormData: chỉ cần object {uri, name, type} từ expo-image-picker
-  fd.append('cccdImageFront', files.cccdImageFront);
-  fd.append('cccdImageBack', files.cccdImageBack);
-  fd.append('gplxImage', files.gplxImage);
+  await appendFile(fd, 'cccdImageFront', files.cccdImageFront);
+  await appendFile(fd, 'cccdImageBack', files.cccdImageBack);
+  await appendFile(fd, 'gplxImage', files.gplxImage);
   return api.post('/driver/register', fd, {
     headers: { 'Content-Type': 'multipart/form-data' },
   }).then((r) => r.data.data);
@@ -214,12 +224,22 @@ export const changePassword = (body) =>
   api.post('/users/me/change-password', body).then((r) => r.data);
 
 /** Upload avatar — file là object do expo-image-picker trả về. */
-export const uploadAvatar = (file) => {
+export const uploadAvatar = async (file) => {
   const fd = new FormData();
-  const name = file.name || file.fileName || 'avatar.jpg';
-  const type = file.type || file.mimeType || 'image/jpeg';
-  fd.append('avatar', { uri: file.uri, name, type });
+  await appendFile(fd, 'avatar', file, 'avatar.jpg');
   return api
     .post('/users/me/avatar', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
     .then((r) => r.data.data);
 };
+// ===== Ví / rút tiền (Stripe Connect) =====
+export const getPayoutSummary = () =>
+  api.get('/driver/payout/summary').then((r) => r.data.data);
+
+export const startPayoutOnboarding = () =>
+  api.post('/driver/payout/onboarding').then((r) => r.data.data);
+
+export const withdrawPayout = () =>
+  api.post('/driver/payout/withdraw').then((r) => r.data.data);
+
+export const getEarningsStats = () =>
+  api.get('/driver/payout/stats').then((r) => r.data.data);

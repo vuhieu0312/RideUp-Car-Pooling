@@ -1,0 +1,275 @@
+@startuml RideUp_Database
+' RideUp - MySQL schema (sinh bởi Hibernate từ các @Entity hiện tại)
+' PK = khoá chính, FK = khoá ngoại, UK = unique
+skinparam linetype ortho
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam class {
+  BackgroundColor #FFFFFF
+  BorderColor #555555
+  HeaderBackgroundColor #E8F0FE
+}
+hide circle
+hide methods
+
+!define PK(x) <b><color:#B8860B>PK</color> x</b>
+!define FK(x) <color:#1E6FD9>FK</color> x
+!define UK(x) <color:#2E8B57>UK</color> x
+
+' ================= Người dùng & xác thực =================
+entity "app_user" as app_user {
+  PK(id) : varchar(36)
+  --
+  UK(email) : varchar(150)
+  full_name : varchar(150)
+  phone : varchar(20)
+  password : varchar(255)
+  date_of_birth : date
+  gender : varchar  <color:#888888>(MALE/FEMALE/OTHER)</color>
+  avatar_url : varchar(500)
+  verified : bit
+  last_login_at : datetime
+  created_at : datetime
+  updated_at : datetime
+}
+
+entity "user_roles" as user_roles {
+  FK(user_id) : varchar(36)
+  role : varchar(20)  <color:#888888>(CUSTOMER/DRIVER/ADMIN)</color>
+}
+
+entity "refresh_token" as refresh_token {
+  PK(id) : varchar(36)
+  --
+  FK(user_id) : varchar(36)
+  UK(token) : varchar(768)  <color:#888888>(SHA-256)</color>
+  expiry_date : datetime
+  revoked : bit
+  created_at : datetime
+}
+
+entity "driver_profile" as driver_profile {
+  PK(id) : varchar(36)
+  --
+  FK(user_id) : varchar(36)  <color:#888888>(UK)</color>
+  cccd : varchar(20)
+  cccd_image_front : varchar(500)
+  cccd_image_back : varchar(500)
+  gplx : varchar(20)
+  gplx_expiry_date : date
+  gplx_image : varchar(500)
+  driver_rating : decimal(3,2)
+  total_driver_rides : int
+  status : varchar(20)  <color:#888888>(PENDING/APPROVED/REJECTED)</color>
+  approved_at : datetime
+  approved_by : varchar(36)
+  rejected_at : datetime
+  rejection_reason : varchar(500)
+  stripe_account_id : varchar(64)  <color:#888888>(Stripe Connect acct_...)</color>
+  created_at : datetime
+  updated_at : datetime
+}
+
+entity "vehicle" as vehicle {
+  PK(id) : varchar(36)
+  --
+  FK(driver_id) : varchar(36)  <color:#888888>(UK, -> driver_profile)</color>
+  plate_number : varchar(20)
+  vehicle_brand : varchar(100)
+  vehicle_model : varchar(100)
+  vehicle_year : int
+  vehicle_color : varchar(50)
+  seat_capacity : int
+  vehicle_type : varchar(20)  <color:#888888>(CAR/VAN/SUV)</color>
+  vehicle_image : varchar(500)
+  registration_image : varchar(500)
+  registration_expiry_date : date
+  insurance_image : varchar(500)
+  insurance_expiry_date : date
+  is_verified : bit
+  is_active : bit
+  approved_at : datetime
+  approved_by : varchar(36)
+  rejected_at : datetime
+  rejection_reason : varchar(500)
+  created_at : datetime
+  updated_at : datetime
+}
+
+' ================= Địa giới hành chính =================
+entity "province" as province {
+  PK(id) : varchar(36)
+  --
+  UK(code) : varchar(20)
+  name : varchar(150)
+  lat : decimal(10,7)
+  lng : decimal(10,7)
+  osmid : bigint
+}
+
+entity "ward" as ward {
+  PK(id) : varchar(36)
+  --
+  FK(province_id) : varchar(36)
+  code : varchar(20)
+  name : varchar(150)
+  display_name : varchar(500)
+  lat : decimal(10,7)
+  lng : decimal(10,7)
+  osmid : bigint
+}
+
+' ================= Chuyến xe =================
+entity "trip" as trip {
+  PK(id) : varchar(36)
+  --
+  FK(driver_id) : varchar(36)
+  FK(vehicle_id) : varchar(36)
+  FK(start_province_id) : varchar(36)
+  FK(end_province_id) : varchar(36)
+  departure_time : datetime
+  seat_total : int
+  seat_available : int
+  price_vnd : decimal(15,2)
+  status : varchar(20)  <color:#888888>(OPEN/FULL/STARTED/COMPLETED/CANCELED)</color>
+  note : varchar(1000)
+  version : int  <color:#888888>(optimistic lock)</color>
+  created_at : datetime
+  updated_at : datetime
+}
+
+entity "trip_stop" as trip_stop {
+  PK(id) : varchar(36)
+  --
+  FK(trip_id) : varchar(36)
+  FK(ward_id) : varchar(36)
+  stop_type : varchar(20)  <color:#888888>(PICKUP/DROPOFF)</color>
+  address_text : varchar(500)
+}
+
+' ================= Đặt chỗ & thanh toán =================
+entity "booking" as booking {
+  PK(id) : varchar(36)
+  --
+  UK(booking_code) : varchar(255)
+  FK(customer_id) : varchar(36)
+  FK(trip_id) : varchar(36)
+  FK(pickup_ward_id) : varchar(36)
+  FK(dropoff_ward_id) : varchar(36)
+  status : varchar(30)  <color:#888888>(xem note)</color>
+  seat_count : int
+  price_per_seat : decimal
+  total_amount : decimal
+  pickup_lat : double
+  pickup_lng : double
+  pickup_address_text : varchar(255)
+  dropoff_lat : double
+  dropoff_lng : double
+  dropoff_address_text : varchar(255)
+  note : varchar(255)
+  expires_at : datetime
+  cancelled_at : datetime
+  cancel_reason : varchar(255)
+  version : int  <color:#888888>(optimistic lock)</color>
+  created_at : datetime
+  updated_at : datetime
+}
+
+entity "payment" as payment {
+  PK(id) : varchar(36)
+  --
+  FK(booking_id) : varchar(36)  <color:#888888>(UK)</color>
+  amount : decimal(15,2)
+  method : varchar(20)  <color:#888888>(CASH/STRIPE)</color>
+  status : varchar(30)  <color:#888888>(PENDING/HOLDING/PAID/FAILED/VOIDED/REFUNDED)</color>
+  transaction_id : varchar(100)  <color:#888888>(Stripe PaymentIntent id)</color>
+  paid_at : datetime
+  failure_reason : varchar(500)
+  platform_fee : decimal(15,2)  <color:#888888>(phí nền tảng 10%)</color>
+  transfer_id : varchar(100)  <color:#888888>(Stripe Transfer id)</color>
+  created_at : datetime
+  updated_at : datetime
+}
+
+entity "refund" as refund {
+  PK(id) : varchar(36)
+  --
+  FK(payment_id) : varchar(36)
+  UK(request_id) : varchar(100)
+  amount : decimal(15,2)
+  status : varchar(20)  <color:#888888>(PENDING/SUCCESS/FAILED)</color>
+  response_code : varchar(50)
+  failure_reason : varchar(500)
+  correlation_id : varchar(100)
+  refunded_at : datetime
+  created_at : datetime
+  updated_at : datetime
+}
+
+note right of booking
+  <b>booking.status</b>
+  PENDING_PAYMENT
+  WAITING_DRIVER_APPROVAL
+  CONFIRMED
+  COMPLETED
+  REJECTED_BY_DRIVER
+  CANCELLED_BY_USER
+  CANCELLED_BY_DRIVER
+  CANCELLED_PAYMENT_FAILED
+  EXPIRED
+end note
+
+' ================= Đánh giá & thông báo =================
+entity "review" as review {
+  PK(id) : varchar(36)
+  --
+  FK(trip_id) : varchar(36)
+  FK(driver_id) : varchar(36)
+  FK(customer_id) : varchar(36)
+  rating : int  <color:#888888>(1..5)</color>
+  comment : varchar(1000)
+  created_at : datetime
+}
+
+entity "notification" as notification {
+  PK(id) : varchar(36)
+  --
+  FK(user_id) : varchar(36)
+  title : varchar(255)
+  message : varchar(1000)
+  type : varchar(30)
+  status : varchar(20)  <color:#888888>(UNREAD/READ)</color>
+  metadata : varchar(2000)
+  read_at : datetime
+  created_at : datetime
+}
+
+' ================= Quan hệ =================
+app_user ||--o{ user_roles
+app_user ||--o{ refresh_token
+app_user ||--o| driver_profile
+driver_profile ||--o| vehicle : "sở hữu"
+app_user ||--o{ notification
+
+province ||--o{ ward
+
+app_user ||--o{ trip : "tài xế"
+vehicle ||--o{ trip
+province ||--o{ trip : "tỉnh đi"
+province ||--o{ trip : "tỉnh đến"
+
+trip ||--o{ trip_stop
+ward ||--o{ trip_stop
+
+app_user ||--o{ booking : "khách"
+trip ||--o{ booking
+ward |o--o{ booking : "phường đón"
+ward |o--o{ booking : "phường trả"
+
+booking ||--|| payment
+payment ||--o{ refund
+
+trip ||--o{ review
+app_user ||--o{ review : "khách / tài xế"
+
+@enduml

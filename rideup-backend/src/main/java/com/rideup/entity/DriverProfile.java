@@ -67,6 +67,10 @@ public class DriverProfile {
     @Column(length = 500)
     String rejectionReason;
 
+    /** Tài khoản Stripe Connect (Express) nhận tiền của tài xế — acct_xxx. Null = chưa thiết lập. */
+    @Column(length = 64)
+    String stripeAccountId;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     LocalDateTime createdAt;

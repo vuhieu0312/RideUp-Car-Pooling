@@ -15,6 +15,8 @@ import BookingsScreen from '../screens/BookingsScreen';
 import TripCreateScreen from '../screens/TripCreateScreen';
 import VehicleRegisterScreen from '../screens/VehicleRegisterScreen';
 import VehicleListScreen from '../screens/VehicleListScreen';
+import PayoutScreen from '../screens/PayoutScreen';
+import EarningsScreen from '../screens/EarningsScreen';
 import PlaceholderScreen from '../screens/PlaceholderScreen';
 import AccountScreen from '../screens/AccountScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
@@ -192,6 +194,8 @@ function MainFlow() {
       <RootStack.Screen name="TripCreate" component={TripCreateScreen} />
       <RootStack.Screen name="VehicleList" component={VehicleListScreen} />
       <RootStack.Screen name="VehicleRegister" component={VehicleRegisterScreen} />
+      <RootStack.Screen name="Payout" component={PayoutScreen} />
+      <RootStack.Screen name="Earnings" component={EarningsScreen} />
     </RootStack.Navigator>
   );
 }

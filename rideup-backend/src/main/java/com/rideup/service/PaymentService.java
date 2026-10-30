@@ -48,6 +48,7 @@ public class PaymentService {
     final BookingRepository bookingRepository;
     final RedisTemplate<String, Object> redisTemplate;
     final RealtimeService realtimeService;
+    final StripeConnectService stripeConnectService;
 
     @Value("${stripe.currency-code:vnd}")
     String currencyCode;
@@ -229,6 +230,9 @@ public class PaymentService {
             payment.setPaidAt(LocalDateTime.now());
             paymentRepository.save(payment);
             log.info("Payment {} captured → PAID for booking={}", payment.getId(), bookingId);
+            // Chuyển phần của tài xế (sau hoa hồng) sang tài khoản Stripe Connect của họ.
+            // Chưa thiết lập tài khoản hoặc Stripe lỗi thì không sao: sẽ chuyển bù khi tài xế mở màn Ví.
+            stripeConnectService.transferAfterCapture(payment);
         } catch (StripeException e) {
             log.error("Stripe capture failed for booking {}: {}", bookingId, e.getMessage());
             payment.setStatus(PaymentStatus.FAILED);

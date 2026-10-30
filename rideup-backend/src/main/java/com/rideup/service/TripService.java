@@ -77,8 +77,6 @@ public class TripService {
                 .vehicle(vehicle)
                 .startProvince(start)
                 .endProvince(end)
-                .pickupLat(req.getPickupLat())
-                .pickupLng(req.getPickupLng())
                 .departureTime(req.getDepartureTime())
                 .seatTotal(req.getSeatTotal())
                 .seatAvailable(req.getSeatTotal())

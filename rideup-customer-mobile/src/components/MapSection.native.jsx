@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import { colors } from '../theme';
@@ -12,6 +13,15 @@ export default function MapSection({
   lng,
   loadingWard,
 }) {
+  // Trước đây truyền `region` (controlled): mỗi lần component render lại (đang tải địa chỉ, gõ chữ…)
+  // map bị ép nhảy về region → kéo/zoom bị giật, bấm tiếp khó. Giờ chỉ đặt vị trí ban đầu và
+  // tự animate khi toạ độ đích thật sự thay đổi (bấm điểm mới, chọn gợi ý, đổi phường).
+  const mapRef = useRef(null);
+  const regionKey = `${region.latitude.toFixed(5)},${region.longitude.toFixed(5)},${region.latitudeDelta}`;
+  useEffect(() => {
+    mapRef.current?.animateToRegion(region, 300);
+  }, [regionKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <View style={styles.container}>
       {loadingWard && (
@@ -20,8 +30,9 @@ export default function MapSection({
         </View>
       )}
       <MapView
+        ref={mapRef}
         style={styles.map}
-        region={region}
+        initialRegion={region}
         onPress={(e) => {
           const { latitude, longitude } = e.nativeEvent.coordinate;
           onCoordChange(latitude, longitude);

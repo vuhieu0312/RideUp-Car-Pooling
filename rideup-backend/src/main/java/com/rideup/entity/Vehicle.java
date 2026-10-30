@@ -25,8 +25,10 @@ public class Vehicle {
     @Column(length = 36)
     String id;
 
-    @Column(nullable = false, unique = true, length = 36)
-    String driverId;
+    /** Tài xế sở hữu xe (1 tài xế – tối đa 1 xe). Cột vẫn tên driver_id = driver_profile.id. */
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "driver_id", nullable = false, unique = true)
+    DriverProfile driverProfile;
 
     @Column(nullable = false, length = 20)
     String plateNumber;

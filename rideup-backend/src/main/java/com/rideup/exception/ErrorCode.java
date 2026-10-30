@@ -53,7 +53,9 @@ public enum ErrorCode {
     PAYMENT_STATUS_INVALID          (1049, "Trạng thái thanh toán không hợp lệ",     HttpStatus.BAD_REQUEST),
     DEPOSIT_NOT_ALLOWED             (1051, "Không có nợ hoa hồng để thanh toán",     HttpStatus.BAD_REQUEST),
     SEARCH_DATE_IN_PAST             (1052, "Không thể tìm chuyến ở ngày đã qua",     HttpStatus.BAD_REQUEST),
-    BOOKING_TRIP_DEPARTED           (1053, "Chuyến đã quá giờ khởi hành, không thể đặt chỗ", HttpStatus.BAD_REQUEST);
+    BOOKING_TRIP_DEPARTED           (1053, "Chuyến đã quá giờ khởi hành, không thể đặt chỗ", HttpStatus.BAD_REQUEST),
+    CONNECT_NOT_READY               (1054, "Bạn chưa hoàn tất thiết lập tài khoản nhận tiền", HttpStatus.BAD_REQUEST),
+    PAYOUT_NO_BALANCE               (1055, "Không có số dư khả dụng để rút",          HttpStatus.BAD_REQUEST);
 
     private final int code;
     private final String message;

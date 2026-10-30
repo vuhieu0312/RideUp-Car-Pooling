@@ -82,6 +82,13 @@ stripe:
   webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
   publishable-key: ${STRIPE_PUBLISHABLE_KEY:}
   currency-code: ${STRIPE_CURRENCY_CODE:vnd}
+  # Stripe Connect: chuyển phần của tài xế sau khi trừ hoa hồng, tài xế rút về thẻ/ngân hàng (test mode)
+  connect:
+    # Quốc gia của tài khoản Stripe (tài khoản tài xế phải cùng quốc gia). Sandbox mặc định thường là US.
+    country: ${STRIPE_CONNECT_COUNTRY:US}
+    platform-fee-percent: ${STRIPE_PLATFORM_FEE_PERCENT:10}
+    # Để trống = lấy từ địa chỉ mà điện thoại đang gọi backend. Đặt (vd. link ngrok https) nếu Stripe từ chối URL http.
+    return-base-url: ${STRIPE_CONNECT_RETURN_BASE_URL:}
 
 location:
   seeding:

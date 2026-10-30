@@ -207,6 +207,16 @@ export default function AccountScreen({ navigation }) {
           </Button>
           <Button
             mode="outlined"
+            icon="wallet-outline"
+            onPress={() => navigation.navigate('Payout')}
+            style={styles.btn}
+            contentStyle={styles.btnContent}
+            textColor={colors.primary}
+          >
+            Ví & rút tiền
+          </Button>
+          <Button
+            mode="outlined"
             icon="lock-outline"
             onPress={() => navigation.navigate('ChangePassword')}
             style={styles.btn}

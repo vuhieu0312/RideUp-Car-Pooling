@@ -2,6 +2,7 @@ package com.rideup.entity;
 
 import com.rideup.enums.PaymentMethod;
 import com.rideup.enums.PaymentStatus;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -54,6 +55,16 @@ public class Payment {
 
     @Column(length = 500)
     String failureReason;
+
+    /** Hoa hồng RideUp trên booking này (VND) — chỉ có khi đã chuyển phần của tài xế. */
+    @JsonIgnore
+    @Column(precision = 15, scale = 2)
+    BigDecimal platformFee;
+
+    /** Mã Stripe Transfer (tr_xxx) chuyển phần của tài xế sang tài khoản Connect. Null = chưa chuyển. */
+    @JsonIgnore
+    @Column(length = 100)
+    String transferId;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

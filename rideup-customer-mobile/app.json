@@ -17,7 +17,14 @@
     },
     "plugins": [
       "expo-status-bar",
-      "expo-font"
+      "expo-font",
+      [
+        "@stripe/stripe-react-native",
+        {
+          "merchantIdentifier": "merchant.com.rideup.customer",
+          "enableGooglePay": false
+        }
+      ]
     ]
   }
 }

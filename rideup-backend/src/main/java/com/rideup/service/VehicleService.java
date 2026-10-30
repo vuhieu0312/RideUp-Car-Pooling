@@ -6,7 +6,6 @@ import com.rideup.dto.response.DriverResponse;
 import com.rideup.dto.response.VehicleResponse;
 import com.rideup.entity.DriverProfile;
 import com.rideup.entity.Vehicle;
-import com.rideup.repository.DriverProfileRepository;
 import com.rideup.repository.VehicleRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +25,6 @@ import java.util.List;
 public class VehicleService {
 
     VehicleRepository vehicleRepository;
-    DriverProfileRepository driverProfileRepository;
     DriverService driverService;
     FileService fileService;
     MailService mailService;
@@ -40,12 +38,12 @@ public class VehicleService {
         if (vehicleRepository.existsByPlateNumber(req.getPlateNumber())) {
             throw AppException.conflict("Biển số xe đã được đăng ký");
         }
-        if (vehicleRepository.findByDriverId(driver.getId()).isPresent()) {
+        if (vehicleRepository.findByDriverProfileId(driver.getId()).isPresent()) {
             throw AppException.badRequest("Tài xế đã có xe đăng ký. Vui lòng liên hệ admin để thêm xe mới.");
         }
 
         Vehicle vehicle = Vehicle.builder()
-            .driverId(driver.getId())
+            .driverProfile(driver)
             .plateNumber(req.getPlateNumber().toUpperCase())
             .vehicleBrand(req.getVehicleBrand())
             .vehicleModel(req.getVehicleModel())
@@ -68,7 +66,7 @@ public class VehicleService {
     @Transactional(readOnly = true)
     public List<VehicleResponse> listMyVehicles(String userId) {
         DriverProfile driver = driverService.requireApprovedDriver(userId);
-        return vehicleRepository.findByDriverId(driver.getId())
+        return vehicleRepository.findByDriverProfileId(driver.getId())
             .stream().map(this::toResponse).toList();
     }
 
@@ -99,8 +97,8 @@ public class VehicleService {
         vehicle.setRejectionReason(null);
         vehicle = vehicleRepository.save(vehicle);
         log.info("Admin {} approved vehicleId={} driverProfile={}",
-            adminUserId, vehicle.getId(), vehicle.getDriverId());
-        DriverProfile owner = driverProfileRepository.findById(vehicle.getDriverId()).orElse(null);
+            adminUserId, vehicle.getId(), vehicle.getDriverProfile().getId());
+        DriverProfile owner = vehicle.getDriverProfile();
         if (owner != null) {
             mailService.sendVehicleApproved(owner.getUser().getEmail(), owner.getUser().getFullName(), vehicle.getPlateNumber());
             realtimeService.vehicleChanged(owner.getUser().getId());
@@ -120,7 +118,7 @@ public class VehicleService {
         vehicle.setApprovedBy(null);
         vehicle = vehicleRepository.save(vehicle);
         log.info("Admin {} rejected vehicleId={} reason='{}'", adminUserId, vehicle.getId(), reason);
-        DriverProfile owner = driverProfileRepository.findById(vehicle.getDriverId()).orElse(null);
+        DriverProfile owner = vehicle.getDriverProfile();
         if (owner != null) {
             mailService.sendVehicleRejected(owner.getUser().getEmail(), owner.getUser().getFullName(), vehicle.getPlateNumber(), reason);
             realtimeService.vehicleChanged(owner.getUser().getId());
@@ -132,7 +130,7 @@ public class VehicleService {
      * Helper cho TripService — lấy xe đã duyệt của driver. Throw nếu không có/không duyệt.
      */
     public Vehicle requireVerifiedVehicle(String driverProfileId) {
-        Vehicle v = vehicleRepository.findByDriverId(driverProfileId)
+        Vehicle v = vehicleRepository.findByDriverProfileId(driverProfileId)
             .orElseThrow(() -> AppException.forbidden("Tài xế chưa đăng ký phương tiện"));
         if (!Boolean.TRUE.equals(v.getIsVerified()) || !Boolean.TRUE.equals(v.getIsActive())) {
             throw AppException.forbidden(
@@ -145,7 +143,7 @@ public class VehicleService {
     public VehicleResponse toResponse(Vehicle v) {
         return VehicleResponse.builder()
             .id(v.getId())
-            .driverId(v.getDriverId())
+            .driverId(v.getDriverProfile().getId())
             .plateNumber(v.getPlateNumber())
             .vehicleBrand(v.getVehicleBrand())
             .vehicleModel(v.getVehicleModel())
