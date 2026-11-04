@@ -143,6 +143,12 @@ export const createBooking = (form) =>
 export const listMyBookings = () =>
   api.get('/customer/bookings/mine').then((r) => r.data.data);
 
+export const listMyConversations = () =>
+  api.get('/customer/conversations').then((r) => r.data.data);
+
+export const getConversationMessages = (conversationId) =>
+  api.get(`/messages/${conversationId}`, { params: { page: 0, size: 100 } }).then((r) => r.data.content || []);
+
 export const cancelBooking = (id, reason) =>
   api.delete(`/customer/bookings/${id}`, { params: { reason } }).then((r) => r.data);
 

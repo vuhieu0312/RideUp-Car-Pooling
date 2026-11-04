@@ -13,6 +13,8 @@ import PlaceholderScreen from '../screens/PlaceholderScreen';
 import AccountScreen from '../screens/AccountScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
 import ChangePasswordScreen from '../screens/ChangePasswordScreen';
+import ChatScreen from '../screens/ChatScreen';
+import ConversationsScreen from '../screens/ConversationsScreen';
 import { colors } from '../theme';
 
 const RootStack = createNativeStackNavigator();
@@ -21,6 +23,7 @@ const Tab = createBottomTabNavigator();
 const HomeStack = createNativeStackNavigator();
 const MyBookingsStack = createNativeStackNavigator();
 const PlaceholderStack = createNativeStackNavigator();
+const MessagesStack = createNativeStackNavigator();
 const AccountStack = createNativeStackNavigator();
 
 const TAB_ICON_SIZE = 22;
@@ -38,6 +41,7 @@ function MyBookingsTab() {
   return (
     <MyBookingsStack.Navigator screenOptions={{ headerShown: false }}>
       <MyBookingsStack.Screen name="MyBookings" component={MyBookingsScreen} />
+      <MyBookingsStack.Screen name="Chat" component={ChatScreen} />
     </MyBookingsStack.Navigator>
   );
 }
@@ -56,7 +60,14 @@ function makePlaceholderTab(title, icon, subtitle) {
   };
 }
 
-const MessagesTab = makePlaceholderTab('Tin nhắn', 'message-text-outline', 'Hộp thư với tài xế và admin sẽ có ở đây');
+function MessagesTab() {
+  return (
+    <MessagesStack.Navigator screenOptions={{ headerShown: false }}>
+      <MessagesStack.Screen name="Conversations" component={ConversationsScreen} />
+      <MessagesStack.Screen name="Chat" component={ChatScreen} />
+    </MessagesStack.Navigator>
+  );
+}
 const NotificationsTab = makePlaceholderTab('Thông báo', 'bell-outline', 'Cập nhật về chuyến xe và booking');
 
 function AccountTab() {

@@ -16,6 +16,9 @@ public interface BookingRepository extends JpaRepository<Booking, String> {
         "trip.driver", "trip.vehicle", "pickupWard", "dropoffWard"})
     List<Booking> findByCustomerIdOrderByCreatedAtDesc(String customerId);
 
+    @EntityGraph(attributePaths = { "customer", "trip", "trip.driver" })
+    List<Booking> findByCustomerIdAndStatusOrderByCreatedAtDesc(String customerId, BookingStatus status);
+
     List<Booking> findByTripId(String tripId);
 
     @EntityGraph(attributePaths = {"customer", "payment", "trip", "trip.startProvince", "trip.endProvince",

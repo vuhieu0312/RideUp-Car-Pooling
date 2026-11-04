@@ -4,7 +4,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../auth/AuthContext';
-import { cancelBooking, listMyBookings } from '../api/api';
+import { cancelBooking, listMyBookings, listMyConversations } from '../api/api';
 import { usePayment } from '../hooks/usePayment';
 import { useDialog } from '../components/AppDialog';
 import { useRealtimeRefresh } from '../realtime/useRealtime';
@@ -48,11 +48,17 @@ export default function MyBookingsScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('ALL');
   const [actionMsg, setActionMsg] = useState('');
+  const [conversationByBooking, setConversationByBooking] = useState({});
 
   function load(silent = false) {
     if (!silent) setLoading(true);
-    listMyBookings()
-      .then(setBookings)
+    Promise.all([listMyBookings(), listMyConversations().catch(() => [])])
+      .then(([myBookings, conversations]) => {
+        setBookings(myBookings);
+        setConversationByBooking(Object.fromEntries(
+          conversations.map((conversation) => [conversation.bookingId, conversation]),
+        ));
+      })
       .catch(() => setActionMsg('Lỗi tải booking'))
       .finally(() => setLoading(false));
   }
@@ -236,6 +242,7 @@ export default function MyBookingsScreen({ navigation }) {
         }
         renderItem={({ item: b }) => {
           const meta = STATUS_META[b.status] || { label: b.status, bg: colors.pendingBg, fg: '#92400e' };
+          const conversation = conversationByBooking[b.id];
           const canCancel = ['PENDING_PAYMENT', 'WAITING_DRIVER_APPROVAL', 'CONFIRMED'].includes(b.status);
           // chỉ cần trả tiền khi PENDING_PAYMENT + STRIPE + paymentStatus còn PENDING
           const canPay = b.status === 'PENDING_PAYMENT'
@@ -286,6 +293,17 @@ export default function MyBookingsScreen({ navigation }) {
               <View style={styles.actionsRow}>
                   <TouchableOpacity style={styles.detailBtn} onPress={() => showDetail(b)}>
                     <Text style={styles.detailBtnText}>Xem chi tiết</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.chatBtn, !conversation && styles.chatBtnDisabled]}
+                    disabled={!conversation}
+                    onPress={() => navigation.navigate('Chat', {
+                      conversationId: conversation.conversationId,
+                      bookingId: b.id,
+                      name: b.driverName,
+                    })}>
+                    <MaterialCommunityIcons name="message-text-outline" size={14} color={colors.primaryAccent} />
+                    <Text style={styles.chatBtnText}>{conversation ? 'Chat tài xế' : 'Chat sau khi xác nhận'}</Text>
                   </TouchableOpacity>
                   {canPay && (
                     <TouchableOpacity
@@ -366,6 +384,9 @@ const styles = StyleSheet.create({
   route: { fontSize: 12, color: colors.textDark, marginTop: 3 },
   detailBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 6, borderWidth: 1, borderColor: colors.primaryAccent },
   detailBtnText: { color: colors.primaryAccent, fontSize: 11, fontWeight: '700' },
+  chatBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6, backgroundColor: colors.primaryLight, borderWidth: 1, borderColor: colors.primaryAccent },
+  chatBtnDisabled: { opacity: 0.55 },
+  chatBtnText: { color: colors.primaryAccent, fontSize: 11, fontWeight: '700' },
   dangerBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 6, backgroundColor: colors.dangerBg, borderWidth: 1, borderColor: '#fecaca' },
   dangerBtnText: { color: colors.danger, fontSize: 11, fontWeight: '700' },
   payBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 6, backgroundColor: colors.primary },

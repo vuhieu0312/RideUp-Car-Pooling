@@ -14,6 +14,8 @@ let wanted = false;
 let retry = 0;
 let retryTimer = null;
 let connectTimer = null;
+const chatListeners = new Set();
+let currentChatConversation = null;
 const CONNECT_TIMEOUT_MS = 10000;
 
 export const isRealtimeConnected = () => connected;
@@ -21,6 +23,17 @@ export const isRealtimeConnected = () => connected;
 export function subscribeEvents(fn) {
   listeners.add(fn);
   return () => listeners.delete(fn);
+}
+
+export function subscribeChat(fn) {
+  chatListeners.add(fn);
+  return () => { chatListeners.delete(fn); };
+}
+
+function emitChat(message) {
+  chatListeners.forEach((fn) => {
+    try { fn(message); } catch (e) { /* bỏ qua */ }
+  });
 }
 
 function emit(event) {
@@ -83,14 +96,22 @@ function handleFrame(frame) {
     if (connectTimer) { clearTimeout(connectTimer); connectTimer = null; }
     rtLog('CONNECTED — đang nhận realtime qua WebSocket');
     sendFrame('SUBSCRIBE', { id: 'sub-0', destination: '/user/queue/events' });
+    if (currentChatConversation) {
+      sendFrame('SUBSCRIBE', { id: `chat-${currentChatConversation}`, destination: `/topic/chat/${currentChatConversation}` });
+    }
     emit({ type: 'CONNECTED' });
   } else if (command === 'ERROR') {
     rtLog('STOMP ERROR', head, body);
   } else if (command === 'MESSAGE') {
     try {
-      const event = JSON.parse(body);
-      rtLog('EVENT', event.type, event);
-      emit(event);
+      const data = JSON.parse(body);
+      if (data.conversationId && data.content !== undefined) {
+        rtLog('CHAT MESSAGE', data);
+        emitChat(data);
+      } else {
+        rtLog('EVENT', data.type, data);
+        emit(data);
+      }
     } catch (e) { /* bỏ qua */ }
   }
 }
@@ -186,4 +207,26 @@ export function stopRealtime() {
   if (appStateSub) { appStateSub.remove(); appStateSub = null; }
   closeSocket();
   connected = false;
+  currentChatConversation = null;
+}
+
+export function subscribeConversation(conversationId) {
+  if (currentChatConversation && currentChatConversation !== conversationId && connected) {
+    sendFrame('UNSUBSCRIBE', { id: `chat-${currentChatConversation}` });
+  }
+  currentChatConversation = conversationId;
+  if (!connected) return;
+  sendFrame('SUBSCRIBE', { id: `chat-${conversationId}`, destination: `/topic/chat/${conversationId}` });
+}
+
+export function unsubscribeConversation(conversationId) {
+  if (currentChatConversation !== conversationId) return;
+  if (connected) sendFrame('UNSUBSCRIBE', { id: `chat-${conversationId}` });
+  currentChatConversation = null;
+}
+
+export function sendChatMessage(message) {
+  if (!connected || !socket || socket.readyState !== 1) return false;
+  sendFrame('SEND', { destination: '/app/chat.send', 'content-type': 'application/json' }, JSON.stringify(message));
+  return true;
 }

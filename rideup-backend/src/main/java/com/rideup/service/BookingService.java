@@ -46,6 +46,7 @@ import java.util.UUID;
 public class BookingService {
 
     final BookingRepository bookingRepository;
+    final ConversationService conversationService;
     final TripRepository tripRepository;
     final TripService tripService;
     final UserRepository userRepository;
@@ -66,6 +67,7 @@ public class BookingService {
     long waitingApprovalHours;
 
     public BookingService(BookingRepository bookingRepository,
+                          ConversationService conversationService,
                           TripRepository tripRepository,
                           TripService tripService,
                           UserRepository userRepository,
@@ -76,6 +78,7 @@ public class BookingService {
                           RealtimeService realtimeService,
                           PlatformTransactionManager transactionManager) {
         this.bookingRepository = bookingRepository;
+        this.conversationService = conversationService;
         this.tripRepository = tripRepository;
         this.tripService = tripService;
         this.userRepository = userRepository;
@@ -229,6 +232,12 @@ public class BookingService {
 
         booking.setStatus(BookingStatus.CONFIRMED);
         booking = bookingRepository.save(booking);
+        try {
+            conversationService.createIfNotExist(booking.getId(), booking.getCustomer().getId(),
+                    booking.getTrip().getDriver().getId());
+        } catch (Exception e) {
+            log.warn("Không tạo được phòng chat cho booking {}: {}", bookingId, e.getMessage());
+        }
         realtimeService.bookingChanged(booking);
         log.info("Driver {} confirmed booking {}", driverUserId, bookingId);
         return toResponse(booking);
