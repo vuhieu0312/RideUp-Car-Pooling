@@ -10,7 +10,6 @@ import DateField from '../components/DateField';
 import TimeField from '../components/TimeField';
 import { Text, TextInput } from '../components/Typography';
 
-/** Tạo chuyến xe. */
 export default function TripCreateScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const [provinces, setProvinces] = useState([]);
@@ -19,7 +18,7 @@ export default function TripCreateScreen({ navigation }) {
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [openPicker, setOpenPicker] = useState(null); // 'fromP' | 'toP' | 'vehicle'
+  const [openPicker, setOpenPicker] = useState(null);
 
   const [form, setForm] = useState({
     startProvinceId: '', endProvinceId: '',
@@ -31,7 +30,12 @@ export default function TripCreateScreen({ navigation }) {
 
   useEffect(() => {
     listProvinces().then(setProvinces).catch(() => {});
-    listMyVehicles().then(setVehicles).catch(() => {});
+    listMyVehicles()
+      .then((list) => {
+        setVehicles(list);
+        if (list.length === 1) setForm((f) => ({ ...f, vehicleId: list[0].id }));
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -229,7 +233,6 @@ export default function TripCreateScreen({ navigation }) {
   );
 }
 
-/* ---------- Section wrapper thay thế Paper Card ---------- */
 function Section({ title, children }) {
   return (
     <View style={styles.section}>
@@ -239,12 +242,10 @@ function Section({ title, children }) {
   );
 }
 
-/* ---------- Picker dùng Modal RN thuần (không Portal) ---------- */
 function PickerField({ label, value, options, isOpen, onOpen, onClose, onSelect }) {
   const selected = options.find((o) => o.id === value);
   const [keyword, setKeyword] = useState('');
 
-  // Reset keyword khi đóng modal
   useEffect(() => {
     if (!isOpen) setKeyword('');
   }, [isOpen]);
@@ -331,7 +332,6 @@ const styles = StyleSheet.create({
 
   content: { padding: 14, paddingBottom: 100 },
 
-  // Section wrapper — thay Paper Card
   section: {
     marginBottom: 12,
     borderRadius: 11,
@@ -373,7 +373,6 @@ const styles = StyleSheet.create({
   pickerText: { flex: 1, fontFamily: FONT[600], fontSize: 13, fontWeight: '600', color: colors.text },
   pickerPlaceholder: { color: colors.textSubtle, fontWeight: '400' },
 
-  // Modal chọn option — thay Paper Menu
   modalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',

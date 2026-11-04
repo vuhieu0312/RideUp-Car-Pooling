@@ -33,7 +33,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -43,7 +42,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Slf4j
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
-/** Nghiệp vụ chuyến xe và tìm chuyến có ranking. */
 public class TripService {
 
     TripRepository tripRepository;
@@ -134,38 +132,42 @@ public class TripService {
                 .stream().map(this::toResponse).toList();
     }
 
-    /** Múi giờ nghiệp vụ (giờ Việt Nam), dùng chung cho tìm chuyến và đặt chỗ. */
     public static final ZoneId VN_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
 
-    /** Tài xế được bắt đầu chuyến sớm tối đa bao nhiêu phút so với giờ khởi hành. */
     private static final long START_EARLY_MINUTES = 30;
 
     @Transactional(readOnly = true)
     public List<TripResponse> searchTrips(SearchTripsRequest req) {
         Province start = locationService.getProvinceEntity(req.getStartProvinceId());
         Province end = locationService.getProvinceEntity(req.getEndProvinceId());
-        Ward startWard = locationService.getWardEntity(req.getStartWardId());
-        Ward endWard = locationService.getWardEntity(req.getEndWardId());
-
-        if (startWard.getProvince() == null || !start.getId().equals(startWard.getProvince().getId())) {
-            throw new AppException(
-                    HttpStatus.BAD_REQUEST, 400,
-                    "Xã/phường đi không thuộc tỉnh đi");
+        String startWardId = null;
+        if (req.getStartWardId() != null && !req.getStartWardId().isBlank()) {
+            Ward startWard = locationService.getWardEntity(req.getStartWardId());
+            if (startWard.getProvince() == null || !start.getId().equals(startWard.getProvince().getId())) {
+                throw new AppException(
+                        HttpStatus.BAD_REQUEST, 400,
+                        "Xã/phường đi không thuộc tỉnh đi");
+            }
+            startWardId = startWard.getId();
         }
-        if (endWard.getProvince() == null || !end.getId().equals(endWard.getProvince().getId())) {
-            throw new AppException(
-                    HttpStatus.BAD_REQUEST, 400,
-                    "Xã/phường đến không thuộc tỉnh đến");
+        String endWardId = null;
+        if (req.getEndWardId() != null && !req.getEndWardId().isBlank()) {
+            Ward endWard = locationService.getWardEntity(req.getEndWardId());
+            if (endWard.getProvince() == null || !end.getId().equals(endWard.getProvince().getId())) {
+                throw new AppException(
+                        HttpStatus.BAD_REQUEST, 400,
+                        "Xã/phường đến không thuộc tỉnh đến");
+            }
+            endWardId = endWard.getId();
         }
 
-        // Không cho tìm ngày đã qua; chỉ trả chuyến khởi hành từ thời điểm tìm kiếm trở đi
         LocalDateTime now = LocalDateTime.now(VN_ZONE);
         if (req.getDepartureDate().isBefore(now.toLocalDate())) {
             throw new AppException(ErrorCode.SEARCH_DATE_IN_PAST);
         }
         LocalDateTime startOfDay = req.getDepartureDate().atStartOfDay();
         if (startOfDay.isBefore(now)) {
-            startOfDay = now; // hôm nay: chỉ lấy chuyến có giờ đi >= hiện tại
+            startOfDay = now;  // hôm nay chỉ lấy chuyến có giờ đi từ bây giờ
         }
         LocalDateTime endOfDay = req.getDepartureDate().atTime(23, 59, 59);
 
@@ -173,20 +175,18 @@ public class TripService {
                 TripStatus.OPEN,
                 start.getId(),
                 end.getId(),
-                startWard.getId(),
-                endWard.getId(),
+                startWardId,
+                endWardId,
                 startOfDay,
                 endOfDay)
                 .stream().map(this::toResponse).toList();
     }
 
-/** Tìm chuyến với thuật toán ranking (4 tiêu chí: thời gian + giá + rating + khoảng cách). */
     @Transactional(readOnly = true)
     public List<TripResponse> searchTripsRanked(SearchTripsRequest req) {
         return searchTrips(req);
     }
 
-    /** Reserve seatCount ghế của chuyến trong transaction hiện tại. */
     @Transactional
     public Trip reserveSeat(String tripId, int seatCount) {
         if (seatCount <= 0) {
@@ -210,30 +210,24 @@ public class TripService {
         if (newAvailable == 0) {
             trip.setStatus(TripStatus.FULL);
         } else if (trip.getStatus() == TripStatus.FULL && newAvailable > 0) {
-            // Có người huỷ trước đó → mở lại chuyến
             trip.setStatus(TripStatus.OPEN);
         }
         return tripRepository.save(trip);
     }
 
-    /**
-     * Khoá dòng trip (SELECT ... FOR UPDATE) và đọc lại số ghế mới nhất từ DB.
-     * Dùng refresh() chứ không dùng query có @Lock: nếu trip đã nằm sẵn trong persistence context
-     * (vd. confirm() đã gọi booking.getTrip()), query sẽ trả về object cũ với seatAvailable cũ.
-     * Request đồng thời thứ 2 sẽ đợi request đầu commit rồi mới đọc → không trừ ghế sai, không lỗi lock.
-     */
+    // dùng refresh() chứ không dùng query @Lock, vì trip có thể đã nằm trong persistence context nên query trả về bản cũ
+    // request thứ 2 sẽ đợi request đầu commit rồi mới đọc
     private Trip lockTripForUpdate(String tripId) {
         Trip trip = tripRepository.findById(tripId)
                 .orElseThrow(() -> new AppException(
                         HttpStatus.NOT_FOUND, 404,
                         "Không tìm thấy chuyến"));
-        // flush trước: refresh() sẽ ghi đè thay đổi chưa flush trên trip (vd. cancelTrip vừa set CANCELED rồi mới gọi releaseSeat)
+        // flush trước vì refresh() ghi đè thay đổi chưa flush (vd. cancelTrip vừa set CANCELED rồi mới gọi releaseSeat)
         entityManager.flush();
         entityManager.refresh(trip, LockModeType.PESSIMISTIC_WRITE);
         return trip;
     }
 
-    /** Trả lại seatCount ghế khi huỷ booking. */
     @Transactional
     public void releaseSeat(String tripId, int seatCount) {
         if (seatCount <= 0) {
@@ -269,7 +263,6 @@ public class TripService {
         return toResponse(trip);
     }
 
-    /** Driver bấm "Bắt đầu chuyến" — flip OPEN/FULL → STARTED. */
     @Transactional
     public TripResponse startTrip(String tripId, String driverUserId) {
         Trip trip = tripRepository.findById(tripId)
@@ -282,7 +275,6 @@ public class TripService {
             throw new AppException(HttpStatus.BAD_REQUEST, 400,
                 "Chỉ chuyến OPEN/FULL mới có thể bắt đầu (hiện tại: " + trip.getStatus() + ")");
         }
-        // Cho bắt đầu sớm tối đa START_EARLY_MINUTES phút so với giờ khởi hành
         if (trip.getDepartureTime() != null
                 && trip.getDepartureTime().minusMinutes(START_EARLY_MINUTES).isAfter(LocalDateTime.now(VN_ZONE))) {
             throw new AppException(HttpStatus.BAD_REQUEST, 400,
@@ -293,7 +285,7 @@ public class TripService {
         trip = tripRepository.save(trip);
         log.info("Driver {} started trip {}", driverUserId, tripId);
 
-        // Xe đã chạy → booking còn chờ duyệt không thể duyệt nữa: từ chối và huỷ cọc Stripe (nếu có).
+        // chuyến đã chạy thì booking chờ duyệt bị từ chối và huỷ cọc Stripe
         List<Booking> waiting = bookingRepository.findByTripIdAndStatusIn(
                 tripId, List.of(BookingStatus.WAITING_DRIVER_APPROVAL));
         for (Booking b : waiting) {
@@ -312,7 +304,6 @@ public class TripService {
         return toResponse(trip);
     }
 
-    /** Driver bấm "Kết thúc chuyến" — flip STARTED → COMPLETED. */
     @Transactional
     public TripResponse completeTrip(String tripId, String driverUserId) {
         Trip trip = tripRepository.findById(tripId)
@@ -328,14 +319,12 @@ public class TripService {
         trip.setStatus(TripStatus.COMPLETED);
         trip = tripRepository.save(trip);
 
-        // Cộng 1 vào số chuyến đã chạy của tài xế
         driverProfileRepository.findByUserId(driverUserId).ifPresent(p -> {
             int rides = p.getTotalDriverRides() == null ? 0 : p.getTotalDriverRides();
             p.setTotalDriverRides(rides + 1);
             driverProfileRepository.save(p);
         });
 
-        // Auto-capture Stripe payments của booking STRIPE đang giữ
         try {
             java.util.List<Booking> bookings = bookingRepository.findByTripIdAndStatusIn(tripId,
                 java.util.List.of(BookingStatus.CONFIRMED));
@@ -345,7 +334,6 @@ public class TripService {
                     && b.getPayment().getStatus() == PaymentStatus.HOLDING) {
                     paymentService.capturePayment(b.getId());
                 }
-                // Flip booking → COMPLETED
                 b.setStatus(BookingStatus.COMPLETED);
                 bookingRepository.save(b);
                 realtimeService.bookingChanged(b);
@@ -359,7 +347,6 @@ public class TripService {
         return toResponse(trip);
     }
 
-    /** Driver huỷ chuyến (OPEN/FULL/STARTED → CANCELED). */
     @Transactional
     public TripResponse cancelTrip(String tripId, String driverUserId, String reason) {
         Trip trip = tripRepository.findById(tripId)
@@ -373,20 +360,37 @@ public class TripService {
                 "Không thể huỷ chuyến đã hoàn thành hoặc đã huỷ");
         }
 
-        // 1. Flip trip → CANCELED
+        String cancelReason = "Tài xế huỷ chuyến: " + (reason == null || reason.isBlank() ? "Không rõ" : reason);
+        cancelTripAndBookings(trip, cancelReason);
+        return toResponse(trip);
+    }
+
+    @Transactional
+    public boolean autoCancelIfNoShow(String tripId, int graceMinutes) {
+        Trip trip = lockTripForUpdate(tripId);
+        LocalDateTime deadline = LocalDateTime.now(VN_ZONE).minusMinutes(graceMinutes);
+        boolean cancellable = trip.getStatus() == TripStatus.OPEN || trip.getStatus() == TripStatus.FULL;
+        if (!cancellable || !trip.getDepartureTime().isBefore(deadline)) {
+            return false;
+        }
+        cancelTripAndBookings(trip, "Hệ thống tự huỷ: tài xế không bắt đầu chuyến sau "
+                + graceMinutes + " phút kể từ giờ khởi hành");
+        return true;
+    }
+
+    private void cancelTripAndBookings(Trip trip, String cancelReason) {
+        String tripId = trip.getId();
         trip.setStatus(TripStatus.CANCELED);
         tripRepository.save(trip);
 
-        // 2. Với mỗi booking active, flip → CANCELLED_BY_DRIVER + cancelPayment + release ghế
-        String cancelReason = "Tài xế huỷ chuyến: " + (reason == null || reason.isBlank() ? "Không rõ" : reason);
         java.util.List<Booking> activeBookings = bookingRepository.findByTripIdAndStatusIn(tripId,
             java.util.List.of(
                 BookingStatus.PENDING_PAYMENT,
                 BookingStatus.WAITING_DRIVER_APPROVAL,
                 BookingStatus.CONFIRMED));
 
-        log.info("Driver {} cancelling trip {} — {} active bookings will be refunded",
-            driverUserId, tripId, activeBookings.size());
+        log.info("Cancelling trip {} — {} active bookings will be refunded ({})",
+            tripId, activeBookings.size(), cancelReason);
 
         for (Booking b : activeBookings) {
             BookingStatus prev = b.getStatus();
@@ -396,8 +400,6 @@ public class TripService {
             bookingRepository.save(b);
             realtimeService.bookingChanged(b);
 
-            // Cancel payment (HOLDING → PI.cancel() → tiền release về customer;
-            // PENDING → set VOIDED local; CASH → set VOIDED local)
             try {
                 paymentService.cancelPayment(b.getId());
             } catch (Exception ex) {
@@ -405,23 +407,14 @@ public class TripService {
                     b.getId(), ex.getMessage());
             }
 
-            // Release ghế nếu booking đã được driver duyệt trước đó (CONFIRMED → đã reserve)
+            // chỉ trả ghế nếu booking đã CONFIRMED
             if (prev == BookingStatus.CONFIRMED) {
                 releaseSeat(tripId, b.getSeatCount() == null ? 1 : b.getSeatCount());
             }
         }
 
-        log.info("Driver {} cancelled trip {} — refunded {} bookings",
-            driverUserId, tripId, activeBookings.size());
+        log.info("Cancelled trip {} — refunded {} bookings", tripId, activeBookings.size());
         realtimeService.tripChanged(trip);
-        return toResponse(trip);
-    }
-
-    private Province findProvinceByCode(String code) {
-        return provinceRepository.findByCode(code)
-                .orElseThrow(() -> new AppException(
-                        HttpStatus.NOT_FOUND, 404,
-                        "Tỉnh không tồn tại: " + code));
     }
 
     private TripResponse toResponse(Trip t) {

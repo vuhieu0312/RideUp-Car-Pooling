@@ -15,7 +15,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-/** Public location endpoints — dùng cho driver/customer chọn tỉnh/xã từ dropdown. */
 @RestController
 @RequestMapping("/locations")
 @RequiredArgsConstructor

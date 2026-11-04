@@ -28,7 +28,7 @@ const STATUS_META = {
   EXPIRED: { icon: 'timer-sand', label: 'Hết hạn', bg: colors.dangerBg, fg: colors.dangerText },
 };
 
-// Nhóm booking theo việc tài xế cần làm. Thứ tự = thứ tự ưu tiên khi tự chọn tab.
+// nhóm theo việc tài xế cần làm, thứ tự cũng là ưu tiên khi tự chọn tab
 const FILTERS = [
   { key: 'PENDING', label: 'Chờ duyệt', statuses: ['WAITING_DRIVER_APPROVAL'], empty: 'Không có khách nào đang chờ bạn duyệt.' },
   { key: 'CONFIRMED', label: 'Đã nhận', statuses: ['CONFIRMED'], empty: 'Chưa có khách nào được duyệt.' },
@@ -44,7 +44,6 @@ const FILTERS = [
 
 export default function BookingsScreen({ navigation, route }) {
   const dialog = useDialog();
-  // Mở từ một chuyến: chỉ hiện booking của chuyến đó (vẫn chia theo nhóm như bình thường)
   const tripId = route?.params?.tripId || null;
   const insets = useSafeAreaInsets();
   const [bookings, setBookings] = useState([]);
@@ -52,7 +51,7 @@ export default function BookingsScreen({ navigation, route }) {
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState('PENDING');
   const [actionMsg, setActionMsg] = useState('');
-  const autoPicked = useRef(false); // chỉ tự chọn tab 1 lần sau lần tải đầu
+  const autoPicked = useRef(false);
 
   async function load() {
     try {
@@ -69,17 +68,14 @@ export default function BookingsScreen({ navigation, route }) {
   useEffect(() => { load(); }, []);
   useFocusEffect(useCallback(() => { load(); }, []));
 
-  // Có khách đặt / thanh toán / huỷ → tự tải lại
   useRealtimeRefresh(load, ['BOOKING_UPDATED']);
 
-  // Thông báo tự tắt sau 3 giây
   useEffect(() => {
     if (!actionMsg) return undefined;
     const timer = setTimeout(() => setActionMsg(''), 3000);
     return () => clearTimeout(timer);
   }, [actionMsg]);
 
-  // Phạm vi: toàn bộ booking của tài xế, hoặc chỉ của 1 chuyến
   const scoped = useMemo(
     () => (tripId ? bookings.filter((b) => b.tripId === tripId) : bookings),
     [bookings, tripId],
@@ -90,7 +86,6 @@ export default function BookingsScreen({ navigation, route }) {
   const activeFilter = FILTERS.find((f) => f.key === filter) || FILTERS[0];
   const visible = scoped.filter((b) => activeFilter.statuses.includes(b.status));
 
-  // Lần tải đầu: mở sẵn nhóm đầu tiên có booking (vd. chuyến đang chạy → "Đã nhận")
   useEffect(() => {
     if (loading || autoPicked.current) return;
     autoPicked.current = true;
@@ -269,7 +264,6 @@ export default function BookingsScreen({ navigation, route }) {
   );
 }
 
-// Tọa độ khách ghim khi đặt chuyến — hiển thị trên bản đồ ngay trong thẻ booking
 const hasPoint = (lat, lng) => lat != null && lng != null;
 
 const styles = StyleSheet.create({

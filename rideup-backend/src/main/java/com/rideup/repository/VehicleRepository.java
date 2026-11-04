@@ -12,10 +12,6 @@ public interface VehicleRepository extends JpaRepository<Vehicle, String> {
 
     Optional<Vehicle> findByDriverProfileId(String driverProfileId);
 
-    List<Vehicle> findByDriverProfileIdAndIsActiveTrue(String driverProfileId);
-
-    Optional<Vehicle> findByPlateNumber(String plateNumber);
-
     boolean existsByPlateNumber(String plateNumber);
 
     List<Vehicle> findByIsVerified(Boolean isVerified);

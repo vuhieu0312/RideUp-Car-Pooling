@@ -7,7 +7,6 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import java.nio.file.Paths;
 
-/** Serve file upload trong uploads/ ra ngoài qua URL /uploads/**. */
 @Configuration
 public class WebMvcConfig implements WebMvcConfigurer {
 
@@ -20,8 +19,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
         registry.addResourceHandler("/uploads/**")
                 .addResourceLocations(location);
 
-        // Bù lại default static locations của Spring Boot
-        // (vì override addResourceHandlers() đã vô hiệu hoá mặc định)
+        // giữ lại static location mặc định của Spring Boot (do đã override addResourceHandlers)
         registry.addResourceHandler("/**")
                 .addResourceLocations(
                     "classpath:/META-INF/resources/",

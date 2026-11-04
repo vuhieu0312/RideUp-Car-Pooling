@@ -17,7 +17,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-/** Nghiệp vụ liên quan tới user tự quản lý (xem/sửa profile, đổi mật khẩu, upload avatar). */
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
@@ -95,7 +94,6 @@ public class UserService {
             .updatedAt(user.getUpdatedAt())
             .lastLoginAt(user.getLastLoginAt());
 
-        // Nếu user đã đăng ký làm driver, gắn kèm DriverSummary cho FE
         DriverProfile profile = user.getDriverProfile();
         if (profile != null) {
             builder.driver(DriverSummary.builder()

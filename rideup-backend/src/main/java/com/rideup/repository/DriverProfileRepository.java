@@ -15,11 +15,6 @@ public interface DriverProfileRepository extends JpaRepository<DriverProfile, St
 
     List<DriverProfile> findByStatus(DriverStatus status);
 
-    /**
-     * Batch fetch rating của nhiều driver — tránh N+1 khi tính weighted score.
-     */
-    List<DriverProfile> findByUserIdIn(java.util.Collection<String> userIds);
-
     boolean existsByCccd(String cccd);
 
     boolean existsByGplx(String gplx);

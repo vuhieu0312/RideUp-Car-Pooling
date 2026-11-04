@@ -8,12 +8,9 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 
 @Repository
 public interface BookingRepository extends JpaRepository<Booking, String> {
-
-    Optional<Booking> findByBookingCode(String bookingCode);
 
     @EntityGraph(attributePaths = {"customer", "payment", "trip", "trip.startProvince", "trip.endProvince",
         "trip.driver", "trip.vehicle", "pickupWard", "dropoffWard"})
@@ -24,10 +21,6 @@ public interface BookingRepository extends JpaRepository<Booking, String> {
     @EntityGraph(attributePaths = {"customer", "payment", "trip", "trip.startProvince", "trip.endProvince",
         "trip.driver", "trip.vehicle", "pickupWard", "dropoffWard"})
     List<Booking> findByTripIdAndStatusIn(String tripId, List<BookingStatus> statuses);
-
-    long countByTripIdAndStatusIn(String tripId, List<BookingStatus> statuses);
-
-    long countByCustomerIdAndStatusIn(String customerId, List<BookingStatus> statuses);
 
     List<Booking> findByStatusAndExpiresAtBefore(BookingStatus status, LocalDateTime time);
 

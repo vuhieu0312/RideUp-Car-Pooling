@@ -6,7 +6,6 @@ import { changePassword } from '../api/api';
 import { colors, FONT } from '../theme';
 import { Text } from '../components/Typography';
 
-/** Màn đổi mật khẩu — cần mật khẩu cũ để xác nhận. */
 export default function ChangePasswordScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const [form, setForm] = useState({ oldPassword: '', newPassword: '', confirmPassword: '' });

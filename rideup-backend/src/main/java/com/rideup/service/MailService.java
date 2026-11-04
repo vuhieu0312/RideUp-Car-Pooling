@@ -13,7 +13,7 @@ import org.springframework.web.util.HtmlUtils;
 
 import java.util.concurrent.CompletableFuture;
 
-/** Gửi mail thông báo cho tài xế. Lỗi gửi mail chỉ ghi log, không ảnh hưởng nghiệp vụ. */
+// lỗi gửi mail chỉ ghi log, không ảnh hưởng nghiệp vụ
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -53,7 +53,7 @@ public class MailService {
         queue(to, "RideUp - Phương tiện bị từ chối", name, body);
     }
 
-    /** Đưa mail vào hàng đợi: chờ transaction commit xong (nếu có) rồi gửi ở luồng riêng. */
+    // đợi commit xong rồi gửi ở luồng riêng
     private void queue(String to, String subject, String name, String body) {
         if (to == null || to.isBlank()) {
             return;

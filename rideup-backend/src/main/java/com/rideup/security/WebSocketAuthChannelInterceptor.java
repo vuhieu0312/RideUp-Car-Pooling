@@ -16,15 +16,13 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 import java.util.Map;
 
-/** Set Authentication principal cho STOMP CONNECT dựa trên session attributes mà JwtHandshakeInterceptor đã đặt. */
 @Component
 @Slf4j
 public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
 
     @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
-        // PHẢI lấy accessor gắn sẵn trong message. StompHeaderAccessor.wrap() tạo bản sao →
-        // setUser() trên bản sao không đến được session → convertAndSendToUser() không gửi được cho ai.
+        // phải dùng accessor có sẵn trong message, wrap() tạo bản sao nên setUser không tới được session
         StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
         if (accessor == null) {
             return message;

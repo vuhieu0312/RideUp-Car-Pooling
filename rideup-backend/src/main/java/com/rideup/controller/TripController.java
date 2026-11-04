@@ -30,7 +30,6 @@ public class TripController {
 
     TripService tripService;
 
-    /** Driver tạo chuyến mới. Yêu cầu đã APPROVED + có xe verified. */
     @PostMapping
     @PreAuthorize("hasRole('DRIVER')")
     public ApiResponse<TripResponse> create(
@@ -41,16 +40,12 @@ public class TripController {
                 tripService.createTrip(currentUserId(auth), req));
     }
 
-    /** Driver xem các chuyến của mình. */
     @GetMapping("/mine")
     @PreAuthorize("hasRole('DRIVER')")
     public ApiResponse<List<TripResponse>> listMine(Authentication auth) {
         return ApiResponse.success(tripService.listMyTrips(currentUserId(auth)));
     }
 
-    /**
-     * Customer tìm chuyến — sort theo departureTime ASC (đơn giản).
-     */
     @PostMapping("/search")
     @PreAuthorize("hasRole('CUSTOMER')")
     public ApiResponse<List<TripResponse>> search(
@@ -59,7 +54,6 @@ public class TripController {
                 tripService.searchTrips(req));
     }
 
-    /** Customer tìm chuyến với thuật toán ranking (weighted sum). */
     @PostMapping("/search-ranking")
     @PreAuthorize("hasRole('CUSTOMER')")
     public ApiResponse<List<TripResponse>> searchRanking(
@@ -67,7 +61,6 @@ public class TripController {
         return ApiResponse.success(tripService.searchTripsRanked(req));
     }
 
-    /** Driver bắt đầu chuyến (OPEN/FULL → STARTED). */
     @PostMapping("/{id}/start")
     @PreAuthorize("hasRole('DRIVER')")
     public ApiResponse<TripResponse> start(
@@ -78,7 +71,7 @@ public class TripController {
                 tripService.startTrip(tripId, currentUserId(auth)));
     }
 
-    /** Driver kết thúc chuyến (STARTED → COMPLETED) + auto-capture Stripe payment. */
+    // kết thúc chuyến thì capture tiền Stripe
     @PostMapping("/{id}/complete")
     @PreAuthorize("hasRole('DRIVER')")
     public ApiResponse<TripResponse> complete(
@@ -89,7 +82,7 @@ public class TripController {
                 tripService.completeTrip(tripId, currentUserId(auth)));
     }
 
-    /** Driver huỷ chuyến (OPEN/FULL/STARTED → CANCELED) + auto-refund tất cả booking STRIPE đang active. */
+    // huỷ chuyến thì hoàn tiền các booking Stripe đang active
     @PostMapping("/{id}/cancel")
     @PreAuthorize("hasRole('DRIVER')")
     public ApiResponse<TripResponse> cancel(

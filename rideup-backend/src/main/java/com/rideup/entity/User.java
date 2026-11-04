@@ -71,7 +71,6 @@ public class User {
     @Column(name = "updated_at")
     LocalDateTime updatedAt;
 
-    /** Lần cuối user login thành công. Set bởi AuthenticationService.authenticate(). */
     @Column(name = "last_login_at")
     LocalDateTime lastLoginAt;
 }

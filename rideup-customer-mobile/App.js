@@ -16,16 +16,13 @@ import { DialogProvider } from './src/components/AppDialog';
 import RealtimeGate from './src/realtime/RealtimeGate';
 import GlobalStyles from './GlobalStyles';
 
-// Set document.title mặc định trên web — tránh tab "undefined" ở frame đầu
-// trước khi React Navigation kịp set title cho screen hiện tại.
+// tránh tab web hiện "undefined" ở frame đầu
 if (Platform.OS === 'web' && typeof document !== 'undefined') {
   document.title = 'RideUp';
 }
 
-// Font Inter mặc định được áp dụng bởi src/components/Typography (Text / TextInput).
-// Không dùng Text.defaultProps: React 19 đã bỏ defaultProps nên đoạn đó không còn tác dụng.
+// React 19 bỏ defaultProps nên font Inter áp qua components/Typography
 
-/** Root component. */
 export default function App() {
   const [fontsLoaded] = useFonts({
     Inter_400Regular,

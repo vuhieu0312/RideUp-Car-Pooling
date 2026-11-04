@@ -12,10 +12,6 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-/**
- * Trả về cho driver app khi gọi GET /driver/me.
- * Driver xem profile ở mọi trạng thái (PENDING/APPROVED/REJECTED).
- */
 @Data
 @Builder
 @AllArgsConstructor

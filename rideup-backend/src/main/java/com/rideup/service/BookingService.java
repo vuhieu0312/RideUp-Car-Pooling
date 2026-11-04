@@ -43,7 +43,6 @@ import java.util.UUID;
 @Service
 @Slf4j
 @FieldDefaults(level = AccessLevel.PRIVATE)
-/** Nghiệp vụ đặt vé và xác nhận vé (UC24 + UC28). */
 public class BookingService {
 
     final BookingRepository bookingRepository;
@@ -56,18 +55,13 @@ public class BookingService {
     final PaymentService paymentService;
     final RealtimeService realtimeService;
 
-    /**
-     * Transaction REQUIRES_NEW chạy thủ công. Lý do: gọi this.expireOneBooking()/expireWaitingApprovalOne()
-     * trong cùng class KHÔNG đi qua Spring proxy nên @Transactional trên các hàm đó bị bỏ qua
-     * → chạy không có transaction → LazyInitializationException. Mỗi booking 1 transaction riêng để 1 booking lỗi không kéo cả lô rollback.
-     */
+    // REQUIRES_NEW thủ công vì gọi this.expire...() trong cùng class không qua proxy nên @Transactional bị bỏ qua
+    // mỗi booking 1 transaction riêng để 1 cái lỗi không kéo cả lô rollback
     final TransactionTemplate requiresNewTx;
 
-    /** Booking PENDING_PAYMENT quá expiresAt sẽ bị scheduler huỷ. */
     @Value("${app.booking.pending-expiration-minutes:15}")
     long pendingMinutes;
 
-    /** Booking WAITING_DRIVER_APPROVAL quá waitingApprovalHours sẽ bị scheduler huỷ (cancel Stripe PI → release tiền về customer). */
     @Value("${app.booking.waiting-approval-expiration-hours:24}")
     long waitingApprovalHours;
 
@@ -94,10 +88,8 @@ public class BookingService {
         this.requiresNewTx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
 
-    /**
-     * Khách đặt chỗ — 1 transaction duy nhất: lỗi ở bất kỳ bước nào (kể cả Stripe) đều rollback cả booking lẫn payment.
-     * Không cần retry optimistic lock vì bước này chỉ ĐỌC trip, không trừ ghế (ghế bị trừ khi tài xế duyệt — xem {@link #confirm}).
-     */
+    // 1 transaction, lỗi bước nào (kể cả Stripe) cũng rollback cả booking và payment
+    // ghế chỉ bị trừ khi tài xế duyệt nên không cần retry lock
     @Transactional
     public BookingResponse createBooking(String userId, CreateBookingRequest req) {
         User customer = userRepository.findById(userId)
@@ -106,13 +98,11 @@ public class BookingService {
         Trip trip = tripRepository.findById(req.getTripId())
             .orElseThrow(() -> AppException.notFound("Không tìm thấy chuyến"));
 
-        // Trip chỉ nhận đặt khi OPEN hoặc FULL (FULL vẫn có thể đặt nếu sau
-        // đó có người huỷ — releaseSeat sẽ chuyển về OPEN).
+        // chỉ đặt được khi OPEN hoặc FULL (FULL vẫn đặt được nếu sau đó có người huỷ)
         if (trip.getStatus() != TripStatus.OPEN && trip.getStatus() != TripStatus.FULL) {
             throw AppException.badRequest("Chuyến không nhận đặt chỗ");
         }
 
-        // Chuyến đã quá giờ khởi hành thì không cho đặt
         if (trip.getDepartureTime() != null && trip.getDepartureTime().isBefore(LocalDateTime.now(TripService.VN_ZONE))) {
             throw new AppException(ErrorCode.BOOKING_TRIP_DEPARTED);
         }
@@ -123,7 +113,6 @@ public class BookingService {
 
         int seats = req.getSeatCount() == null ? 1 : req.getSeatCount();
 
-        // (1) Check duplicate booking TRƯỚC
         Set<BookingStatus> activeStatuses = EnumSet.of(
             BookingStatus.PENDING_PAYMENT,
             BookingStatus.WAITING_DRIVER_APPROVAL,
@@ -133,25 +122,20 @@ public class BookingService {
             throw AppException.conflict("Bạn đã có booking đang chờ hoặc đã xác nhận cho chuyến này");
         }
 
-        // (2) KHÔNG reserve ghế ngay khi customer book — ghế chỉ bị trừ khi driver confirm (xem #confirm).
+        // không trừ ghế lúc đặt, tài xế duyệt mới trừ
 
-        // Validate ghế còn đủ KHÔNG (read-only check — không trừ)
         if (trip.getSeatAvailable() < seats) {
             throw AppException.conflict("Chuyến chỉ còn " + trip.getSeatAvailable() + " ghế");
         }
 
-        // (3) Save booking — nếu vi phạm unique constraint (customer_id,
-        // trip_id, status) thì throw ngay, không retry.
         BigDecimal pricePerSeat = trip.getPriceVnd();
         BigDecimal total = pricePerSeat.multiply(BigDecimal.valueOf(seats));
 
-        // Resolve ward cho điểm đón / điểm trả (optional nhưng nếu client gửi
-        // wardId thì bắt buộc tồn tại và phải thuộc đúng tỉnh của trip).
+        // ward không bắt buộc, nhưng nếu gửi thì phải thuộc đúng tỉnh của chuyến
         Ward pickupWard = resolveWard(req.getPickupWardId(), trip.getStartProvince() != null ? trip.getStartProvince().getId() : null, "đón");
         Ward dropoffWard = resolveWard(req.getDropoffWardId(), trip.getEndProvince() != null ? trip.getEndProvince().getId() : null, "trả");
 
-        // CASH: không cần thanh toán trước → vào thẳng hàng chờ tài xế duyệt.
-        // STRIPE: chờ khách giữ tiền thành công (authorize/webhook) mới sang WAITING_DRIVER_APPROVAL.
+        // CASH vào thẳng chờ tài xế duyệt, STRIPE chờ giữ tiền xong mới sang WAITING_DRIVER_APPROVAL
         boolean isCash = req.getPaymentMethod() == com.rideup.enums.PaymentMethod.CASH;
 
         Booking booking = Booking.builder()
@@ -182,7 +166,6 @@ public class BookingService {
             throw AppException.conflict("Không thể tạo booking (ràng buộc dữ liệu)");
         }
 
-        // Tạo Payment gắn với booking (1-1).
         Payment payment = Payment.builder()
             .booking(booking)
             .amount(total)
@@ -191,10 +174,10 @@ public class BookingService {
             .build();
         payment = paymentRepository.saveAndFlush(payment);
 
-        // Booking.payment là phía inverse (@OneToOne mappedBy="booking") — JPA KHÔNG tự đồng bộ 2 chiều trong bộ nhớ, chỉ đúng ở FK dưới DB.
+        // payment là phía mappedBy, JPA không tự đồng bộ 2 chiều trong bộ nhớ
         booking.setPayment(payment);
 
-        // STRIPE: tạo PaymentIntent MANUAL capture sau khi đã save Payment row
+        // STRIPE: tạo PaymentIntent manual capture
         if (req.getPaymentMethod() == com.rideup.enums.PaymentMethod.STRIPE) {
             paymentService.createPaymentIntent(payment, booking);
         }
@@ -202,7 +185,7 @@ public class BookingService {
         log.info("Booking created id={} code={} trip={} seats={} amount={} paymentMethod={} paymentId={}",
             booking.getId(), booking.getBookingCode(),
             trip.getId(), seats, total, req.getPaymentMethod(), payment.getId());
-        // Báo tài xế (và chính khách) có booking mới — gửi sau khi commit
+        // báo realtime sau khi commit
         realtimeService.bookingChanged(booking);
         return toResponse(booking);
     }
@@ -234,13 +217,13 @@ public class BookingService {
             throw AppException.badRequest("Booking không ở trạng thái chờ duyệt");
         }
 
-        // Validate trip còn OPEN/FULL — không cho duyệt khi xe đã khởi hành
+        // chuyến đã chạy thì không duyệt được
         Trip trip = booking.getTrip();
         if (trip.getStatus() != TripStatus.OPEN && trip.getStatus() != TripStatus.FULL) {
             throw AppException.badRequest("Chuyến đã bắt đầu hoặc kết thúc, không thể duyệt");
         }
 
-        // Trừ ghế tại đây khi driver duyệt (PESSIMISTIC_WRITE trong TripService.reserveSeat)
+        // trừ ghế ở đây (PESSIMISTIC_WRITE trong reserveSeat)
         tripService.reserveSeat(trip.getId(),
             booking.getSeatCount() == null ? 1 : booking.getSeatCount());
 
@@ -261,7 +244,7 @@ public class BookingService {
             throw AppException.badRequest("Booking không ở trạng thái chờ duyệt");
         }
 
-        // Validate trip còn OPEN/FULL — không cho reject khi xe đã khởi hành
+        // chuyến đã chạy thì không từ chối được
         Trip trip = booking.getTrip();
         if (trip.getStatus() != TripStatus.OPEN && trip.getStatus() != TripStatus.FULL) {
             throw AppException.badRequest("Chuyến đã bắt đầu hoặc kết thúc, không thể từ chối");
@@ -273,11 +256,10 @@ public class BookingService {
         booking = bookingRepository.save(booking);
         realtimeService.bookingChanged(booking);
 
-        // Huỷ Stripe hold nếu customer đã trả → tiền tự động refund về customer
+        // huỷ Stripe hold nếu khách đã trả
         paymentService.cancelPayment(bookingId);
 
-        // KHÔNG release ghế — booking WAITING_DRIVER_APPROVAL chưa được driver duyệt
-        // nên ghế chưa từng bị trừ (xem {@link #createBooking} + {@link #confirm}).
+        // chưa duyệt nên ghế chưa bị trừ, không cần trả ghế
 
         log.info("Driver {} rejected booking {} reason={}", driverUserId, bookingId, reason);
         return toResponse(booking);
@@ -297,7 +279,7 @@ public class BookingService {
         if (!cancellable) {
             throw AppException.badRequest("Booking không thể huỷ");
         }
-        // Đã duyệt mà chuyến đã chạy thì không được huỷ (tránh đi xe rồi huỷ để lấy lại tiền)
+        // đã duyệt mà chuyến đã chạy thì không cho huỷ (tránh đi xe xong huỷ lấy lại tiền)
         TripStatus tripStatus = booking.getTrip().getStatus();
         if (prevBookingStatus == BookingStatus.CONFIRMED
             && (tripStatus == TripStatus.STARTED || tripStatus == TripStatus.COMPLETED)) {
@@ -310,11 +292,10 @@ public class BookingService {
         booking = bookingRepository.save(booking);
         realtimeService.bookingChanged(booking);
 
-        // Huỷ Stripe hold nếu đang giữ tiền (release tiền về customer)
+        // huỷ Stripe hold nếu đang giữ tiền
         paymentService.cancelPayment(bookingId);
 
-        // Release ghế về trip nếu booking trước đó = CONFIRMED (driver đã duyệt
-        // → ghế đã reserve). PENDING_PAYMENT/WAITING_DRIVER_APPROVAL → chưa từng reserve.
+        // chỉ trả ghế nếu booking đã CONFIRMED (lúc đó ghế mới bị trừ)
         if (prevBookingStatus == BookingStatus.CONFIRMED) {
             tripService.releaseSeat(booking.getTrip().getId(),
                 booking.getSeatCount() == null ? 1 : booking.getSeatCount());
@@ -324,7 +305,6 @@ public class BookingService {
         return toResponse(booking);
     }
 
-    /** Driver xác nhận đã nhận tiền mặt từ customer. */
     @Transactional
     public BookingResponse confirmCashPayment(String bookingId, String driverUserId) {
         Booking booking = bookingRepository.findById(bookingId)
@@ -357,7 +337,6 @@ public class BookingService {
         return toResponse(booking);
     }
 
-    /** Tick mỗi 60s (configurable). */
     @Scheduled(fixedDelayString = "${app.booking.expiration-check-ms:60000}")
     public void expirePendingBookings() {
         List<Booking> expired = bookingRepository
@@ -374,7 +353,6 @@ public class BookingService {
         }
     }
 
-    /** Tick mỗi 60s. */
     @Scheduled(fixedDelayString = "${app.booking.expiration-check-ms:60000}")
     public void expireWaitingApprovalBookings() {
         LocalDateTime cutoff = LocalDateTime.now().minusHours(waitingApprovalHours);
@@ -394,27 +372,26 @@ public class BookingService {
         }
     }
 
-    /** Expire 1 booking PENDING_PAYMENT trong transaction riêng (REQUIRES_NEW) — nếu row này fail (ví dụ unique constraint do customer có 2 booking cùng... */
+    // hết hạn 1 booking trong transaction riêng, lỗi ở đây không ảnh hưởng booking khác
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void expireOneBooking(String bookingId) {
         Booking booking = bookingRepository.findById(bookingId).orElse(null);
         if (booking == null || booking.getStatus() != BookingStatus.PENDING_PAYMENT) return;
 
-        // 1. Cancel Stripe hold nếu customer đã trả nhưng chưa được driver duyệt
+        // huỷ Stripe hold nếu khách đã trả
         try {
             paymentService.cancelPayment(bookingId);
         } catch (Exception ex) {
             log.warn("Failed to cancel payment for expired booking {}: {}", bookingId, ex.getMessage());
         }
 
-        // 2. Set payment FAILED với lý do hết hạn
         paymentRepository.findByBookingId(bookingId).ifPresent(p -> {
             p.setStatus(PaymentStatus.FAILED);
             p.setFailureReason("Hết hạn thanh toán");
             paymentRepository.save(p);
         });
 
-        // 3. Set booking EXPIRED — có thể fail với duplicate (customer, trip, EXPIRED)
+        // có thể lỗi trùng (customer, trip, EXPIRED)
         try {
             booking.setStatus(BookingStatus.EXPIRED);
             booking.setCancelledAt(LocalDateTime.now());
@@ -423,14 +400,12 @@ public class BookingService {
             realtimeService.bookingChanged(booking);
             log.info("Booking {} EXPIRED", bookingId);
         } catch (org.springframework.dao.DataIntegrityViolationException ex) {
-            // Đã có 1 booking EXPIRED khác cho cùng (customer, trip) từ lần chạy
-            // scheduler trước — skip silently
+            // đã có booking EXPIRED khác cho cùng (customer, trip) từ lần trước, bỏ qua
             log.warn("Skip expire booking {} — duplicate (customer, trip, EXPIRED) already exists",
                 bookingId);
         }
     }
 
-    /** Expire 1 booking WAITING_DRIVER_APPROVAL quá 24h. */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void expireWaitingApprovalOne(String bookingId) {
         Booking booking = bookingRepository.findById(bookingId).orElse(null);
@@ -438,7 +413,7 @@ public class BookingService {
 
         BookingStatus prevStatus = booking.getStatus();
 
-        // 1. Cancel Stripe hold → release tiền về customer
+        // huỷ Stripe hold, tiền về khách
         try {
             paymentService.cancelPayment(bookingId);
         } catch (Exception ex) {
@@ -446,14 +421,12 @@ public class BookingService {
                 bookingId, ex.getMessage());
         }
 
-        // 2. Set payment VOIDED với lý do "driver không duyệt trong X giờ"
         paymentRepository.findByBookingId(bookingId).ifPresent(p -> {
             p.setStatus(PaymentStatus.VOIDED);
             p.setFailureReason("Tài xế không duyệt trong " + waitingApprovalHours + "h");
             paymentRepository.save(p);
         });
 
-        // 3. Set booking EXPIRED
         try {
             booking.setStatus(BookingStatus.EXPIRED);
             booking.setCancelledAt(LocalDateTime.now());
@@ -467,27 +440,6 @@ public class BookingService {
                 bookingId);
         }
 
-        // 4. KHÔNG cần release ghế — WAITING_DRIVER_APPROVAL chưa được driver duyệt
-        // nên ghế chưa từng bị reserve.
-    }
-
-    /** Được gọi từ BookingEventListener.onPaymentAuthorized sau khi Stripe webhook authorize thành công. */
-    @Transactional
-    public void markPaymentAuthorized(String bookingId) {
-        Booking booking = bookingRepository.findById(bookingId).orElse(null);
-        if (booking == null) {
-            log.warn("markPaymentAuthorized: booking {} not found", bookingId);
-            return;
-        }
-        if (booking.getStatus() != BookingStatus.PENDING_PAYMENT) {
-            log.info("markPaymentAuthorized: booking {} not in PENDING_PAYMENT (current={}), skip",
-                bookingId, booking.getStatus());
-            return;
-        }
-        booking.setStatus(BookingStatus.WAITING_DRIVER_APPROVAL);
-        bookingRepository.save(booking);
-        realtimeService.bookingChanged(booking);
-        log.info("Booking {} → WAITING_DRIVER_APPROVAL (payment authorized)", bookingId);
     }
 
     private void ensureDriverOwnsTrip(Booking booking, String driverUserId) {
@@ -496,7 +448,6 @@ public class BookingService {
         }
     }
 
-    /** Resolve ward theo id và validate thuộc đúng tỉnh (nếu provinceId != null). */
     private Ward resolveWard(String wardId, String expectedProvinceId, String kindLabel) {
         if (wardId == null || wardId.isBlank()) return null;
         Ward w = wardRepository.findById(wardId)

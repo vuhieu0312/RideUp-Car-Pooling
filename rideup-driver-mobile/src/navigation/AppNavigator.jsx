@@ -42,7 +42,6 @@ function AuthFlow() {
   );
 }
 
-/** Stack trong tab "Trang chủ" — chỉ chứa Home. */
 function HomeTabs() {
   return (
     <HomeStack.Navigator screenOptions={{ headerShown: false }}>
@@ -77,9 +76,6 @@ function makePlaceholderTab(title, icon, subtitle) {
 const MessagesTab = makePlaceholderTab('Tin nhắn', 'message-text-outline', 'Hộp thư với khách và admin sẽ có ở đây');
 const NotificationsTab = makePlaceholderTab('Thông báo', 'bell-outline', 'Cập nhật về booking và chuyến xe');
 
-/**
- * Tab Tài khoản — stack chứa Account + 2 màn con (sửa profile, đổi mật khẩu).
- */
 function AccountTab() {
   return (
     <AccountStack.Navigator screenOptions={{ headerShown: false }}>
@@ -90,7 +86,6 @@ function AccountTab() {
   );
 }
 
-/** Bottom tab navigator — 5 tab khi đã đăng nhập và được duyệt. */
 function MainTabs() {
   const insets = useSafeAreaInsets();
   const bottomInset = Math.max(insets.bottom, 6);
@@ -186,7 +181,6 @@ function MainTabs() {
   );
 }
 
-/** Stack root — khi đã login + approved */
 function MainFlow() {
   return (
     <RootStack.Navigator screenOptions={{ headerShown: false }}>
@@ -200,7 +194,6 @@ function MainFlow() {
   );
 }
 
-/** Stack root tổng — chọn 1 trong 3 flow tùy trạng thái user */
 export default function AppNavigator() {
   const { user, loading } = useAuth();
   const [driverStatus, setDriverStatus] = useState(null);

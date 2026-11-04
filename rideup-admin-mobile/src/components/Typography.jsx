@@ -3,7 +3,6 @@ import { StyleSheet, Text as RNText, TextInput as RNTextInput } from 'react-nati
 import { Text as PaperText } from 'react-native-paper';
 import { FONT } from '../theme';
 
-/** Text / TextInput dùng chung của RideUp (giống nhau ở cả 3 app). */
 const WEIGHT_ALIAS = { normal: 400, bold: 700 };
 
 function familyForWeight(w) {
@@ -15,7 +14,6 @@ function familyForWeight(w) {
   return FONT[400];
 }
 
-// Trả về fontFamily cần ép (hoặc null nếu giữ nguyên style gốc)
 function resolveFamily(flat) {
   if (flat.fontFamily) return null;
   if (flat.fontWeight == null) return null;
@@ -23,7 +21,7 @@ function resolveFamily(flat) {
   return Number.isFinite(w) ? familyForWeight(w) : null;
 }
 
-// Text lồng trong Text thì kế thừa font của cha, không gán lại Regular
+// Text lồng nhau thì kế thừa font của cha
 const NestedText = createContext(false);
 
 export function Text({ style, variant, children, ...props }) {
@@ -32,7 +30,7 @@ export function Text({ style, variant, children, ...props }) {
   const forced = resolveFamily(flat);
   const isInter = typeof flat.fontFamily === 'string' && flat.fontFamily.startsWith('Inter_');
   let finalStyle = style;
-  // Đã có file Inter đúng weight thì đặt fontWeight: 'normal' để Android không "bold chồng bold"
+  // đã có file Inter đúng weight thì để fontWeight normal, tránh Android bold chồng bold
   if (forced || isInter) finalStyle = [style, { fontFamily: forced || flat.fontFamily, fontWeight: 'normal' }];
   else if (!variant && !nested && !flat.fontFamily) finalStyle = [{ fontFamily: FONT[400] }, style];
 

@@ -3,9 +3,9 @@ import { Image, ImageBackground, ScrollView, StyleSheet, TouchableOpacity, View 
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Avatar, Card, IconButton } from 'react-native-paper';
+import { Avatar } from 'react-native-paper';
 import { useAuth } from '../auth/AuthContext';
-import { listMyBookings, listProvinces, listWards, searchTrips } from '../api/api';
+import { listMyBookings, listProvinces, resolveMediaUrl, listWards, searchTrips } from '../api/api';
 import { colors, FONT, HERO_IMAGE, shadow } from '../theme';
 import Picker from '../components/Picker';
 import DateField, { todayIso, tomorrowIso } from '../components/DateField';
@@ -13,7 +13,6 @@ import { Text } from '../components/Typography';
 import Logo from '../components/Logo';
 import { useRealtimeRefresh } from '../realtime/useRealtime';
 
-// Booking đã đặt nhưng chưa đi và chưa huỷ
 const UPCOMING_STATUSES = ['PENDING_PAYMENT', 'WAITING_DRIVER_APPROVAL', 'CONFIRMED'];
 
 
@@ -31,22 +30,23 @@ export default function HomeScreen({ navigation }) {
   const [trips, setTrips] = useState([]);
   const [searched, setSearched] = useState(false);
   const [searching, setSearching] = useState(false);
-  const [pickerOpen, setPickerOpen] = useState(null); // 'from' | 'pickup' | 'to' | 'dropoff'
+  const [pickerOpen, setPickerOpen] = useState(null);
 
   const [upcomingCount, setUpcomingCount] = useState(0);
   const [completedCount, setCompletedCount] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
 
   useEffect(() => {
     listProvinces().then(setProvinces).catch(() => {});
   }, []);
 
-  // Đếm booking của khách cho 2 ô thống kê
   const loadStats = useCallback(() => {
     listMyBookings()
       .then((list) => {
         const all = list || [];
         setUpcomingCount(all.filter((b) => UPCOMING_STATUSES.includes(b.status)).length);
         setCompletedCount(all.filter((b) => b.status === 'COMPLETED').length);
+        setTotalCount(all.length);
       })
       .catch(() => {});
   }, []);
@@ -69,8 +69,8 @@ export default function HomeScreen({ navigation }) {
   async function searchTripsAction() {
     const from = provinces.find((p) => p.id === fromProvinceId);
     const to = provinces.find((p) => p.id === toProvinceId);
-    if (!fromProvinceId || !toProvinceId || !pickupWardId || !dropoffWardId || !date) {
-      setSearchError('Vui lòng chọn đủ tỉnh, phường/xã và ngày khởi hành');
+    if (!fromProvinceId || !toProvinceId || !date) {
+      setSearchError('Vui lòng chọn tỉnh đón, tỉnh trả và ngày khởi hành');
       return;
     }
     if (date < todayIso()) {
@@ -87,9 +87,9 @@ export default function HomeScreen({ navigation }) {
     try {
       const result = await searchTrips({
         startProvinceId: fromProvinceId,
-        startWardId: pickupWardId,
+        startWardId: pickupWardId || undefined,
         endProvinceId: toProvinceId,
-        endWardId: dropoffWardId,
+        endWardId: dropoffWardId || undefined,
         departureDate: date,
       });
       setTrips(result);
@@ -132,14 +132,14 @@ export default function HomeScreen({ navigation }) {
         <View style={styles.statsRow}>
           <Stat icon="car-outline" value={String(upcomingCount)} label="Chuyến đã đặt" />
           <Stat icon="clipboard-text-outline" value={String(completedCount)} label="Lượt đã đi" />
-          <Stat icon="star-outline" value="5.0" label="Đánh giá" accent />
+          <Stat icon="ticket-confirmation-outline" value={String(totalCount)} label="Tổng lượt đặt" />
         </View>
 
         {/* Search panel */}
         <View style={styles.panel}>
           <View style={styles.panelHeading}>
             <Text style={styles.panelTitle}>Tìm chuyến ghép</Text>
-            <Text style={styles.panelHint}>Chọn điểm đón/trả chi tiết</Text>
+            <Text style={styles.panelHint}>Chỉ cần chọn tỉnh, khu vực là tùy chọn</Text>
           </View>
 
           <PickerField
@@ -155,14 +155,14 @@ export default function HomeScreen({ navigation }) {
           />
           <PickerField
             icon="map-marker-radius"
-            label="KHU VỰC ĐÓN"
+            label="KHU VỰC ĐÓN (không bắt buộc)"
             value={pickupWardId}
-            options={pickupWards}
+            options={pickupWards.length ? [{ id: '', name: 'Tất cả khu vực' }, ...pickupWards] : []}
             isOpen={pickerOpen === 'pickup'}
             onOpenMenu={() => setPickerOpen('pickup')}
             onCloseMenu={() => setPickerOpen(null)}
             onSelect={(id) => { setPickupWardId(id); setPickerOpen(null); }}
-            placeholder="Chọn quận/huyện, phường/xã đón"
+            placeholder="Tất cả khu vực"
           />
           <PickerField
             icon="map-marker"
@@ -177,14 +177,14 @@ export default function HomeScreen({ navigation }) {
           />
           <PickerField
             icon="map-marker-radius"
-            label="KHU VỰC TRẢ"
+            label="KHU VỰC TRẢ (không bắt buộc)"
             value={dropoffWardId}
-            options={dropoffWards}
+            options={dropoffWards.length ? [{ id: '', name: 'Tất cả khu vực' }, ...dropoffWards] : []}
             isOpen={pickerOpen === 'dropoff'}
             onOpenMenu={() => setPickerOpen('dropoff')}
             onCloseMenu={() => setPickerOpen(null)}
             onSelect={(id) => { setDropoffWardId(id); setPickerOpen(null); }}
-            placeholder="Chọn quận/huyện, phường/xã trả"
+            placeholder="Tất cả khu vực"
           />
 
           <DateField value={date} onChange={setDate} minDate={todayIso()} />
@@ -306,7 +306,6 @@ function TripCard({ trip, provinceName, fmtTime, fmtMoney, onBook }) {
   );
 }
 
-/** Avatar nhỏ ở góc phải header — ưu tiên ảnh từ user.avatarUrl, fallback initials. */
 function renderHeroAvatar(user) {
   const initials = (user?.fullName || user?.email || 'U')
     .split(/\s+/)
@@ -316,7 +315,7 @@ function renderHeroAvatar(user) {
     .join('')
     .toUpperCase();
   const url = user?.avatarUrl
-    ? (user.avatarUrl.startsWith('http') ? user.avatarUrl : `http://localhost:8080${user.avatarUrl}`)
+    ? resolveMediaUrl(user.avatarUrl)
     : null;
   return (
     <View style={styles.heroAvatarWrap}>

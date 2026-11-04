@@ -8,11 +8,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.experimental.FieldDefaults;
 
-/**
- * Trả về cho driver app khi gọi GET /driver/status.
- * Endpoint nhẹ để app poll định kỳ (mỗi 5-10s) hoặc khi user mở app.
- * Frontend dựa vào status để navigate: PENDING→/pending, APPROVED→/home, REJECTED→/rejected.
- */
 @Data
 @Builder
 @AllArgsConstructor
@@ -20,8 +15,7 @@ import lombok.experimental.FieldDefaults;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class DriverStatusResponse {
     DriverStatus status;
-    /** Message tiếng Việt đã được format sẵn, frontend chỉ cần hiển thị. */
     String message;
-    /** Lý do bị từ chối (chỉ có khi status=REJECTED). */
+    // chỉ có khi bị từ chối
     String rejectionReason;
 }

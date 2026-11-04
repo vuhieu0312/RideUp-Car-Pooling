@@ -14,7 +14,6 @@ const GENDERS = [
   { value: 'OTHER', label: 'Khác', icon: 'account-question-outline' },
 ];
 
-/** Màn sửa thông tin cá nhân — đổi họ tên / SĐT / ngày sinh / giới tính. */
 export default function EditProfileScreen({ navigation }) {
   const { user, updateUser } = useAuth();
   const insets = useSafeAreaInsets();

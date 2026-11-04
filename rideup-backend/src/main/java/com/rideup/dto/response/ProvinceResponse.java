@@ -17,7 +17,7 @@ import java.math.BigDecimal;
 public class ProvinceResponse {
     String id;
     String name;
-    String code;          // "HCM", "HN", "DN" — dùng cho Trip search
+    String code;
     BigDecimal lat;
     BigDecimal lng;
     Long osmid;

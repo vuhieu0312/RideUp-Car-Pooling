@@ -1,25 +1,23 @@
 import { AppState } from 'react-native';
 import { getFreshAccessToken, getWsUrl } from '../api/api';
 
-// Client STOMP tối giản qua WebSocket (không cần cài thư viện).
-// Server gửi sự kiện về /user/queue/events với body JSON: { type, ... }
+// STOMP tối giản qua WebSocket, server gửi về /user/queue/events với body JSON { type, ... }
 
-// Log để kiểm tra realtime (chỉ khi dev). Xem trong terminal Expo / console trình duyệt, lọc "[RT]".
+// log dev, lọc "[RT]" trong console
 const t = () => new Date().toISOString().slice(11, 23);
 export const rtLog = (...args) => { if (__DEV__) console.log(`[RT ${t()}]`, ...args); };
 
 const listeners = new Set();
 let socket = null;
 let connected = false;
-let wanted = false; // true khi đã đăng nhập và muốn giữ kết nối
+let wanted = false;
 let retry = 0;
 let retryTimer = null;
-let connectTimer = null; // chờ CONNECTED quá lâu → đóng và nối lại
+let connectTimer = null;
 const CONNECT_TIMEOUT_MS = 10000;
 
 export const isRealtimeConnected = () => connected;
 
-/** Đăng ký nhận sự kiện. Trả về hàm huỷ đăng ký. */
 export function subscribeEvents(fn) {
   listeners.add(fn);
   return () => listeners.delete(fn);
@@ -31,8 +29,7 @@ function emit(event) {
   });
 }
 
-// React Native (Android/iOS) cắt chuỗi tại ký tự NULL khi gửi WebSocket dạng text → frame STOMP mất "\0" ở cuối,
-// Spring đợi mãi không xử lý CONNECT. Vì vậy luôn gửi frame dạng BINARY (UTF-8 bytes), nhận thì chấp nhận cả text lẫn binary.
+// RN cắt chuỗi text ở ký tự \0 nên frame STOMP mất terminator, Spring đợi mãi; vì vậy gửi dạng binary
 function utf8Encode(str) {
   if (typeof TextEncoder !== 'undefined') return new TextEncoder().encode(str);
   const out = [];
@@ -70,7 +67,6 @@ function sendFrame(command, headers, body = '') {
   if (!socket || socket.readyState !== 1) return;
   const head = Object.entries(headers).map(([k, v]) => `${k}:${v}`).join('\n');
   const bytes = utf8Encode(`${command}\n${head}\n\n${body}\0`);
-  // Gửi ArrayBuffer cắt đúng độ dài (một số runtime không nhận Uint8Array trực tiếp)
   socket.send(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
 }
 
@@ -122,7 +118,7 @@ function closeSocket() {
 
 async function connect() {
   if (!wanted || socket) return;
-  // Token hết hạn thì refresh trước — nếu không handshake sẽ bị từ chối mãi
+  // token hết hạn thì refresh trước, không thì handshake bị từ chối mãi
   const token = await getFreshAccessToken();
   if (!token) { rtLog('không có token hợp lệ → chưa kết nối'); scheduleReconnect(); return; }
   if (!wanted || socket) return;
@@ -144,7 +140,6 @@ async function connect() {
   };
   s.onmessage = (e) => {
     const text = typeof e.data === 'string' ? e.data : utf8Decode(e.data);
-    // Server có thể gửi nhiều frame trong 1 message; RN có thể làm rơi "\0" cuối — split vẫn đúng.
     text.split('\0').forEach(handleFrame);
   };
   s.onerror = () => {};
@@ -155,7 +150,7 @@ async function connect() {
       'code=', e?.code, e?.reason || '', '→ tạm dùng polling 30s');
     connected = false;
     if (socket === s) socket = null;
-    // Báo cho màn hình biết để bật lại polling dự phòng và tải lại dữ liệu
+    // báo màn hình bật lại polling và tải lại dữ liệu
     emit({ type: 'DISCONNECTED' });
     if (wasConnected) retry = 0;
     scheduleReconnect();
@@ -170,7 +165,7 @@ function onAppState(state) {
     retry = 0;
     connect();
   } else {
-    // App xuống nền: đóng kết nối để tiết kiệm pin
+    // xuống nền thì đóng kết nối cho đỡ tốn pin
     closeSocket();
     connected = false;
   }

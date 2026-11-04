@@ -7,7 +7,6 @@ import { useAuth } from '../auth/AuthContext';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import HomeScreen from '../screens/HomeScreen';
-import TripSearchScreen from '../screens/TripSearchScreen';
 import BookingCreateScreen from '../screens/BookingCreateScreen';
 import MyBookingsScreen from '../screens/MyBookingsScreen';
 import PlaceholderScreen from '../screens/PlaceholderScreen';
@@ -26,12 +25,10 @@ const AccountStack = createNativeStackNavigator();
 
 const TAB_ICON_SIZE = 22;
 
-/** Stack trong tab "Trang chủ" — chứa Home + các sub-screen đặt xe (TripSearch, BookingCreate). */
 function HomeTabs() {
   return (
     <HomeStack.Navigator screenOptions={{ headerShown: false }}>
       <HomeStack.Screen name="Home" component={HomeScreen} />
-      <HomeStack.Screen name="TripSearch" component={TripSearchScreen} />
       <HomeStack.Screen name="BookingCreate" component={BookingCreateScreen} />
     </HomeStack.Navigator>
   );
@@ -45,7 +42,6 @@ function MyBookingsTab() {
   );
 }
 
-/** Stack dùng chung cho 3 tab placeholder (Tin nhắn, Thông báo, Tài khoản). */
 function makePlaceholderTab(title, icon, subtitle) {
   return function PlaceholderTab() {
     return (
@@ -63,7 +59,6 @@ function makePlaceholderTab(title, icon, subtitle) {
 const MessagesTab = makePlaceholderTab('Tin nhắn', 'message-text-outline', 'Hộp thư với tài xế và admin sẽ có ở đây');
 const NotificationsTab = makePlaceholderTab('Thông báo', 'bell-outline', 'Cập nhật về chuyến xe và booking');
 
-/** Tab Tài khoản — stack chứa Account + 2 màn con (sửa profile, đổi mật khẩu). */
 function AccountTab() {
   return (
     <AccountStack.Navigator screenOptions={{ headerShown: false }}>
@@ -74,7 +69,6 @@ function AccountTab() {
   );
 }
 
-/** Bottom tab navigator — 5 tab khi đã đăng nhập. */
 function MainTabs() {
   const insets = useSafeAreaInsets();
   const bottomInset = Math.max(insets.bottom, 6);
@@ -179,7 +173,6 @@ function AuthFlow() {
   );
 }
 
-/** Stack root */
 export default function AppNavigator() {
   const { user, loading } = useAuth();
 
