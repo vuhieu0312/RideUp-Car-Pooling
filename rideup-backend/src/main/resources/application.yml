@@ -4,9 +4,9 @@ spring:
   profiles:
     active: local
   datasource:
-    url: ${DB_URL:jdbc:mysql://localhost:3306/rideup?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Ho_Chi_Minh&allowPublicKeyRetrieval=true}
-    username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:root}
+    url: jdbc:mysql://localhost:3306/rideup?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Ho_Chi_Minh&allowPublicKeyRetrieval=true
+    username: root
+    password: 01112004
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:

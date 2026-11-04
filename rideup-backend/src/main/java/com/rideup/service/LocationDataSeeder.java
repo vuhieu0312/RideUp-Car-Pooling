@@ -46,7 +46,7 @@ public class LocationDataSeeder {
             "https://overpass.openstreetmap.ru/api/interpreter"
     );
 
-    private static final long DELAY_BETWEEN_PROVINCE_MS = 2_000;
+    private static final long DELAY_BETWEEN_PROVINCE_MS = 10_000;
 
     private final ProvinceRepository provinceRepository;
     private final WardRepository wardRepository;
@@ -102,7 +102,7 @@ public class LocationDataSeeder {
     private void seedAll() throws InterruptedException {
         RestTemplate http = restTemplateBuilder
                 .setConnectTimeout(Duration.ofSeconds(15))
-                .setReadTimeout(Duration.ofSeconds(30))
+                .setReadTimeout(Duration.ofSeconds(120))
                 .build();
 
         List<Province> provinces = fetchAndSaveProvinces(http);

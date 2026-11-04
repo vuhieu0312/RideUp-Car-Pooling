@@ -1,3 +1,4 @@
+import { listMyConversations } from '../api/api';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FlatList, RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
@@ -48,6 +49,7 @@ export default function BookingsScreen({ navigation, route }) {
   const tripId = route?.params?.tripId || null;
   const insets = useSafeAreaInsets();
   const [bookings, setBookings] = useState([]);
+  const [conversationByBooking, setConversationByBooking] = useState({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState('PENDING');
@@ -56,8 +58,14 @@ export default function BookingsScreen({ navigation, route }) {
 
   async function load() {
     try {
-      const all = await listDriverBookings();
+      const [all, conversations] = await Promise.all([
+        listDriverBookings(),
+        listMyConversations().catch(() => []),
+      ]);
       setBookings(all || []);
+      setConversationByBooking(Object.fromEntries(
+        conversations.map((conversation) => [conversation.bookingId, conversation]),
+      ));
     } catch (e) {
       setActionMsg(`${e.response?.data?.message || 'Lỗi tải booking'}`);
     } finally {
@@ -195,6 +203,7 @@ export default function BookingsScreen({ navigation, route }) {
         }
         renderItem={({ item: b }) => {
           const meta = STATUS_META[b.status] || { label: b.status, bg: colors.pendingBg, fg: '#92400e' };
+          const conversation = conversationByBooking[b.id];
           const PAY_META = {
             PENDING: { icon: 'clock-outline', label: 'Chờ thanh toán' },
             HOLDING: { icon: 'lock-outline', label: 'Đã đặt cọc' },
@@ -240,6 +249,19 @@ export default function BookingsScreen({ navigation, route }) {
               {!!b.note && <IconText name="note-edit-outline" size={13} textStyle={styles.note}>{b.note}</IconText>}
 
               <View style={styles.actions}>
+                <TouchableOpacity
+                  style={[styles.btn, styles.btnChat, !conversation && styles.btnDisabled]}
+                  disabled={!conversation}
+                  onPress={() => navigation.navigate('Chat', {
+                    conversationId: conversation.conversationId,
+                    bookingId: b.id,
+                    name: b.userName,
+                  })}
+                >
+                  <IconText name="message-text-outline" size={14} center textStyle={styles.btnChatText}>
+                    {conversation ? 'Chat với khách' : 'Chat sau khi duyệt'}
+                  </IconText>
+                </TouchableOpacity>
                 {b.status === 'WAITING_DRIVER_APPROVAL' && (
                   <>
                     <TouchableOpacity style={[styles.btn, styles.btnDanger]} onPress={() => doReject(b)}>
@@ -313,4 +335,7 @@ const styles = StyleSheet.create({
   btnDangerText: { color: colors.danger, fontSize: 11, fontWeight: '700' },
   btnSecondary: { backgroundColor: '#fef3c7', borderWidth: 1, borderColor: '#fde68a' },
   btnSecondaryText: { color: '#92400e', fontSize: 11, fontWeight: '700' },
+  btnChat: { backgroundColor: colors.primaryLight, borderWidth: 1, borderColor: colors.primaryAccent },
+  btnChatText: { color: colors.primaryAccent, fontSize: 11, fontWeight: '700' },
+  btnDisabled: { opacity: 0.55 },
 });

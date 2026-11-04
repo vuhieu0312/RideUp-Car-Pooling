@@ -44,9 +44,11 @@ import java.util.UUID;
 @Slf4j
 @FieldDefaults(level = AccessLevel.PRIVATE)
 /** Nghiệp vụ đặt vé và xác nhận vé (UC24 + UC28). */
+
 public class BookingService {
 
     final BookingRepository bookingRepository;
+    final ConversationService conversationService;
     final TripRepository tripRepository;
     final TripService tripService;
     final UserRepository userRepository;
@@ -71,7 +73,7 @@ public class BookingService {
     @Value("${app.booking.waiting-approval-expiration-hours:24}")
     long waitingApprovalHours;
 
-    public BookingService(BookingRepository bookingRepository,
+    public BookingService(BookingRepository bookingRepository, ConversationService conversationService,
                           TripRepository tripRepository,
                           TripService tripService,
                           UserRepository userRepository,
@@ -82,6 +84,7 @@ public class BookingService {
                           RealtimeService realtimeService,
                           PlatformTransactionManager transactionManager) {
         this.bookingRepository = bookingRepository;
+        this.conversationService = conversationService;
         this.tripRepository = tripRepository;
         this.tripService = tripService;
         this.userRepository = userRepository;
@@ -246,6 +249,14 @@ public class BookingService {
 
         booking.setStatus(BookingStatus.CONFIRMED);
         booking = bookingRepository.save(booking);
+
+        // tạo phòng chat giữa khách và tài xế
+        conversationService.createIfNotExist(
+                booking.getId(),
+                booking.getCustomer().getId(),
+                booking.getTrip().getDriver().getId()
+        );
+
         realtimeService.bookingChanged(booking);
         log.info("Driver {} confirmed booking {}", driverUserId, bookingId);
         return toResponse(booking);

@@ -12,11 +12,11 @@ import { useDialog } from '../components/AppDialog';
 
 const EMPTY_LOC = { lat: NaN, lng: NaN, addressText: '' };
 const PAYMENT_METHODS = [
-  { value: 'CASH', label: 'Tiền mặt', icon: 'cash', desc: 'Trả tài xế khi lên xe' },
-  { value: 'STRIPE', label: 'Stripe', icon: 'credit-card-outline', desc: 'Thanh toán online bằng thẻ' },
-];
+{ value: 'CASH', label: 'Tiền mặt', icon: 'cash', desc: 'Trả tài xế khi lên xe' },
+{ value: 'STRIPE', label: 'Stripe', icon: 'credit-card-outline', desc: 'Thanh toán online bằng thẻ' }];
 
-export default function BookingCreateScreen({ route, navigation }) {
+
+export default function BookingCreateScreen({ route, navigation }) {var _pickupWards$find, _dropoffWards$find;
   const dialog = useDialog();
   const insets = useSafeAreaInsets();
   const { pay: payWithStripe, loading: stripeLoading } = usePayment();
@@ -41,50 +41,50 @@ export default function BookingCreateScreen({ route, navigation }) {
     let cancelled = false;
     setLoadingWards(true);
     Promise.all([
-      listProvinces().catch((e) => {
-        console.warn('[BookingCreate] listProvinces failed:', e?.message, e?.response?.status);
-        return [];
-      }),
-      trip.startProvinceId ? listWards(trip.startProvinceId).catch((e) => {
-        console.warn('[BookingCreate] listWards pickup failed:', e?.message, e?.response?.status);
-        return [];
-      }) : Promise.resolve([]),
-      trip.endProvinceId ? listWards(trip.endProvinceId).catch((e) => {
-        console.warn('[BookingCreate] listWards dropoff failed:', e?.message, e?.response?.status);
-        return [];
-      }) : Promise.resolve([]),
-    ])
-      .then(([provs, pWards, dWards]) => {
-        if (cancelled) return;
-        setProvinces(provs || []);
-        setPickupWards(pWards || []);
-        setDropoffWards(dWards || []);
-        if (!provs || provs.length === 0) {
-          setError('Không tải được danh sách tỉnh/thành. Vui lòng thử lại sau.');
-        }
-      })
-      .catch((e) => {
-        if (cancelled) return;
-        setError(e?.response?.data?.message || 'Không tải được danh sách phường/xã');
-      })
-      .finally(() => { if (!cancelled) setLoadingWards(false); });
-    return () => { cancelled = true; };
-  }, [trip?.id, trip?.startProvinceId, trip?.endProvinceId]);
+    listProvinces().catch((e) => {var _e$response;
+      console.warn('[BookingCreate] listProvinces failed:', e == null ? void 0 : e.message, e == null || (_e$response = e.response) == null ? void 0 : _e$response.status);
+      return [];
+    }),
+    trip.startProvinceId ? listWards(trip.startProvinceId).catch((e) => {var _e$response2;
+      console.warn('[BookingCreate] listWards pickup failed:', e == null ? void 0 : e.message, e == null || (_e$response2 = e.response) == null ? void 0 : _e$response2.status);
+      return [];
+    }) : Promise.resolve([]),
+    trip.endProvinceId ? listWards(trip.endProvinceId).catch((e) => {var _e$response3;
+      console.warn('[BookingCreate] listWards dropoff failed:', e == null ? void 0 : e.message, e == null || (_e$response3 = e.response) == null ? void 0 : _e$response3.status);
+      return [];
+    }) : Promise.resolve([])]
+    ).
+    then(([provs, pWards, dWards]) => {
+      if (cancelled) return;
+      setProvinces(provs || []);
+      setPickupWards(pWards || []);
+      setDropoffWards(dWards || []);
+      if (!provs || provs.length === 0) {
+        setError('Không tải được danh sách tỉnh/thành. Vui lòng thử lại sau.');
+      }
+    }).
+    catch((e) => {var _e$response4;
+      if (cancelled) return;
+      setError((e == null || (_e$response4 = e.response) == null || (_e$response4 = _e$response4.data) == null ? void 0 : _e$response4.message) || 'Không tải được danh sách phường/xã');
+    }).
+    finally(() => {if (!cancelled) setLoadingWards(false);});
+    return () => {cancelled = true;};
+  }, [trip == null ? void 0 : trip.id, trip == null ? void 0 : trip.startProvinceId, trip == null ? void 0 : trip.endProvinceId]);
 
   if (!trip) {
     return (
       <View style={styles.container}>
         <Text style={{ padding: 16 }}>Không có dữ liệu chuyến.</Text>
-      </View>
-    );
+      </View>);
+
   }
 
   const total = trip.priceVnd * Number(seats);
   const fmtMoney = (v) => `${new Intl.NumberFormat('vi-VN').format(v || 0)} đ`;
-  const fmtTime = (iso) => (iso ? iso.replace('T', ' ').substring(0, 16) : '');
+  const fmtTime = (iso) => iso ? iso.replace('T', ' ').substring(0, 16) : '';
 
   // Hiển thị tên tỉnh: lookup từ list provinces, fallback tên ngắn nếu tìm thấy
-  const provinceName = (id) => provinces.find((p) => p.id === id)?.name || '—';
+  const provinceName = (id) => {var _provinces$find;return ((_provinces$find = provinces.find((p) => p.id === id)) == null ? void 0 : _provinces$find.name) || '—';};
   const startLabel = provinceName(trip.startProvinceId);
   const endLabel = provinceName(trip.endProvinceId);
   // Lấy lat/lng tâm tỉnh để truyền cho LocationMapPicker (dùng làm bias + filter trong tỉnh)
@@ -92,7 +92,7 @@ export default function BookingCreateScreen({ route, navigation }) {
   const endProvince = provinces.find((p) => p.id === trip.endProvinceId);
 
   function isLocationComplete(loc) {
-    return Number.isFinite(loc?.lat) && Number.isFinite(loc?.lng) && (loc?.addressText || '').trim().length > 0;
+    return Number.isFinite(loc == null ? void 0 : loc.lat) && Number.isFinite(loc == null ? void 0 : loc.lng) && ((loc == null ? void 0 : loc.addressText) || '').trim().length > 0;
   }
 
   // Sang tab "Chuyến xe" và dọn stack tab Trang chủ về màn Home, để lúc bấm lại
@@ -105,12 +105,12 @@ export default function BookingCreateScreen({ route, navigation }) {
   async function submit() {
     setError('');
     const n = Number(seats);
-    if (!n || n < 1) { setError('Số ghế phải >= 1'); return; }
-    if (n > trip.seatAvailable) { setError(`Chuyến chỉ còn ${trip.seatAvailable} ghế`); return; }
-    if (!pickupWardId) { setError('Vui lòng chọn Phường/Xã cho điểm đón'); return; }
-    if (!dropoffWardId) { setError('Vui lòng chọn Phường/Xã cho điểm trả'); return; }
-    if (!isLocationComplete(pickup)) { setError('Vui lòng ghim vị trí và nhập địa chỉ chi tiết cho điểm đón'); return; }
-    if (!isLocationComplete(dropoff)) { setError('Vui lòng ghim vị trí và nhập địa chỉ chi tiết cho điểm trả'); return; }
+    if (!n || n < 1) {setError('Số ghế phải >= 1');return;}
+    if (n > trip.seatAvailable) {setError(`Chuyến chỉ còn ${trip.seatAvailable} ghế`);return;}
+    if (!pickupWardId) {setError('Vui lòng chọn Phường/Xã cho điểm đón');return;}
+    if (!dropoffWardId) {setError('Vui lòng chọn Phường/Xã cho điểm trả');return;}
+    if (!isLocationComplete(pickup)) {setError('Vui lòng ghim vị trí và nhập địa chỉ chi tiết cho điểm đón');return;}
+    if (!isLocationComplete(dropoff)) {setError('Vui lòng ghim vị trí và nhập địa chỉ chi tiết cho điểm trả');return;}
 
     setLoading(true);
     try {
@@ -126,13 +126,13 @@ export default function BookingCreateScreen({ route, navigation }) {
         dropoffAddressText: dropoff.addressText,
         dropoffLat: dropoff.lat,
         dropoffLng: dropoff.lng,
-        note: note || null,
+        note: note || null
       });
       // Backend trả về `{ code, message, data: BookingResponse }`
-      const booking = response?.data || response;
+      const booking = (response == null ? void 0 : response.data) || response;
 
       // Stripe: mở PaymentSheet NGAY sau khi đặt chỗ thành công — không qua bước Alert trung gian.
-      if (paymentMethod === 'STRIPE' && booking?.paymentId) {
+      if (paymentMethod === 'STRIPE' && booking != null && booking.paymentId) {
         const result = await payWithStripe({ bookingId: booking.id, paymentId: booking.paymentId });
         if (result.success) {
           dialog.alert(
@@ -146,8 +146,8 @@ export default function BookingCreateScreen({ route, navigation }) {
       }
 
       goToMyBookings();
-    } catch (e) {
-      setError(e.response?.data?.message || 'Đặt chỗ thất bại');
+    } catch (e) {var _e$response5;
+      setError(((_e$response5 = e.response) == null || (_e$response5 = _e$response5.data) == null ? void 0 : _e$response5.message) || 'Đặt chỗ thất bại');
     } finally {
       setLoading(false);
     }
@@ -174,9 +174,9 @@ export default function BookingCreateScreen({ route, navigation }) {
             <Text style={{ fontWeight: '700' }}>{startLabel}</Text> → <Text style={{ fontWeight: '700' }}>{endLabel}</Text>
           </IconText>
           <Text style={styles.muted}>Khởi hành: {fmtTime(trip.departureTime)} · Tài xế: {trip.driverName}</Text>
-          {trip.driverRating > 0 && (
-            <IconText name="star" size={12} color="#f59e0b" gap={4} textStyle={styles.muted}>{trip.driverRating} / 5</IconText>
-          )}
+          {trip.driverRating > 0 &&
+          <IconText name="star" size={12} color="#f59e0b" gap={4} textStyle={styles.muted}>{trip.driverRating} / 5</IconText>
+          }
           <Text style={styles.muted}>Còn {trip.seatAvailable}/{trip.seatTotal} ghế · Giá: {fmtMoney(trip.priceVnd)}/ghế</Text>
         </View>
 
@@ -196,61 +196,61 @@ export default function BookingCreateScreen({ route, navigation }) {
                   key={pm.value}
                   style={[styles.payMethod, active && styles.payMethodActive]}
                   onPress={() => setPaymentMethod(pm.value)}
-                  activeOpacity={0.8}
-                >
+                  activeOpacity={0.8}>
+                  
                   <MaterialCommunityIcons
                     name={pm.icon}
                     size={20}
-                    color={active ? colors.primary : colors.textSecondary}
-                  />
+                    color={active ? colors.primary : colors.textSecondary} />
+                  
                   <Text style={[styles.payMethodLabel, active && styles.payMethodLabelActive]}>
                     {pm.label}
                   </Text>
                   <Text style={styles.payMethodDesc} numberOfLines={1}>{pm.desc}</Text>
-                </TouchableOpacity>
-              );
+                </TouchableOpacity>);
+
             })}
           </View>
 
           {/* Điểm đón */}
           <IconText name="map-marker-outline" size={16} textStyle={styles.section}>Điểm đón</IconText>
-          {loadingWards ? (
-            <Text style={styles.muted}>Đang tải thông tin phường/xã...</Text>
-          ) : (
-            <LocationMapPicker
-              title="Điểm đón"
-              wardOptions={pickupWards}
-              wardId={pickupWardId}
-              onWardChange={setPickupWardId}
-              value={pickup}
-              onChange={setPickup}
-              accentColor={colors.primaryAccent}
-              wardReadOnly
-              wardName={pickupWards.find((w) => w.id === pickupWardId)?.name}
-              provinceLat={Number(startProvince?.lat)}
-              provinceLng={Number(startProvince?.lng)}
-            />
-          )}
+          {loadingWards ?
+          <Text style={styles.muted}>Đang tải thông tin phường/xã...</Text> :
+
+          <LocationMapPicker
+            title="Điểm đón"
+            wardOptions={pickupWards}
+            wardId={pickupWardId}
+            onWardChange={setPickupWardId}
+            value={pickup}
+            onChange={setPickup}
+            accentColor={colors.primaryAccent}
+            wardReadOnly
+            wardName={(_pickupWards$find = pickupWards.find((w) => w.id === pickupWardId)) == null ? void 0 : _pickupWards$find.name}
+            provinceLat={Number(startProvince == null ? void 0 : startProvince.lat)}
+            provinceLng={Number(startProvince == null ? void 0 : startProvince.lng)} />
+
+          }
 
           {/* Điểm trả */}
           <IconText name="flag-outline" size={16} textStyle={[styles.section, { marginTop: 4 }]}>Điểm trả</IconText>
-          {loadingWards ? (
-            <Text style={styles.muted}>Đang tải thông tin phường/xã...</Text>
-          ) : (
-            <LocationMapPicker
-              title="Điểm trả"
-              wardOptions={dropoffWards}
-              wardId={dropoffWardId}
-              onWardChange={setDropoffWardId}
-              value={dropoff}
-              onChange={setDropoff}
-              accentColor={colors.primaryAccent}
-              wardReadOnly
-              wardName={dropoffWards.find((w) => w.id === dropoffWardId)?.name}
-              provinceLat={Number(endProvince?.lat)}
-              provinceLng={Number(endProvince?.lng)}
-            />
-          )}
+          {loadingWards ?
+          <Text style={styles.muted}>Đang tải thông tin phường/xã...</Text> :
+
+          <LocationMapPicker
+            title="Điểm trả"
+            wardOptions={dropoffWards}
+            wardId={dropoffWardId}
+            onWardChange={setDropoffWardId}
+            value={dropoff}
+            onChange={setDropoff}
+            accentColor={colors.primaryAccent}
+            wardReadOnly
+            wardName={(_dropoffWards$find = dropoffWards.find((w) => w.id === dropoffWardId)) == null ? void 0 : _dropoffWards$find.name}
+            provinceLat={Number(endProvince == null ? void 0 : endProvince.lat)}
+            provinceLng={Number(endProvince == null ? void 0 : endProvince.lng)} />
+
+          }
 
           <IconText name="note-edit-outline" size={16} textStyle={[styles.section, { marginTop: 4 }]}>Ghi chú cho tài xế</IconText>
           <TextInput style={[styles.input, styles.multiline, { minHeight: 70 }]} placeholder="Tôi sẽ mang theo 1 vali lớn..." placeholderTextColor="#a4b2ae" multiline value={note} onChangeText={setNote} />
@@ -271,8 +271,8 @@ export default function BookingCreateScreen({ route, navigation }) {
           </TouchableOpacity>
         </View>
       </ScrollView>
-    </View>
-  );
+    </View>);
+
 }
 
 const styles = StyleSheet.create({
@@ -300,10 +300,10 @@ const styles = StyleSheet.create({
   payMethod: {
     flex: 1, paddingVertical: 10, paddingHorizontal: 8,
     borderWidth: 1, borderColor: colors.borderLight, borderRadius: 9,
-    backgroundColor: colors.surfaceMuted, alignItems: 'center', gap: 4,
+    backgroundColor: colors.surfaceMuted, alignItems: 'center', gap: 4
   },
   payMethodActive: {
-    borderColor: colors.primary, backgroundColor: colors.primaryLight,
+    borderColor: colors.primary, backgroundColor: colors.primaryLight
   },
   payMethodLabel: { fontSize: 12, fontWeight: '700', color: colors.textSecondary },
   payMethodLabelActive: { color: colors.primaryDark },
@@ -315,5 +315,5 @@ const styles = StyleSheet.create({
   totalHint: { fontSize: 11, color: '#15803d' },
 
   submitBtn: { flex: 1, padding: 12, borderRadius: 9, alignItems: 'center' },
-  submitBtnText: { fontFamily: FONT[700], color: 'white', fontSize: 12, fontWeight: '700' },
+  submitBtnText: { fontFamily: FONT[700], color: 'white', fontSize: 12, fontWeight: '700' }
 });

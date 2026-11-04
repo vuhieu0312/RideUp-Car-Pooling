@@ -98,21 +98,21 @@ export default function PaymentWebViewScreen({ route, navigation }) {
       return;
     }
     let cancelled = false;
-    createPaymentIntent(bookingId)
-      .then(({ clientSecret: cs }) => {
-        if (cancelled) return;
-        if (!cs) {
-          setError('Không khởi tạo được thanh toán');
-          return;
-        }
-        setClientSecret(cs);
-      })
-      .catch((e) => {
-        if (cancelled) return;
-        setError(e?.response?.data?.message || 'Không khởi tạo được thanh toán');
-      })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
+    createPaymentIntent(bookingId).
+    then(({ clientSecret: cs }) => {
+      if (cancelled) return;
+      if (!cs) {
+        setError('Không khởi tạo được thanh toán');
+        return;
+      }
+      setClientSecret(cs);
+    }).
+    catch((e) => {var _e$response;
+      if (cancelled) return;
+      setError((e == null || (_e$response = e.response) == null || (_e$response = _e$response.data) == null ? void 0 : _e$response.message) || 'Không khởi tạo được thanh toán');
+    }).
+    finally(() => {if (!cancelled) setLoading(false);});
+    return () => {cancelled = true;};
   }, [bookingId]);
 
   const amountLabel = useMemo(
@@ -138,7 +138,7 @@ export default function PaymentWebViewScreen({ route, navigation }) {
         await authorizePayment({ paymentId, transactionId: data.paymentIntentId });
       } catch (e) {
         // Không chặn UX — webhook Stripe sẽ đồng bộ lại nếu call optimistic này lỗi
-        console.warn('authorizePayment failed (webhook sẽ retry):', e?.message);
+        console.warn('authorizePayment failed (webhook sẽ retry):', e == null ? void 0 : e.message);
       } finally {
         setAuthorizing(false);
       }
@@ -157,8 +157,8 @@ export default function PaymentWebViewScreen({ route, navigation }) {
         <Text style={styles.errorText}>
           Thiếu cấu hình EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY trong .env
         </Text>
-      </View>
-    );
+      </View>);
+
   }
 
   return (
@@ -170,49 +170,49 @@ export default function PaymentWebViewScreen({ route, navigation }) {
         <Text style={styles.headerTitle}>Thanh toán{bookingCode ? ` · ${bookingCode}` : ''}</Text>
       </View>
 
-      {loading && (
-        <View style={styles.center}>
+      {loading &&
+      <View style={styles.center}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.muted}>Đang khởi tạo thanh toán...</Text>
         </View>
-      )}
+      }
 
-      {!loading && !!error && (
-        <View style={styles.center}>
+      {!loading && !!error &&
+      <View style={styles.center}>
           <Text style={styles.errorText}>{error}</Text>
         </View>
-      )}
+      }
 
-      {!loading && !error && !!html && (
-        <WebView
-          originWhitelist={['*']}
-          source={{ html }}
-          javaScriptEnabled
-          domStorageEnabled
-          onMessage={handleMessage}
-          startInLoadingState
-          renderLoading={() => (
-            <View style={styles.center}>
+      {!loading && !error && !!html &&
+      <WebView
+        originWhitelist={['*']}
+        source={{ html }}
+        javaScriptEnabled
+        domStorageEnabled
+        onMessage={handleMessage}
+        startInLoadingState
+        renderLoading={() =>
+        <View style={styles.center}>
               <ActivityIndicator size="large" color={colors.primary} />
             </View>
-          )}
-        />
-      )}
+        } />
 
-      {authorizing && (
-        <View style={styles.overlay}>
+      }
+
+      {authorizing &&
+      <View style={styles.overlay}>
           <ActivityIndicator size="large" color="white" />
         </View>
-      )}
-    </View>
-  );
+      }
+    </View>);
+
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f4f8f6' },
   header: {
     flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingBottom: 12,
-    backgroundColor: '#0caf63',
+    backgroundColor: '#0caf63'
   },
   closeBtn: { width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(255,255,255,0.16)', alignItems: 'center', justifyContent: 'center', marginRight: 10 },
   closeIcon: { color: 'white', fontSize: 16, fontWeight: '700' },
@@ -222,6 +222,6 @@ const styles = StyleSheet.create({
   errorText: { fontSize: 13, color: colors.danger, textAlign: 'center' },
   overlay: {
     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.35)', alignItems: 'center', justifyContent: 'center',
-  },
+    backgroundColor: 'rgba(0,0,0,0.35)', alignItems: 'center', justifyContent: 'center'
+  }
 });

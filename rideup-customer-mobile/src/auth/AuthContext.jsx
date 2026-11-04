@@ -13,23 +13,23 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const subscription = DeviceEventEmitter.addListener('rideup-auth-expired', () => setUser(null));
     (async () => {
-      try {
+      try {var _storedUser$roles;
         const raw = await AsyncStorage.getItem('user');
         const storedUser = raw ? JSON.parse(raw) : null;
-        if (storedUser?.roles?.includes('CUSTOMER')) setUser(storedUser);
-        else if (storedUser) await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'user']);
+        if (storedUser != null && (_storedUser$roles = storedUser.roles) != null && _storedUser$roles.includes('CUSTOMER')) setUser(storedUser);else
+        if (storedUser) await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'user']);
       } catch {
+
         // ignore
-      } finally {
-        setLoading(false);
+      } finally {setLoading(false);
       }
     })();
     return () => subscription.remove();
   }, []);
 
-  async function doLogin(email, password) {
+  async function doLogin(email, password) {var _data$user;
     const data = await apiLogin(email, password);
-    if (!data.user?.roles?.includes('CUSTOMER')) throw new Error('Sai thông tin đăng nhập');
+    if (!((_data$user = data.user) != null && (_data$user = _data$user.roles) != null && _data$user.includes('CUSTOMER'))) throw new Error('Sai thông tin đăng nhập');
     await AsyncStorage.setItem('accessToken', data.accessToken);
     await AsyncStorage.setItem('refreshToken', data.refreshToken);
     await AsyncStorage.setItem('user', JSON.stringify(data.user));
@@ -52,13 +52,13 @@ export function AuthProvider({ children }) {
     });
   }
 
-  const isCustomer = () => user?.roles?.includes('CUSTOMER');
+  const isCustomer = () => {var _user$roles;return user == null || (_user$roles = user.roles) == null ? void 0 : _user$roles.includes('CUSTOMER');};
 
   return (
     <AuthContext.Provider value={{ user, loading, doLogin, doLogout, updateUser, isCustomer }}>
       {children}
-    </AuthContext.Provider>
-  );
+    </AuthContext.Provider>);
+
 }
 
 export const useAuth = () => useContext(AuthContext);

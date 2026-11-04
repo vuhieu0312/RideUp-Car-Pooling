@@ -18,7 +18,7 @@ export function usePayment() {
       return { success: false };
     }
     if (loading) {
-      return { success: false };  // tránh bấm nhiều lần
+      return { success: false }; // tránh bấm nhiều lần
     }
 
     setLoading(true);
@@ -38,7 +38,7 @@ export function usePayment() {
         merchantDisplayName: 'RideUp',
         paymentIntentClientSecret: clientSecret,
         returnURL,
-        defaultBillingDetails: { address: { country: 'VN' } },
+        defaultBillingDetails: { address: { country: 'VN' } }
       });
       if (initError) {
         // initError.code === 'Canceled' hiếm khi xảy ra, nhưng handle cho chắc
@@ -64,7 +64,7 @@ export function usePayment() {
       try {
         await authorizePayment({
           paymentId,
-          transactionId: paymentIntentId,
+          transactionId: paymentIntentId
         });
       } catch (authErr) {
         console.warn('authorizePayment failed:', authErr);
@@ -72,8 +72,8 @@ export function usePayment() {
         return { success: false, paymentIntentId, authorizeFailed: true };
       }
       return { success: true, paymentIntentId };
-    } catch (err) {
-      const message = err?.response?.data?.message || 'Đã có lỗi xảy ra. Vui lòng thử lại.';
+    } catch (err) {var _err$response;
+      const message = (err == null || (_err$response = err.response) == null || (_err$response = _err$response.data) == null ? void 0 : _err$response.message) || 'Đã có lỗi xảy ra. Vui lòng thử lại.';
       dialog.alert('Không thể thanh toán', message);
       return { success: false };
     } finally {

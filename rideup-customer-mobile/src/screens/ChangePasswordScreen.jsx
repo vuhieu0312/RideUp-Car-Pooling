@@ -28,15 +28,15 @@ export default function ChangePasswordScreen({ navigation }) {
 
   async function save() {
     const err = validate();
-    if (err) { setError(err); return; }
+    if (err) {setError(err);return;}
     setError('');
     setSaving(true);
     try {
       await changePassword({ oldPassword: form.oldPassword, newPassword: form.newPassword });
       setSnack('Đổi mật khẩu thành công');
       setTimeout(() => navigation.goBack(), 800);
-    } catch (e) {
-      setError(e.response?.data?.message || 'Đổi mật khẩu thất bại');
+    } catch (e) {var _e$response;
+      setError(((_e$response = e.response) == null || (_e$response = _e$response.data) == null ? void 0 : _e$response.message) || 'Đổi mật khẩu thất bại');
     } finally {
       setSaving(false);
     }
@@ -68,8 +68,8 @@ export default function ChangePasswordScreen({ navigation }) {
           right={<TextInput.Icon icon={show.old ? 'eye-off' : 'eye'} onPress={() => setShow((s) => ({ ...s, old: !s.old }))} />}
           style={styles.input}
           outlineColor={colors.borderLight}
-          activeOutlineColor={colors.primaryAccent}
-        />
+          activeOutlineColor={colors.primaryAccent} />
+        
 
         <Text style={styles.label}>Mật khẩu mới *</Text>
         <TextInput
@@ -82,8 +82,8 @@ export default function ChangePasswordScreen({ navigation }) {
           right={<TextInput.Icon icon={show.new ? 'eye-off' : 'eye'} onPress={() => setShow((s) => ({ ...s, new: !s.new }))} />}
           style={styles.input}
           outlineColor={colors.borderLight}
-          activeOutlineColor={colors.primaryAccent}
-        />
+          activeOutlineColor={colors.primaryAccent} />
+        
 
         <Text style={styles.label}>Xác nhận mật khẩu mới *</Text>
         <TextInput
@@ -96,8 +96,8 @@ export default function ChangePasswordScreen({ navigation }) {
           right={<TextInput.Icon icon={show.confirm ? 'eye-off' : 'eye'} onPress={() => setShow((s) => ({ ...s, confirm: !s.confirm }))} />}
           style={styles.input}
           outlineColor={colors.borderLight}
-          activeOutlineColor={colors.primaryAccent}
-        />
+          activeOutlineColor={colors.primaryAccent} />
+        
 
         {!!error && <HelperText type="error" visible>{error}</HelperText>}
 
@@ -109,8 +109,8 @@ export default function ChangePasswordScreen({ navigation }) {
           buttonColor={colors.primary}
           textColor="#fff"
           style={styles.saveBtn}
-          contentStyle={{ paddingVertical: 6 }}
-        >
+          contentStyle={{ paddingVertical: 6 }}>
+          
           {saving ? 'Đang đổi...' : 'Đổi mật khẩu'}
         </Button>
       </ScrollView>
@@ -118,8 +118,8 @@ export default function ChangePasswordScreen({ navigation }) {
       <Snackbar visible={!!snack} onDismiss={() => setSnack('')} duration={2500}>
         {snack}
       </Snackbar>
-    </View>
-  );
+    </View>);
+
 }
 
 const styles = StyleSheet.create({
@@ -130,5 +130,5 @@ const styles = StyleSheet.create({
   content: { padding: 14, paddingBottom: 40 },
   label: { marginTop: 12, marginBottom: 4, fontSize: 11, color: colors.textSecondary, fontWeight: '600' },
   input: { backgroundColor: 'white', fontSize: 13 },
-  saveBtn: { marginTop: 24, borderRadius: 9 },
+  saveBtn: { marginTop: 24, borderRadius: 9 }
 });

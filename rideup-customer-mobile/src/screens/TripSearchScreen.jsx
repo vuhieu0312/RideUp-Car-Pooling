@@ -22,16 +22,16 @@ export default function TripSearchScreen({ navigation }) {
   const [error, setError] = useState('');
   const [pickerOpen, setPickerOpen] = useState(null);
 
-  useEffect(() => { listProvinces().then(setProvinces).catch(() => {}); }, []);
+  useEffect(() => {listProvinces().then(setProvinces).catch(() => {});}, []);
   useEffect(() => {
     setStartWardId('');
-    if (fromProvinceId) listWards(fromProvinceId).then(setStartWards).catch(() => setStartWards([]));
-    else setStartWards([]);
+    if (fromProvinceId) listWards(fromProvinceId).then(setStartWards).catch(() => setStartWards([]));else
+    setStartWards([]);
   }, [fromProvinceId]);
   useEffect(() => {
     setEndWardId('');
-    if (toProvinceId) listWards(toProvinceId).then(setEndWards).catch(() => setEndWards([]));
-    else setEndWards([]);
+    if (toProvinceId) listWards(toProvinceId).then(setEndWards).catch(() => setEndWards([]));else
+    setEndWards([]);
   }, [toProvinceId]);
 
   async function runSearch() {
@@ -53,18 +53,18 @@ export default function TripSearchScreen({ navigation }) {
       const result = await searchTrips({
         startProvinceId: fromProvinceId, startWardId,
         endProvinceId: toProvinceId, endWardId,
-        departureDate: date,
+        departureDate: date
       });
       setTrips(result);
-    } catch (e) {
-      setError(e.response?.data?.message || 'Lỗi tìm chuyến');
+    } catch (e) {var _e$response;
+      setError(((_e$response = e.response) == null || (_e$response = _e$response.data) == null ? void 0 : _e$response.message) || 'Lỗi tìm chuyến');
     } finally {
       setLoading(false);
     }
   }
 
   const fmtMoney = (v) => `${new Intl.NumberFormat('vi-VN').format(v || 0)} đ`;
-  const fmtTime = (iso) => (iso ? iso.replace('T', ' ').substring(0, 16) : '');
+  const fmtTime = (iso) => iso ? iso.replace('T', ' ').substring(0, 16) : '';
 
   return (
     <View style={styles.container}>
@@ -79,28 +79,28 @@ export default function TripSearchScreen({ navigation }) {
               <View style={{ flex: 1 }}>
                 <Text style={styles.fieldLabel}>Tỉnh đón *</Text>
                 <Picker value={fromProvinceId} options={provinces} isOpen={pickerOpen === 'fP'}
-                  onOpen={() => setPickerOpen('fP')} onClose={() => setPickerOpen(null)}
-                  onSelect={(id) => { setFromProvinceId(id); setPickerOpen(null); }} placeholder="Chọn tỉnh" />
+                onOpen={() => setPickerOpen('fP')} onClose={() => setPickerOpen(null)}
+                onSelect={(id) => {setFromProvinceId(id);setPickerOpen(null);}} placeholder="Chọn tỉnh" />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.fieldLabel}>Khu vực đón *</Text>
                 <Picker value={startWardId} options={startWards} isOpen={pickerOpen === 'fW'}
-                  onOpen={() => setPickerOpen('fW')} onClose={() => setPickerOpen(null)}
-                  onSelect={(id) => { setStartWardId(id); setPickerOpen(null); }} placeholder="Chọn khu vực" />
+                onOpen={() => setPickerOpen('fW')} onClose={() => setPickerOpen(null)}
+                onSelect={(id) => {setStartWardId(id);setPickerOpen(null);}} placeholder="Chọn khu vực" />
               </View>
             </View>
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.fieldLabel}>Tỉnh trả *</Text>
                 <Picker value={toProvinceId} options={provinces} isOpen={pickerOpen === 'tP'}
-                  onOpen={() => setPickerOpen('tP')} onClose={() => setPickerOpen(null)}
-                  onSelect={(id) => { setToProvinceId(id); setPickerOpen(null); }} placeholder="Chọn tỉnh" />
+                onOpen={() => setPickerOpen('tP')} onClose={() => setPickerOpen(null)}
+                onSelect={(id) => {setToProvinceId(id);setPickerOpen(null);}} placeholder="Chọn tỉnh" />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.fieldLabel}>Khu vực trả *</Text>
                 <Picker value={endWardId} options={endWards} isOpen={pickerOpen === 'tW'}
-                  onOpen={() => setPickerOpen('tW')} onClose={() => setPickerOpen(null)}
-                  onSelect={(id) => { setEndWardId(id); setPickerOpen(null); }} placeholder="Chọn khu vực" />
+                onOpen={() => setPickerOpen('tW')} onClose={() => setPickerOpen(null)}
+                onSelect={(id) => {setEndWardId(id);setPickerOpen(null);}} placeholder="Chọn khu vực" />
               </View>
             </View>
             <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -123,19 +123,19 @@ export default function TripSearchScreen({ navigation }) {
 
         {trips.length > 0 && <Text style={{ marginTop: 12 }}>Tìm thấy <Text style={{ fontWeight: '700' }}>{trips.length}</Text> chuyến:</Text>}
 
-        {trips.map((t) => (
-          <View key={t.id} style={[styles.card, { marginTop: 8 }]}>
+        {trips.map((t) =>
+        <View key={t.id} style={[styles.card, { marginTop: 8 }]}>
             <View style={styles.tripHead}>
               <View style={{ flex: 1 }}>
                 <IconText name="bus" size={16} textStyle={styles.tripRoute}>{t.startProvinceName} → {t.endProvinceName}</IconText>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center' }}>
                   <Text style={styles.muted}>Tài xế: {t.driverName}</Text>
-                  {t.driverRating > 0 && (
-                    <IconText name="star" size={12} color="#f59e0b" gap={3} style={{ marginLeft: 10 }} textStyle={styles.muted}>{t.driverRating}</IconText>
-                  )}
-                  {!!t.vehiclePlate && (
-                    <IconText name="car-outline" size={13} gap={3} style={{ marginLeft: 10 }} textStyle={styles.muted}>{t.vehiclePlate}</IconText>
-                  )}
+                  {t.driverRating > 0 &&
+                <IconText name="star" size={12} color="#f59e0b" gap={3} style={{ marginLeft: 10 }} textStyle={styles.muted}>{t.driverRating}</IconText>
+                }
+                  {!!t.vehiclePlate &&
+                <IconText name="car-outline" size={13} gap={3} style={{ marginLeft: 10 }} textStyle={styles.muted}>{t.vehiclePlate}</IconText>
+                }
                 </View>
               </View>
               <View style={{ alignItems: 'flex-end' }}>
@@ -153,10 +153,10 @@ export default function TripSearchScreen({ navigation }) {
               <Text style={styles.bookBtnText}>Đặt chỗ</Text>
             </TouchableOpacity>
           </View>
-        ))}
+        )}
       </ScrollView>
-    </View>
-  );
+    </View>);
+
 }
 
 const styles = StyleSheet.create({
@@ -181,5 +181,5 @@ const styles = StyleSheet.create({
   metricLabel: { fontSize: 10, color: colors.textSubtle },
   metricValue: { fontFamily: FONT[600], fontSize: 12, fontWeight: '600' },
   bookBtn: { marginTop: 12, padding: 8, borderRadius: 7, backgroundColor: colors.primary, alignItems: 'center' },
-  bookBtnText: { color: 'white', fontWeight: '700' },
+  bookBtnText: { color: 'white', fontWeight: '700' }
 });

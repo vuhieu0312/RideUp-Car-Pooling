@@ -18,7 +18,7 @@ export default function RegisterScreen() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  function set(k) { return (v) => setForm((p) => ({ ...p, [k]: v })); }
+  function set(k) {return (v) => setForm((p) => ({ ...p, [k]: v }));}
 
   async function submit() {
     setError('');
@@ -34,8 +34,8 @@ export default function RegisterScreen() {
     try {
       await registerCustomer(form.fullName, form.email, form.phone, form.password);
       await doLogin(form.email, form.password);
-    } catch (e) {
-      setError(e.response?.data?.message || 'Đăng ký thất bại');
+    } catch (e) {var _e$response;
+      setError(((_e$response = e.response) == null || (_e$response = _e$response.data) == null ? void 0 : _e$response.message) || 'Đăng ký thất bại');
     } finally {
       setLoading(false);
     }
@@ -59,11 +59,11 @@ export default function RegisterScreen() {
             <Text style={styles.cardSubtitle}>Điền thông tin để bắt đầu sử dụng RideUp.</Text>
           </View>
 
-          {!!error && (
-            <View style={styles.alertError}>
+          {!!error &&
+          <View style={styles.alertError}>
               <Text style={styles.alertErrorText}>{error}</Text>
             </View>
-          )}
+          }
 
           <View style={styles.field}>
             <IconText name="account-outline" size={14} textStyle={styles.fieldLabel}>Họ và tên</IconText>
@@ -92,8 +92,8 @@ export default function RegisterScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
-  );
+    </KeyboardAvoidingView>);
+
 }
 
 const styles = StyleSheet.create({
@@ -122,5 +122,5 @@ const styles = StyleSheet.create({
   eyeIcon: { fontSize: 16 },
 
   submit: { marginTop: 5, padding: 13, borderRadius: 9, backgroundColor: colors.primary, alignItems: 'center' },
-  submitText: { fontFamily: FONT[700], color: 'white', fontSize: 13, fontWeight: '700' },
+  submitText: { fontFamily: FONT[700], color: 'white', fontSize: 13, fontWeight: '700' }
 });

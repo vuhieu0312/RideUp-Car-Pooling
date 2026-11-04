@@ -5,7 +5,7 @@ import { startRealtime, stopRealtime } from './realtime';
 /** Bật kết nối realtime khi đã đăng nhập, tắt khi đăng xuất. Không render gì. */
 export default function RealtimeGate() {
   const { user } = useAuth();
-  const userId = user?.id;
+  const userId = user == null ? void 0 : user.id;
 
   useEffect(() => {
     if (!userId) return undefined;

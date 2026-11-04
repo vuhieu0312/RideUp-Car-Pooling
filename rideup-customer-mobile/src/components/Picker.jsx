@@ -14,7 +14,7 @@ export default function Picker({ value, options, isOpen, onOpen, onClose, onSele
     <>
       <TouchableOpacity onPress={onOpen} style={styles.trigger}>
         <Text style={selected ? styles.selectedText : styles.placeholder} numberOfLines={1}>
-          {selected?.name || placeholder}
+          {(selected == null ? void 0 : selected.name) || placeholder}
         </Text>
         <Text style={styles.chevron}>›</Text>
       </TouchableOpacity>
@@ -28,29 +28,29 @@ export default function Picker({ value, options, isOpen, onOpen, onClose, onSele
               onChangeText={setKeyword}
               placeholder="Nhập để tìm kiếm"
               style={styles.searchInput}
-              placeholderTextColor="#a4b2ae"
-            />
+              placeholderTextColor="#a4b2ae" />
+            
             <ScrollView style={styles.optionsList} keyboardShouldPersistTaps="handled">
-              {filtered.length === 0 ? (
-                <Text style={styles.empty}>Không tìm thấy kết quả</Text>
-              ) : (
-                filtered.map((opt) => (
-                  <TouchableOpacity
-                    key={opt.id}
-                    style={[styles.option, opt.id === value && styles.optionSelected]}
-                    onPress={() => { onSelect(opt.id); setKeyword(''); }}
-                  >
+              {filtered.length === 0 ?
+              <Text style={styles.empty}>Không tìm thấy kết quả</Text> :
+
+              filtered.map((opt) =>
+              <TouchableOpacity
+                key={opt.id}
+                style={[styles.option, opt.id === value && styles.optionSelected]}
+                onPress={() => {onSelect(opt.id);setKeyword('');}}>
+                
                     <Text style={[styles.optionText, opt.id === value && styles.optionTextSelected]}>{opt.name}</Text>
                     {opt.id === value && <MaterialCommunityIcons name="check" size={17} color={colors.primaryDark} />}
                   </TouchableOpacity>
-                ))
-              )}
+              )
+              }
             </ScrollView>
           </View>
         </TouchableOpacity>
       </Modal>
-    </>
-  );
+    </>);
+
 }
 
 const styles = StyleSheet.create({
@@ -68,5 +68,5 @@ const styles = StyleSheet.create({
   optionSelected: { backgroundColor: colors.primaryLight },
   optionText: { fontSize: 12, color: colors.textDark },
   optionTextSelected: { color: colors.primaryDark, fontWeight: '600' },
-  checkmark: { color: colors.primaryDark, fontSize: 14 },
+  checkmark: { color: colors.primaryDark, fontSize: 14 }
 });

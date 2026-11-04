@@ -5,6 +5,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../auth/AuthContext';
 import { cancelBooking, listMyBookings } from '../api/api';
+import { listMyConversations } from '../api/api';
 import { usePayment } from '../hooks/usePayment';
 import { useDialog } from '../components/AppDialog';
 import { useRealtimeRefresh } from '../realtime/useRealtime';
@@ -20,7 +21,7 @@ const STATUS_META = {
   CANCELLED_BY_USER: { icon: 'close-circle-outline', label: 'Bạn đã huỷ', bg: colors.dangerBg, fg: colors.dangerText },
   CANCELLED_BY_DRIVER: { icon: 'close-circle-outline', label: 'Tài xế huỷ chuyến', bg: colors.dangerBg, fg: colors.dangerText },
   CANCELLED_PAYMENT_FAILED: { icon: 'alert-circle-outline', label: 'Huỷ (thanh toán lỗi)', bg: colors.dangerBg, fg: colors.dangerText },
-  EXPIRED: { icon: 'timer-sand', label: 'Hết hạn', bg: colors.dangerBg, fg: colors.dangerText },
+  EXPIRED: { icon: 'timer-sand', label: 'Hết hạn', bg: colors.dangerBg, fg: colors.dangerText }
 };
 
 const PAYMENT_STATUS_META = {
@@ -29,15 +30,15 @@ const PAYMENT_STATUS_META = {
   PAID: { icon: 'check-circle-outline', label: 'Đã thanh toán', fg: '#15803d' },
   FAILED: { icon: 'alert-circle-outline', label: 'Thanh toán lỗi', fg: colors.dangerText },
   VOIDED: { icon: 'minus-circle-outline', label: 'Đã huỷ thanh toán', fg: colors.textSubtle },
-  REFUNDED: { icon: 'undo-variant', label: 'Đã hoàn tiền', fg: colors.textSubtle },
+  REFUNDED: { icon: 'undo-variant', label: 'Đã hoàn tiền', fg: colors.textSubtle }
 };
 
 const FILTERS = [
-  { key: 'ALL', label: 'Tất cả' },
-  { key: 'ACTIVE', label: 'Đang đặt' },
-  { key: 'COMPLETED', label: 'Đã xong' },
-  { key: 'CANCELED', label: 'Đã hủy' },
-];
+{ key: 'ALL', label: 'Tất cả' },
+{ key: 'ACTIVE', label: 'Đang đặt' },
+{ key: 'COMPLETED', label: 'Đã xong' },
+{ key: 'CANCELED', label: 'Đã hủy' }];
+
 
 export default function MyBookingsScreen({ navigation }) {
   const { doLogout } = useAuth();
@@ -45,6 +46,7 @@ export default function MyBookingsScreen({ navigation }) {
   const { pay: payWithStripe, loading: payLoading } = usePayment();
   const dialog = useDialog();
   const [bookings, setBookings] = useState([]);
+  const [conversationByBooking, setConversationByBooking] = useState({});
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('ALL');
   const [actionMsg, setActionMsg] = useState('');
@@ -52,10 +54,18 @@ export default function MyBookingsScreen({ navigation }) {
   // silent = true: tải ngầm khi có cập nhật realtime, không nháy vòng xoay
   function load(silent = false) {
     if (!silent) setLoading(true);
-    listMyBookings()
-      .then(setBookings)
-      .catch(() => setActionMsg('Lỗi tải booking'))
-      .finally(() => setLoading(false));
+    Promise.all([
+      listMyBookings(),
+      listMyConversations().catch(() => []),
+    ]).
+    then(([myBookings, conversations]) => {
+      setBookings(myBookings);
+      setConversationByBooking(Object.fromEntries(
+        conversations.map((conversation) => [conversation.bookingId, conversation]),
+      ));
+    }).
+    catch(() => setActionMsg('Lỗi tải booking')).
+    finally(() => setLoading(false));
   }
 
   // Refetch mỗi khi screen focus (lần đầu vào tab, và khi quay lại từ Stripe / màn đặt chỗ).
@@ -79,7 +89,7 @@ export default function MyBookingsScreen({ navigation }) {
   // FlatList + `key={filter}` ép remount với filter mới → scroll bắt đầu từ 0, không có transition.
 
   const fmtMoney = (v) => `${new Intl.NumberFormat('vi-VN').format(v || 0)} đ`;
-  const fmtTime = (iso) => (iso ? iso.replace('T', ' ').substring(0, 16) : '');
+  const fmtTime = (iso) => iso ? iso.replace('T', ' ').substring(0, 16) : '';
 
   // "2026-10-15T08:00:00" -> "08:00 · 15/10"
   const fmtDeparture = (iso) => {
@@ -102,19 +112,19 @@ export default function MyBookingsScreen({ navigation }) {
     const meta = STATUS_META[b.status] || { label: b.status };
     const pm = PAYMENT_STATUS_META[b.paymentStatus] || {};
     const lines = [
-      `Mã: ${b.bookingCode}`,
-      `Trạng thái: ${meta.label}`,
-      `Khởi hành: ${fmtDeparture(b.tripDeparture)}`,
-      `Điểm đón: ${place(b.pickupWardName, b.tripStartProvince, b.pickupAddressText)}`,
-      `Điểm trả: ${place(b.dropoffWardName, b.tripEndProvince, b.dropoffAddressText)}`,
-      `Tài xế: ${b.driverName || '—'}`,
-    ];
+    `Mã: ${b.bookingCode}`,
+    `Trạng thái: ${meta.label}`,
+    `Khởi hành: ${fmtDeparture(b.tripDeparture)}`,
+    `Điểm đón: ${place(b.pickupWardName, b.tripStartProvince, b.pickupAddressText)}`,
+    `Điểm trả: ${place(b.dropoffWardName, b.tripEndProvince, b.dropoffAddressText)}`,
+    `Tài xế: ${b.driverName || '—'}`];
+
     if (b.driverPhone) lines.push(`Điện thoại tài xế: ${b.driverPhone}`);
     if (b.tripPlate) lines.push(`Xe: ${[b.tripVehicle, b.tripPlate].filter(Boolean).join(' · ')}`);
     lines.push(
       `Số ghế: ${b.seatCount} × ${fmtMoney(b.pricePerSeat)}`,
       `Tổng tiền: ${fmtMoney(b.totalAmount)}`,
-      `Thanh toán: ${pm.label || b.paymentStatus || '—'}`,
+      `Thanh toán: ${pm.label || b.paymentStatus || '—'}`
     );
     if (b.note) lines.push(`Ghi chú: ${b.note}`);
     if (b.cancelReason) lines.push(`Lý do huỷ: ${b.cancelReason}`);
@@ -124,26 +134,26 @@ export default function MyBookingsScreen({ navigation }) {
   function matchesFilter(b) {
     if (filter === 'ALL') return true;
     if (filter === 'ACTIVE') return [
-      'PENDING_PAYMENT', 'WAITING_DRIVER_APPROVAL', 'CONFIRMED',
-    ].includes(b.status);
+    'PENDING_PAYMENT', 'WAITING_DRIVER_APPROVAL', 'CONFIRMED'].
+    includes(b.status);
     if (filter === 'COMPLETED') return b.status === 'COMPLETED';
     return [
-      'REJECTED_BY_DRIVER', 'CANCELLED_BY_USER', 'CANCELLED_BY_DRIVER',
-      'CANCELLED_PAYMENT_FAILED', 'EXPIRED',
-    ].includes(b.status);
+    'REJECTED_BY_DRIVER', 'CANCELLED_BY_USER', 'CANCELLED_BY_DRIVER',
+    'CANCELLED_PAYMENT_FAILED', 'EXPIRED'].
+    includes(b.status);
   }
 
   const visible = bookings.filter(matchesFilter);
   const counts = {
     ALL: bookings.length,
     ACTIVE: bookings.filter((b) => [
-      'PENDING_PAYMENT', 'WAITING_DRIVER_APPROVAL', 'CONFIRMED',
-    ].includes(b.status)).length,
+    'PENDING_PAYMENT', 'WAITING_DRIVER_APPROVAL', 'CONFIRMED'].
+    includes(b.status)).length,
     COMPLETED: bookings.filter((b) => b.status === 'COMPLETED').length,
     CANCELED: bookings.filter((b) => [
-      'REJECTED_BY_DRIVER', 'CANCELLED_BY_USER', 'CANCELLED_BY_DRIVER',
-      'CANCELLED_PAYMENT_FAILED', 'EXPIRED',
-    ].includes(b.status)).length,
+    'REJECTED_BY_DRIVER', 'CANCELLED_BY_USER', 'CANCELLED_BY_DRIVER',
+    'CANCELLED_PAYMENT_FAILED', 'EXPIRED'].
+    includes(b.status)).length
   };
 
   async function doCancel(b) {
@@ -166,20 +176,20 @@ export default function MyBookingsScreen({ navigation }) {
       message: detail,
       confirmText: hasMoney ? 'Huỷ & hoàn tiền' : 'Huỷ booking',
       cancelText: 'Không',
-      danger: true,
+      danger: true
     });
     if (!ok) return;
 
     try {
       await cancelBooking(b.id, 'Khách hủy từ app');
       setActionMsg(
-        isStripe && hasMoney
-          ? 'Đã huỷ. Tiền sẽ được hoàn về trong vài ngày.'
-          : 'Đã huỷ booking'
+        isStripe && hasMoney ?
+        'Đã huỷ. Tiền sẽ được hoàn về trong vài ngày.' :
+        'Đã huỷ booking'
       );
       load();
-    } catch (e) {
-      setActionMsg(e.response?.data?.message || 'Lỗi huỷ');
+    } catch (e) {var _e$response;
+      setActionMsg(((_e$response = e.response) == null || (_e$response = _e$response.data) == null ? void 0 : _e$response.message) || 'Lỗi huỷ');
     }
   }
 
@@ -204,21 +214,21 @@ export default function MyBookingsScreen({ navigation }) {
       </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filters} contentContainerStyle={styles.filtersContent}>
-        {FILTERS.map((f) => (
-          <TouchableOpacity
-            key={f.key}
-            style={[styles.filter, filter === f.key && styles.filterActive]}
-            onPress={() => setFilter(f.key)}
-          >
+        {FILTERS.map((f) =>
+        <TouchableOpacity
+          key={f.key}
+          style={[styles.filter, filter === f.key && styles.filterActive]}
+          onPress={() => setFilter(f.key)}>
+          
             <Text
-              numberOfLines={1}
-              ellipsizeMode="clip"
-              style={[styles.filterText, filter === f.key && styles.filterTextActive]}
-            >
+            numberOfLines={1}
+            ellipsizeMode="clip"
+            style={[styles.filterText, filter === f.key && styles.filterTextActive]}>
+            
               {f.label}<Text style={styles.filterCount}> {counts[f.key]}</Text>
             </Text>
           </TouchableOpacity>
-        ))}
+        )}
       </ScrollView>
 
       <FlatList
@@ -227,30 +237,31 @@ export default function MyBookingsScreen({ navigation }) {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         ListHeaderComponent={
-          <>
+        <>
             {!!actionMsg && <Text style={styles.actionMsg}>{actionMsg}</Text>}
             {loading && <Text style={styles.muted}>Đang tải...</Text>}
-            {!loading && bookings.length === 0 && (
-              <View style={styles.emptyBox}>
+            {!loading && bookings.length === 0 &&
+          <View style={styles.emptyBox}>
                 <Text style={styles.muted}>Bạn chưa có booking nào.</Text>
                 <TouchableOpacity style={styles.primaryBtn} onPress={() => navigation.navigate('HomeTab')}>
                   <Text style={styles.primaryBtnText}>Tìm chuyến ngay</Text>
                 </TouchableOpacity>
               </View>
-            )}
-            {!loading && bookings.length > 0 && visible.length === 0 && (
-              <Text style={styles.emptyBox}>Không có chuyến xe trong nhóm này.</Text>
-            )}
+          }
+            {!loading && bookings.length > 0 && visible.length === 0 &&
+          <Text style={styles.emptyBox}>Không có chuyến xe trong nhóm này.</Text>
+          }
           </>
         }
         renderItem={({ item: b }) => {
           const meta = STATUS_META[b.status] || { label: b.status, bg: colors.pendingBg, fg: '#92400e' };
+          const conversation = conversationByBooking[b.id];
           const canCancel = ['PENDING_PAYMENT', 'WAITING_DRIVER_APPROVAL', 'CONFIRMED'].includes(b.status);
           // Chỉ còn cần trả tiền khi: còn PENDING_PAYMENT + chọn STRIPE + chưa authorize
           // (paymentStatus vẫn PENDING). Sau khi thanh toán xong, paymentStatus → HOLDING.
-          const canPay = b.status === 'PENDING_PAYMENT'
-            && b.paymentMethod === 'STRIPE'
-            && b.paymentStatus === 'PENDING';
+          const canPay = b.status === 'PENDING_PAYMENT' &&
+          b.paymentMethod === 'STRIPE' &&
+          b.paymentStatus === 'PENDING';
           return (
             <View style={styles.card}>
               <View style={styles.cardHead}>
@@ -283,43 +294,54 @@ export default function MyBookingsScreen({ navigation }) {
                       <View style={styles.payStatusRow}>
                         {!!pm.icon && <MaterialCommunityIcons name={pm.icon} size={13} color={fg} />}
                         <Text style={[styles.metricValue, { color: fg }]}>{pm.label || b.paymentStatus}</Text>
-                      </View>
-                    );
+                      </View>);
+
                   })()}
                 </View>
               </View>
 
-              {!!b.cancelReason && (
-                <Text style={styles.cancelReason}>Lý do: {b.cancelReason}</Text>
-              )}
+              {!!b.cancelReason &&
+              <Text style={styles.cancelReason}>Lý do: {b.cancelReason}</Text>
+              }
 
               <View style={styles.actionsRow}>
                   <TouchableOpacity style={styles.detailBtn} onPress={() => showDetail(b)}>
                     <Text style={styles.detailBtnText}>Xem chi tiết</Text>
                   </TouchableOpacity>
-                  {canPay && (
-                    <TouchableOpacity
-                      style={[styles.payBtn, payLoading && styles.payBtnDisabled]}
-                      onPress={() => doPay(b)}
-                      disabled={payLoading}
-                    >
+                  <TouchableOpacity
+                    style={[styles.chatBtn, !conversation && styles.chatBtnDisabled]}
+                    disabled={!conversation}
+                    onPress={() => navigation.navigate('Chat', {
+                      conversationId: conversation.conversationId,
+                      bookingId: b.id,
+                      name: b.driverName,
+                    })}>
+                    <MaterialCommunityIcons name="message-text-outline" size={14} color={colors.primaryAccent} />
+                    <Text style={styles.chatBtnText}>{conversation ? 'Chat tài xế' : 'Chat sau khi xác nhận'}</Text>
+                  </TouchableOpacity>
+                  {canPay &&
+                <TouchableOpacity
+                  style={[styles.payBtn, payLoading && styles.payBtnDisabled]}
+                  onPress={() => doPay(b)}
+                  disabled={payLoading}>
+                  
                       <Text style={styles.payBtnText}>
                         {payLoading ? 'Đang xử lý...' : 'Thanh toán ngay'}
                       </Text>
                     </TouchableOpacity>
-                  )}
-                  {canCancel && (
-                    <TouchableOpacity style={styles.dangerBtn} onPress={() => doCancel(b)}>
+                }
+                  {canCancel &&
+                <TouchableOpacity style={styles.dangerBtn} onPress={() => doCancel(b)}>
                       <Text style={styles.dangerBtnText}>Huỷ booking</Text>
                     </TouchableOpacity>
-                  )}
+                }
                 </View>
-            </View>
-          );
-        }}
-      />
-    </View>
-  );
+            </View>);
+
+        }} />
+      
+    </View>);
+
 }
 
 const styles = StyleSheet.create({
@@ -332,9 +354,9 @@ const styles = StyleSheet.create({
   filters: { marginTop: 10, marginBottom: 10, flexGrow: 0 },
   filtersContent: {
     paddingHorizontal: 12,
-    paddingVertical: 6,         // tạo khoảng thở cho border-radius, không bị clip ở mép ScrollView
+    paddingVertical: 6, // tạo khoảng thở cho border-radius, không bị clip ở mép ScrollView
     gap: 6,
-    alignItems: 'center',
+    alignItems: 'center'
   },
   filter: {
     paddingHorizontal: 10,
@@ -345,11 +367,11 @@ const styles = StyleSheet.create({
     borderColor: '#e1ebe7',
     borderRadius: 14,
     backgroundColor: 'white',
-    overflow: 'visible',       // đảm bảo border không bị parent clip
+    overflow: 'visible' // đảm bảo border không bị parent clip
   },
   filterActive: { borderColor: colors.primaryAccent, backgroundColor: colors.primaryLight },
   filterText: { fontSize: 11, lineHeight: 14, color: colors.textMuted, fontWeight: '500' },
-  filterTextActive: { color: colors.primaryAccent, fontWeight: '500' },  // không bold — giữ size chữ đồng đều
+  filterTextActive: { color: colors.primaryAccent, fontWeight: '500' }, // không bold — giữ size chữ đồng đều
   filterCount: { fontSize: 10, lineHeight: 13, fontWeight: '500' },
 
   actionMsg: { padding: 9, backgroundColor: colors.primaryFaintest, borderRadius: 6, marginBottom: 10, fontSize: 11, color: colors.textDark },
@@ -372,10 +394,13 @@ const styles = StyleSheet.create({
   metricValue: { fontSize: 12, fontWeight: '700' },
   cancelReason: { marginTop: 8, fontSize: 11, color: colors.dangerText },
 
-  actionsRow: { marginTop: 12, flexDirection: 'row', justifyContent: 'flex-end', gap: 8 },
+  actionsRow: { marginTop: 12, flexDirection: 'row', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' },
   route: { fontSize: 12, color: colors.textDark, marginTop: 3 },
   detailBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 6, borderWidth: 1, borderColor: colors.primaryAccent },
   detailBtnText: { color: colors.primaryAccent, fontSize: 11, fontWeight: '700' },
+    chatBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6, backgroundColor: colors.primaryLight, borderWidth: 1, borderColor: colors.primaryAccent },
+    chatBtnDisabled: { opacity: 0.55 },
+    chatBtnText: { color: colors.primaryAccent, fontSize: 11, fontWeight: '700' },
   dangerBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 6, backgroundColor: colors.dangerBg, borderWidth: 1, borderColor: '#fecaca' },
   dangerBtnText: { color: colors.danger, fontSize: 11, fontWeight: '700' },
   payBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 6, backgroundColor: colors.primary },
@@ -383,5 +408,5 @@ const styles = StyleSheet.create({
   payBtnText: { color: 'white', fontSize: 11, fontWeight: '700' },
 
   primaryBtn: { marginTop: 12, paddingVertical: 10, paddingHorizontal: 18, borderRadius: 6, backgroundColor: colors.primary, alignSelf: 'center' },
-  primaryBtnText: { color: 'white', fontSize: 12, fontWeight: '700' },
+  primaryBtnText: { color: 'white', fontSize: 12, fontWeight: '700' }
 });

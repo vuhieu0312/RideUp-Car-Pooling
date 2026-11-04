@@ -10,20 +10,20 @@ import BirthDateField from '../components/BirthDateField';
 import { Text } from '../components/Typography';
 
 const GENDERS = [
-  { value: 'MALE', label: 'Nam', icon: 'gender-male' },
-  { value: 'FEMALE', label: 'Nữ', icon: 'gender-female' },
-  { value: 'OTHER', label: 'Khác', icon: 'account-question-outline' },
-];
+{ value: 'MALE', label: 'Nam', icon: 'gender-male' },
+{ value: 'FEMALE', label: 'Nữ', icon: 'gender-female' },
+{ value: 'OTHER', label: 'Khác', icon: 'account-question-outline' }];
+
 
 /** Màn sửa thông tin cá nhân — cho phép đổi họ tên, SĐT, ngày sinh, giới tính. */
 export default function EditProfileScreen({ navigation }) {
   const { user, updateUser } = useAuth();
   const insets = useSafeAreaInsets();
   const [form, setForm] = useState({
-    fullName: user?.fullName || '',
-    phone: user?.phoneNumber || user?.phone || '',
-    dateOfBirth: user?.dateOfBirth ? String(user.dateOfBirth).slice(0, 10) : '',
-    gender: user?.gender || 'MALE',
+    fullName: (user == null ? void 0 : user.fullName) || '',
+    phone: (user == null ? void 0 : user.phoneNumber) || (user == null ? void 0 : user.phone) || '',
+    dateOfBirth: user != null && user.dateOfBirth ? String(user.dateOfBirth).slice(0, 10) : '',
+    gender: (user == null ? void 0 : user.gender) || 'MALE'
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -38,7 +38,7 @@ export default function EditProfileScreen({ navigation }) {
 
   async function save() {
     const err = validate();
-    if (err) { setError(err); return; }
+    if (err) {setError(err);return;}
     setError('');
     setSaving(true);
     try {
@@ -46,13 +46,13 @@ export default function EditProfileScreen({ navigation }) {
         fullName: form.fullName.trim(),
         phone: form.phone.trim() || null,
         dateOfBirth: form.dateOfBirth || null,
-        gender: form.gender,
+        gender: form.gender
       };
       const updated = await updateMyProfile(body);
       await updateUser(updated);
       navigation.goBack();
-    } catch (e) {
-      setError(e.response?.data?.message || 'Cập nhật thất bại');
+    } catch (e) {var _e$response;
+      setError(((_e$response = e.response) == null || (_e$response = _e$response.data) == null ? void 0 : _e$response.message) || 'Cập nhật thất bại');
     } finally {
       setSaving(false);
     }
@@ -77,17 +77,17 @@ export default function EditProfileScreen({ navigation }) {
           placeholder="Nguyễn Văn A"
           style={styles.input}
           outlineColor={colors.borderLight}
-          activeOutlineColor={colors.primaryAccent}
-        />
+          activeOutlineColor={colors.primaryAccent} />
+        
 
         <Text style={styles.label}>Email</Text>
         <TextInput
           mode="outlined"
-          value={user?.email || ''}
+          value={(user == null ? void 0 : user.email) || ''}
           editable={false}
           right={<TextInput.Icon icon="lock-outline" />}
-          style={styles.input}
-        />
+          style={styles.input} />
+        
         <HelperText type="info" visible style={{ marginTop: -8 }}>Email là tài khoản đăng nhập, không thể thay đổi.</HelperText>
 
         <Text style={styles.label}>Số điện thoại</Text>
@@ -99,8 +99,8 @@ export default function EditProfileScreen({ navigation }) {
           placeholder="0901234567"
           style={styles.input}
           outlineColor={colors.borderLight}
-          activeOutlineColor={colors.primaryAccent}
-        />
+          activeOutlineColor={colors.primaryAccent} />
+        
 
         <Text style={styles.label}>Ngày sinh</Text>
         <BirthDateField value={form.dateOfBirth} onChange={set('dateOfBirth')} placeholder="Chọn ngày sinh" />
@@ -110,14 +110,14 @@ export default function EditProfileScreen({ navigation }) {
           value={form.gender}
           onValueChange={set('gender')}
           buttons={GENDERS.map((g) => ({ value: g.value, label: g.label, icon: g.icon }))}
-          theme={{ colors: { secondaryContainer: colors.primaryFaintest, onSecondaryContainer: colors.primaryAccent } }}
-        />
+          theme={{ colors: { secondaryContainer: colors.primaryFaintest, onSecondaryContainer: colors.primaryAccent } }} />
+        
 
-        {!!error && (
-          <HelperText type="error" visible style={{ marginTop: 12 }}>
+        {!!error &&
+        <HelperText type="error" visible style={{ marginTop: 12 }}>
             {error}
           </HelperText>
-        )}
+        }
 
         <Button
           mode="contained"
@@ -127,13 +127,13 @@ export default function EditProfileScreen({ navigation }) {
           buttonColor={colors.primary}
           textColor="#fff"
           style={styles.saveBtn}
-          contentStyle={{ paddingVertical: 6 }}
-        >
+          contentStyle={{ paddingVertical: 6 }}>
+          
           {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
         </Button>
       </ScrollView>
-    </View>
-  );
+    </View>);
+
 }
 
 const styles = StyleSheet.create({
@@ -145,5 +145,5 @@ const styles = StyleSheet.create({
   content: { padding: 14, paddingBottom: 40 },
   label: { marginTop: 12, marginBottom: 4, fontSize: 11, color: colors.textSecondary, fontWeight: '600' },
   input: { backgroundColor: 'white', fontSize: 13 },
-  saveBtn: { marginTop: 24, borderRadius: 9 },
+  saveBtn: { marginTop: 24, borderRadius: 9 }
 });

@@ -1,5 +1,8 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import ConversationsScreen
+    from "../screens/ConversationsScreen";
+import ChatScreen from '../screens/ChatScreen';
 import { ActivityIndicator, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,9 +25,19 @@ const Tab = createBottomTabNavigator();
 const HomeStack = createNativeStackNavigator();
 const MyBookingsStack = createNativeStackNavigator();
 const PlaceholderStack = createNativeStackNavigator();
+const MessagesStack = createNativeStackNavigator();
 const AccountStack = createNativeStackNavigator();
 
 const TAB_ICON_SIZE = 22;
+
+function MessagesTab() {
+  return (
+    <MessagesStack.Navigator screenOptions={{ headerShown: false }}>
+      <MessagesStack.Screen name="Conversations" component={ConversationsScreen} />
+      <MessagesStack.Screen name="Chat" component={ChatScreen} />
+    </MessagesStack.Navigator>
+  );
+}
 
 /** Stack trong tab "Trang chủ" — chứa Home + các sub-screen đặt xe (TripSearch, BookingCreate). */
 function HomeTabs() {
@@ -41,6 +54,7 @@ function MyBookingsTab() {
   return (
     <MyBookingsStack.Navigator screenOptions={{ headerShown: false }}>
       <MyBookingsStack.Screen name="MyBookings" component={MyBookingsScreen} />
+      <MyBookingsStack.Screen name="Chat" component={ChatScreen} />
     </MyBookingsStack.Navigator>
   );
 }
@@ -60,7 +74,6 @@ function makePlaceholderTab(title, icon, subtitle) {
   };
 }
 
-const MessagesTab = makePlaceholderTab('Tin nhắn', 'message-text-outline', 'Hộp thư với tài xế và admin sẽ có ở đây');
 const NotificationsTab = makePlaceholderTab('Thông báo', 'bell-outline', 'Cập nhật về chuyến xe và booking');
 
 /** Tab Tài khoản — stack chứa Account + 2 màn con (sửa profile, đổi mật khẩu). */

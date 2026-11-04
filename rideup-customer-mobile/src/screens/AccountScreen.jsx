@@ -29,10 +29,10 @@ export default function AccountScreen({ navigation }) {
   // Chỉ set state local — KHÔNG gọi updateUser ở đây vì sẽ trigger re-render toàn bộ AuthProvider → React Navigation reset tab state → giật về Home.
   useFocusEffect(
     useCallback(() => {
-      getMyProfile()
-        .then((data) => setProfile(data))
-        .catch(() => {})
-        .finally(() => setLoading(false));
+      getMyProfile().
+      then((data) => setProfile(data)).
+      catch(() => {}).
+      finally(() => setLoading(false));
     }, [])
   );
 
@@ -46,7 +46,7 @@ export default function AccountScreen({ navigation }) {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 0.8,
+      quality: 0.8
     });
     if (result.canceled) return;
     setUploading(true);
@@ -55,26 +55,26 @@ export default function AccountScreen({ navigation }) {
       setProfile(updated);
       await updateUser(updated);
       setSnack('Cập nhật ảnh đại diện thành công');
-    } catch (e) {
-      setSnack(e.response?.data?.message || 'Upload ảnh thất bại');
+    } catch (e) {var _e$response;
+      setSnack(((_e$response = e.response) == null || (_e$response = _e$response.data) == null ? void 0 : _e$response.message) || 'Upload ảnh thất bại');
     } finally {
       setUploading(false);
     }
   }
 
-  const initials = (profile?.fullName || profile?.email || 'U')
-    .split(/\s+/)
-    .map((s) => s[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join('')
-    .toUpperCase();
+  const initials = ((profile == null ? void 0 : profile.fullName) || (profile == null ? void 0 : profile.email) || 'U').
+  split(/\s+/).
+  map((s) => s[0]).
+  filter(Boolean).
+  slice(0, 2).
+  join('').
+  toUpperCase();
 
-  const avatarUrl = profile?.avatarUrl
-    ? (profile.avatarUrl.startsWith('http')
-        ? profile.avatarUrl
-        : `http://localhost:8080${profile.avatarUrl}`)
-    : null;
+  const avatarUrl = profile != null && profile.avatarUrl ?
+  profile.avatarUrl.startsWith('http') ?
+  profile.avatarUrl :
+  `http://localhost:8080${profile.avatarUrl}` :
+  null;
 
   return (
     <View style={styles.container}>
@@ -91,37 +91,37 @@ export default function AccountScreen({ navigation }) {
         {/* Avatar card */}
         <View style={styles.avatarCard}>
           <View>
-            {avatarUrl ? (
-              <Avatar.Image size={96} source={{ uri: avatarUrl }} />
-            ) : (
-              <Avatar.Text
-                size={96}
-                label={initials}
-                style={{ backgroundColor: colors.primaryAccent }}
-                labelStyle={{ fontWeight: '700' }}
-              />
-            )}
+            {avatarUrl ?
+            <Avatar.Image size={96} source={{ uri: avatarUrl }} /> :
+
+            <Avatar.Text
+              size={96}
+              label={initials}
+              style={{ backgroundColor: colors.primaryAccent }}
+              labelStyle={{ fontWeight: '700' }} />
+
+            }
             <TouchableOpacity style={styles.cameraBtn} onPress={pickAndUpload} disabled={uploading}>
               <MaterialCommunityIcons name="camera" size={14} color="#fff" />
             </TouchableOpacity>
           </View>
-          <Text style={styles.name}>{profile?.fullName || 'Người dùng'}</Text>
-          <Text style={styles.muted}>{profile?.email}</Text>
-          {!!profile?.verified && (
-            <View style={styles.verifiedRow}>
+          <Text style={styles.name}>{(profile == null ? void 0 : profile.fullName) || 'Người dùng'}</Text>
+          <Text style={styles.muted}>{profile == null ? void 0 : profile.email}</Text>
+          {!!(profile != null && profile.verified) &&
+          <View style={styles.verifiedRow}>
               <MaterialCommunityIcons name="check-decagram" size={13} color={colors.success} />
               <Text style={styles.verified}>Đã xác minh email</Text>
             </View>
-          )}
+          }
         </View>
 
         {/* Info card */}
         <View style={styles.card}>
           <Text style={styles.cardKicker}>THÔNG TIN CÁ NHÂN</Text>
-          <InfoRow icon="phone-outline" label="Số điện thoại" value={profile?.phoneNumber || profile?.phone || '—'} />
-          <InfoRow icon="cake-variant-outline" label="Ngày sinh" value={formatDate(profile?.dateOfBirth)} />
-          <InfoRow icon="account-outline" label="Giới tính" value={GENDER_LABEL[profile?.gender] || '—'} />
-          <InfoRow icon="shield-account-outline" label="Vai trò" value={(profile?.roles || []).join(', ')} />
+          <InfoRow icon="phone-outline" label="Số điện thoại" value={(profile == null ? void 0 : profile.phoneNumber) || (profile == null ? void 0 : profile.phone) || '—'} />
+          <InfoRow icon="cake-variant-outline" label="Ngày sinh" value={formatDate(profile == null ? void 0 : profile.dateOfBirth)} />
+          <InfoRow icon="account-outline" label="Giới tính" value={GENDER_LABEL[profile == null ? void 0 : profile.gender] || '—'} />
+          <InfoRow icon="shield-account-outline" label="Vai trò" value={((profile == null ? void 0 : profile.roles) || []).join(', ')} />
         </View>
 
         {/* Actions */}
@@ -133,8 +133,8 @@ export default function AccountScreen({ navigation }) {
             buttonColor={colors.primary}
             textColor="#fff"
             style={styles.btn}
-            contentStyle={styles.btnContent}
-          >
+            contentStyle={styles.btnContent}>
+            
             Sửa thông tin
           </Button>
           <Button
@@ -143,8 +143,8 @@ export default function AccountScreen({ navigation }) {
             onPress={() => navigation.navigate('ChangePassword')}
             style={styles.btn}
             contentStyle={styles.btnContent}
-            textColor={colors.primary}
-          >
+            textColor={colors.primary}>
+            
             Đổi mật khẩu
           </Button>
           <Button
@@ -153,8 +153,8 @@ export default function AccountScreen({ navigation }) {
             onPress={doLogout}
             textColor={colors.danger}
             style={styles.btn}
-            contentStyle={styles.btnContent}
-          >
+            contentStyle={styles.btnContent}>
+            
             Đăng xuất
           </Button>
         </View>
@@ -163,8 +163,8 @@ export default function AccountScreen({ navigation }) {
       <Snackbar visible={!!snack} onDismiss={() => setSnack('')} duration={2500}>
         {snack}
       </Snackbar>
-    </View>
-  );
+    </View>);
+
 }
 
 function InfoRow({ icon, label, value }) {
@@ -175,8 +175,8 @@ function InfoRow({ icon, label, value }) {
         <Text style={styles.rowLabel}>{label}</Text>
         <Text style={styles.rowValue}>{value}</Text>
       </View>
-    </View>
-  );
+    </View>);
+
 }
 
 function formatDate(d) {
@@ -200,7 +200,7 @@ const styles = StyleSheet.create({
     position: 'absolute', right: -2, bottom: -2,
     width: 28, height: 28, borderRadius: 14,
     backgroundColor: colors.primaryAccent, alignItems: 'center', justifyContent: 'center',
-    borderWidth: 2, borderColor: colors.bg,
+    borderWidth: 2, borderColor: colors.bg
   },
   name: { marginTop: 12, fontSize: 17, fontWeight: '700', color: colors.text },
   muted: { marginTop: 2, fontSize: 12, color: colors.textSubtle },
@@ -215,5 +215,5 @@ const styles = StyleSheet.create({
 
   actions: { marginTop: 18, paddingHorizontal: 14, gap: 8 },
   btn: { borderRadius: 9 },
-  btnContent: { paddingVertical: 4 },
+  btnContent: { paddingVertical: 4 }
 });

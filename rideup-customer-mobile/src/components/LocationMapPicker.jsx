@@ -18,21 +18,21 @@ const FETCH_TIMEOUT_MS = 5000;
 // ── Helpers ────────────────────────────────────────────────────────────────
 function haversine(lat1, lng1, lat2, lng2) {
   const R = 6371000;
-  const toRad = (v) => (v * Math.PI) / 180;
+  const toRad = (v) => v * Math.PI / 180;
   const dLat = toRad(lat2 - lat1);
   const dLng = toRad(lng2 - lng1);
   const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  Math.sin(dLat / 2) ** 2 +
+  Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 function isValid(lat, lng) {
   return (
     Number.isFinite(lat) && Number.isFinite(lng) &&
-    Math.abs(lat) <= 90 && Math.abs(lng) <= 180 &&
-    (lat !== 0 || lng !== 0)
-  );
+    Math.abs(lat) <= 90 && Math.abs(lng) <= 180 && (
+    lat !== 0 || lng !== 0));
+
 }
 
 // Icon theo loại OSM (để suggestion list dễ scan bằng mắt)
@@ -85,14 +85,14 @@ const REVERSE_TIMEOUT_MS = 4000;
 const NOMINATIM_HEADERS = { 'User-Agent': 'RideUpApp/1.0 (student project)' };
 
 /** Mỗi nguồn trả về string "Số nhà + tên đường, phường/quận, thành phố" khi có đủ dữ liệu, throw nếu không có gì dùng được (để không làm "thắng" một... */
-async function reverseGeocodePhoton(lat, lng) {
+async function reverseGeocodePhoton(lat, lng) {var _data$features;
   const res = await fetchWithTimeout(`https://photon.komoot.io/reverse?lon=${lng}&lat=${lat}`, REVERSE_TIMEOUT_MS);
   if (!res.ok) throw new Error('photon not ok');
   const data = await res.json();
-  const props = data.features?.[0]?.properties;
+  const props = (_data$features = data.features) == null || (_data$features = _data$features[0]) == null ? void 0 : _data$features.properties;
   // housenumber + street ghép lại ("73 Phùng Khoang") thay vì chỉ street suông
-  const streetLine = [props?.housenumber, props?.street].filter(Boolean).join(' ');
-  const parts = [streetLine || props?.name, props?.district, props?.city, props?.country].filter(Boolean);
+  const streetLine = [props == null ? void 0 : props.housenumber, props == null ? void 0 : props.street].filter(Boolean).join(' ');
+  const parts = [streetLine || (props == null ? void 0 : props.name), props == null ? void 0 : props.district, props == null ? void 0 : props.city, props == null ? void 0 : props.country].filter(Boolean);
   if (parts.length === 0) throw new Error('photon empty');
   return [...new Set(parts)].join(', ');
 }
@@ -101,7 +101,7 @@ async function reverseGeocodeNominatim(lat, lng) {
   const res = await fetchWithTimeout(
     `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=jsonv2&addressdetails=1&accept-language=vi`,
     REVERSE_TIMEOUT_MS,
-    { headers: NOMINATIM_HEADERS },
+    { headers: NOMINATIM_HEADERS }
   );
   if (!res.ok) throw new Error('nominatim not ok');
   const data = await res.json();
@@ -111,11 +111,11 @@ async function reverseGeocodeNominatim(lat, lng) {
   const road = a.road || a.pedestrian || a.footway || a.residential;
   const streetLine = [a.house_number, road].filter(Boolean).join(' ');
   const parts = [
-    streetLine,
-    a.suburb || a.quarter || a.neighbourhood || a.hamlet,
-    a.city_district || a.district || a.county,
-    a.city || a.town || a.village,
-  ].filter(Boolean);
+  streetLine,
+  a.suburb || a.quarter || a.neighbourhood || a.hamlet,
+  a.city_district || a.district || a.county,
+  a.city || a.town || a.village].
+  filter(Boolean);
   if (parts.length === 0) throw new Error('nominatim empty');
   return [...new Set(parts)].join(', ');
 }
@@ -123,7 +123,7 @@ async function reverseGeocodeNominatim(lat, lng) {
 async function reverseGeocodeBigDataCloud(lat, lng) {
   const res = await fetchWithTimeout(
     `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=vi`,
-    REVERSE_TIMEOUT_MS,
+    REVERSE_TIMEOUT_MS
   );
   if (!res.ok) throw new Error('bigdatacloud not ok');
   const data = await res.json();
@@ -135,13 +135,13 @@ async function reverseGeocodeBigDataCloud(lat, lng) {
 async function reverseGeocode(lat, lng) {
   // Gọi SONG SONG cả 3 nguồn (Nominatim chi tiết nhất — có số nhà/tên đường riêng; Photon khá hơn BigDataCloud nhưng không phải lúc nào cũng có...
   const results = await Promise.allSettled([
-    reverseGeocodeNominatim(lat, lng),
-    reverseGeocodePhoton(lat, lng),
-    reverseGeocodeBigDataCloud(lat, lng),
-  ]);
-  const candidates = results
-    .filter((r) => r.status === 'fulfilled' && r.value)
-    .map((r) => r.value);
+  reverseGeocodeNominatim(lat, lng),
+  reverseGeocodePhoton(lat, lng),
+  reverseGeocodeBigDataCloud(lat, lng)]
+  );
+  const candidates = results.
+  filter((r) => r.status === 'fulfilled' && r.value).
+  map((r) => r.value);
   if (candidates.length === 0) return '';
   // Ưu tiên chuỗi có nhiều phần (dấu phẩy) hơn = chi tiết hơn (có số nhà/tên đường
   // riêng thay vì chỉ "Đại Mỗ, Hà Nội, Việt Nam")
@@ -160,19 +160,19 @@ async function forwardGeocodePhoton(q, biasLat, biasLng, signal) {
   const res = await fetchWithTimeout(url, FETCH_TIMEOUT_MS, { signal });
   if (!res.ok) return [];
   const data = await res.json();
-  const features = data?.features || [];
+  const features = (data == null ? void 0 : data.features) || [];
   const results = [];
-  for (const f of features) {
-    const [lng, lat] = f.geometry?.coordinates || [];
+  for (const f of features) {var _f$geometry;
+    const [lng, lat] = ((_f$geometry = f.geometry) == null ? void 0 : _f$geometry.coordinates) || [];
     if (!isValid(lat, lng)) continue;
     const p = f.properties || {};
     const primary = p.name || p.street || p.locality || '—';
-    const secondaryParts = [p.street && p.name ? p.street : null, p.suburb || p.district, p.city, p.country]
-      .filter(Boolean)
-      .filter((v, i, a) => a.indexOf(v) === i);
+    const secondaryParts = [p.street && p.name ? p.street : null, p.suburb || p.district, p.city, p.country].
+    filter(Boolean).
+    filter((v, i, a) => a.indexOf(v) === i);
     results.push({
       lat, lng, primary, secondary: secondaryParts.join(', '),
-      type: p.type, osmValue: p.osm_value,
+      type: p.type, osmValue: p.osm_value
     });
   }
   return results;
@@ -182,7 +182,7 @@ async function forwardGeocodePhoton(q, biasLat, biasLng, signal) {
 async function forwardGeocodeNominatim(q, biasLat, biasLng, signal) {
   const params = new URLSearchParams({
     q, format: 'jsonv2', addressdetails: '1', limit: '10',
-    countrycodes: 'vn', 'accept-language': 'vi',
+    countrycodes: 'vn', 'accept-language': 'vi'
   });
   if (Number.isFinite(biasLat) && Number.isFinite(biasLng)) {
     // viewbox quanh điểm bias ~2 độ (~220km) để ưu tiên kết quả gần, không filter cứng
@@ -202,14 +202,14 @@ async function forwardGeocodeNominatim(q, biasLat, biasLng, signal) {
     const streetLine = [a.house_number, road].filter(Boolean).join(' ');
     const primary = item.name || streetLine || a.amenity || (item.display_name || '').split(',')[0] || '—';
     const secondaryParts = [
-      streetLine && streetLine !== primary ? streetLine : null,
-      a.suburb || a.quarter || a.neighbourhood,
-      a.city_district || a.district,
-      a.city || a.town || a.village,
-    ].filter(Boolean).filter((v, i, arr) => arr.indexOf(v) === i);
+    streetLine && streetLine !== primary ? streetLine : null,
+    a.suburb || a.quarter || a.neighbourhood,
+    a.city_district || a.district,
+    a.city || a.town || a.village].
+    filter(Boolean).filter((v, i, arr) => arr.indexOf(v) === i);
     results.push({
       lat, lng, primary, secondary: secondaryParts.join(', '),
-      type: item.type, osmValue: item.class,
+      type: item.type, osmValue: item.class
     });
   }
   return results;
@@ -225,11 +225,11 @@ async function forwardGeocode(query, provinceLat, provinceLng, wardLat, wardLng,
   // Gọi song song 2 nguồn độc lập — nguồn nào lỗi/rỗng/timeout thì bỏ qua, không chặn
   // nguồn còn lại (allSettled, không throw ra ngoài).
   const settled = await Promise.allSettled([
-    forwardGeocodePhoton(q, biasLat, biasLng, signal),
-    forwardGeocodeNominatim(q, biasLat, biasLng, signal),
-  ]);
-  const raw = settled.flatMap((r) => (r.status === 'fulfilled' ? r.value : []));
-  if (signal?.aborted) return [];
+  forwardGeocodePhoton(q, biasLat, biasLng, signal),
+  forwardGeocodeNominatim(q, biasLat, biasLng, signal)]
+  );
+  const raw = settled.flatMap((r) => r.status === 'fulfilled' ? r.value : []);
+  if (signal != null && signal.aborted) return [];
 
   // Dedupe theo toạ độ làm tròn ~11m (4 chữ số thập phân) — 2 nguồn có thể trả cùng
   // 1 điểm, giữ bản ghi đầu tiên gặp (Photon ưu tiên trước vì để ở đầu mảng settled)
@@ -246,9 +246,9 @@ async function forwardGeocode(query, provinceLat, provinceLng, wardLat, wardLng,
     const key = `${lat.toFixed(4)},${lng.toFixed(4)}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    const distanceToWardKm = (Number.isFinite(wardLat) && Number.isFinite(wardLng))
-      ? haversine(wardLat, wardLng, lat, lng) / 1000
-      : null;
+    const distanceToWardKm = Number.isFinite(wardLat) && Number.isFinite(wardLng) ?
+    haversine(wardLat, wardLng, lat, lng) / 1000 :
+    null;
     const inWard = distanceToWardKm !== null && distanceToWardKm <= WARD_RADIUS_KM;
     results.push({ ...r, distanceToWardKm, inWard });
   }
@@ -273,8 +273,8 @@ export default function LocationMapPicker({
   wardReadOnly = false,
   wardName,
   provinceLat,
-  provinceLng,
-}) {
+  provinceLng
+}) {var _wardOptions$find;
   const [wardCenter, setWardCenter] = useState(null);
   const [loadingWard, setLoadingWard] = useState(false);
   const [resolvingAddress, setResolvingAddress] = useState(false);
@@ -286,28 +286,28 @@ export default function LocationMapPicker({
   const abortCtrlRef = useRef(null);
   const lastSearchedTextRef = useRef('');
 
-  const lat = Number(value?.lat);
-  const lng = Number(value?.lng);
+  const lat = Number(value == null ? void 0 : value.lat);
+  const lng = Number(value == null ? void 0 : value.lng);
   const hasCoord = isValid(lat, lng);
 
-  const selectedWardName = wardName || wardOptions.find((w) => w.id === wardId)?.name || '';
+  const selectedWardName = wardName || ((_wardOptions$find = wardOptions.find((w) => w.id === wardId)) == null ? void 0 : _wardOptions$find.name) || '';
 
   // Load tâm phường/xã khi wardId thay đổi
   useEffect(() => {
-    if (!wardId) { setWardCenter(null); return; }
+    if (!wardId) {setWardCenter(null);return;}
     let cancelled = false;
     setLoadingWard(true);
-    getWardById(wardId)
-      .then((ward) => {
-        const wLat = Number(ward?.lat);
-        const wLng = Number(ward?.lng);
-        if (!cancelled) {
-          setWardCenter(isValid(wLat, wLng) ? { latitude: wLat, longitude: wLng } : null);
-        }
-      })
-      .catch(() => { if (!cancelled) setWardCenter(null); })
-      .finally(() => { if (!cancelled) setLoadingWard(false); });
-    return () => { cancelled = true; };
+    getWardById(wardId).
+    then((ward) => {
+      const wLat = Number(ward == null ? void 0 : ward.lat);
+      const wLng = Number(ward == null ? void 0 : ward.lng);
+      if (!cancelled) {
+        setWardCenter(isValid(wLat, wLng) ? { latitude: wLat, longitude: wLng } : null);
+      }
+    }).
+    catch(() => {if (!cancelled) setWardCenter(null);}).
+    finally(() => {if (!cancelled) setLoadingWard(false);});
+    return () => {cancelled = true;};
   }, [wardId]);
 
   const updateFromCoord = useCallback(async (nextLat, nextLng) => {
@@ -317,11 +317,11 @@ export default function LocationMapPicker({
       setLocalError('Tọa độ không hợp lệ. Vui lòng thử lại.');
       return;
     }
-    onChange?.({ lat: nextLat, lng: nextLng, addressText: value?.addressText || '' });
+    onChange == null || onChange({ lat: nextLat, lng: nextLng, addressText: (value == null ? void 0 : value.addressText) || '' });
     try {
       setResolvingAddress(true);
       const address = await reverseGeocode(nextLat, nextLng);
-      if (address) onChange?.({ lat: nextLat, lng: nextLng, addressText: address });
+      if (address) onChange == null || onChange({ lat: nextLat, lng: nextLng, addressText: address });
     } catch {
       setLocalError('Không lấy được địa chỉ tự động. Bạn có thể tự nhập bên dưới.');
     } finally {
@@ -346,7 +346,7 @@ export default function LocationMapPicker({
 
   // Forward geocoding: gõ địa chỉ → debounce → search → sort theo in-ward
   const handleAddressTextChange = useCallback((text) => {
-    onChange?.({ lat, lng, addressText: text });
+    onChange == null || onChange({ lat, lng, addressText: text });
     setSuggestions([]);
     setAddressSearch('idle');
     if (abortCtrlRef.current) abortCtrlRef.current.abort();
@@ -361,8 +361,8 @@ export default function LocationMapPicker({
       const results = await forwardGeocode(
         trimmed,
         Number(provinceLat), Number(provinceLng),
-        wardCenter?.latitude, wardCenter?.longitude,
-        ctrl.signal,
+        wardCenter == null ? void 0 : wardCenter.latitude, wardCenter == null ? void 0 : wardCenter.longitude,
+        ctrl.signal
       );
       if (ctrl.signal.aborted) return;
       if (results.length === 0) {
@@ -378,7 +378,7 @@ export default function LocationMapPicker({
 
   // User chọn 1 suggestion → ghim map + set addressText = suggestion primary
   const pickSuggestion = useCallback((s) => {
-    onChange?.({ lat: s.lat, lng: s.lng, addressText: s.primary });
+    onChange == null || onChange({ lat: s.lat, lng: s.lng, addressText: s.primary });
     setSuggestions([]);
     setAddressSearch('idle');
   }, [onChange]);
@@ -388,11 +388,11 @@ export default function LocationMapPicker({
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
   }, []);
 
-  const mapRegion = hasCoord
-    ? { latitude: lat, longitude: lng, latitudeDelta: 0.01, longitudeDelta: 0.01 }
-    : wardCenter
-      ? { ...wardCenter, latitudeDelta: 0.05, longitudeDelta: 0.05 }
-      : { ...DEFAULT_COORD, latitudeDelta: 0.1, longitudeDelta: 0.1 };
+  const mapRegion = hasCoord ?
+  { latitude: lat, longitude: lng, latitudeDelta: 0.01, longitudeDelta: 0.01 } :
+  wardCenter ?
+  { ...wardCenter, latitudeDelta: 0.05, longitudeDelta: 0.05 } :
+  { ...DEFAULT_COORD, latitudeDelta: 0.1, longitudeDelta: 0.1 };
 
   return (
     <View style={styles.wrapper}>
@@ -407,19 +407,19 @@ export default function LocationMapPicker({
         </Text>
       </View>
 
-      {wardReadOnly ? (
-        // Read-only: hiển thị ward đã chọn từ bước trước (vd: search trip)
-        <View style={[styles.wardInfo, { borderColor: accentColor }]}>
+      {wardReadOnly ?
+      // Read-only: hiển thị ward đã chọn từ bước trước (vd: search trip)
+      <View style={[styles.wardInfo, { borderColor: accentColor }]}>
           <MaterialCommunityIcons name="map-marker" size={18} color={accentColor} />
           <Text style={styles.wardInfoText} numberOfLines={1}>{selectedWardName || '—'}</Text>
-        </View>
-      ) : (
-        <>
+        </View> :
+
+      <>
           <TouchableOpacity
-            style={[styles.wardBtn, wardId && { borderColor: accentColor }]}
-            onPress={() => setShowWardList(!showWardList)}
-            activeOpacity={0.8}
-          >
+          style={[styles.wardBtn, wardId && { borderColor: accentColor }]}
+          onPress={() => setShowWardList(!showWardList)}
+          activeOpacity={0.8}>
+          
             <MaterialCommunityIcons name="map-marker-outline" size={18} color={wardId ? accentColor : colors.textSecondary} />
             <Text style={[styles.wardBtnText, wardId && { color: colors.textDark }]} numberOfLines={1}>
               {wardId ? selectedWardName : 'Chọn Phường/Xã...'}
@@ -428,42 +428,42 @@ export default function LocationMapPicker({
           </TouchableOpacity>
 
           {/* Danh sách phường/xã */}
-          {showWardList && (
-            <View style={styles.wardList}>
-              {wardOptions.length === 0 ? (
-                <Text style={styles.emptyText}>Không có phường/xã nào</Text>
-              ) : (
-                wardOptions.map((w) => (
-                  <TouchableOpacity
-                    key={w.id}
-                    style={[styles.wardItem, w.id === wardId && { backgroundColor: `${accentColor}20`, borderColor: accentColor }]}
-                    onPress={() => {
-                      onWardChange?.(w.id);
-                      // Reset tọa độ khi đổi phường
-                      onChange?.({ lat: NaN, lng: NaN, addressText: '' });
-                      setLocalError('');
-                      setShowWardList(false);
-                    }}
-                  >
+          {showWardList &&
+        <View style={styles.wardList}>
+              {wardOptions.length === 0 ?
+          <Text style={styles.emptyText}>Không có phường/xã nào</Text> :
+
+          wardOptions.map((w) =>
+          <TouchableOpacity
+            key={w.id}
+            style={[styles.wardItem, w.id === wardId && { backgroundColor: `${accentColor}20`, borderColor: accentColor }]}
+            onPress={() => {
+              onWardChange == null || onWardChange(w.id);
+              // Reset tọa độ khi đổi phường
+              onChange == null || onChange({ lat: NaN, lng: NaN, addressText: '' });
+              setLocalError('');
+              setShowWardList(false);
+            }}>
+            
                     <MaterialCommunityIcons
-                      name={w.id === wardId ? 'radiobox-marked' : 'radiobox-blank'}
-                      size={16}
-                      color={w.id === wardId ? accentColor : colors.textSecondary}
-                    />
+              name={w.id === wardId ? 'radiobox-marked' : 'radiobox-blank'}
+              size={16}
+              color={w.id === wardId ? accentColor : colors.textSecondary} />
+            
                     <Text style={[styles.wardItemText, w.id === wardId && { color: accentColor, fontWeight: 'bold' }]}>
                       {w.name}
                     </Text>
                   </TouchableOpacity>
-                ))
-              )}
+          )
+          }
             </View>
-          )}
+        }
         </>
-      )}
+      }
 
       {/* STEP 2: Chọn trên bản đồ — chỉ hiện khi đã chọn phường/xã */}
-      {wardId ? (
-        <>
+      {wardId ?
+      <>
           <View style={[styles.sectionHeader, { marginTop: 16 }]}>
             <View style={[styles.stepBadge, { backgroundColor: accentColor }]}>
               <Text style={styles.stepText}>2</Text>
@@ -478,15 +478,15 @@ export default function LocationMapPicker({
           <Text style={styles.hint}>Bấm vào bản đồ để ghim vị trí chính xác</Text>
 
           <MapSection
-            region={mapRegion}
-            onCoordChange={updateFromCoord}
-            wardCenter={wardCenter}
-            strokeColor={accentColor}
-            hasCoord={hasCoord}
-            lat={lat}
-            lng={lng}
-            loadingWard={loadingWard}
-          />
+          region={mapRegion}
+          onCoordChange={updateFromCoord}
+          wardCenter={wardCenter}
+          strokeColor={accentColor}
+          hasCoord={hasCoord}
+          lat={lat}
+          lng={lng}
+          loadingWard={loadingWard} />
+        
 
           {/* STEP 3: Địa chỉ chi tiết */}
           <View style={[styles.sectionHeader, { marginTop: 12 }]}>
@@ -497,21 +497,21 @@ export default function LocationMapPicker({
             {resolvingAddress && <ActivityIndicator color={accentColor} size="small" style={{ marginLeft: 8 }} />}
           </View>
           <TextInput
-            style={styles.addressInput}
-            placeholder="Số nhà, tên đường, mốc nhận diện..."
-            placeholderTextColor={colors.textMuted}
-            value={value?.addressText || ''}
-            onChangeText={handleAddressTextChange}
-            onFocus={() => { /* giữ suggestions nếu đang có */ }}
-          />
-          {addressSearch === 'searching' && (
-            <View style={styles.searchStatus}>
+          style={styles.addressInput}
+          placeholder="Số nhà, tên đường, mốc nhận diện..."
+          placeholderTextColor={colors.textMuted}
+          value={(value == null ? void 0 : value.addressText) || ''}
+          onChangeText={handleAddressTextChange}
+          onFocus={() => {/* giữ suggestions nếu đang có */}} />
+        
+          {addressSearch === 'searching' &&
+        <View style={styles.searchStatus}>
               <ActivityIndicator size="small" color={accentColor} />
               <Text style={[styles.searchStatusText, { color: accentColor }]}>Đang tìm...</Text>
             </View>
-          )}
-          {addressSearch === 'notfound' && (
-            <View style={styles.notFoundBox}>
+        }
+          {addressSearch === 'notfound' &&
+        <View style={styles.notFoundBox}>
               <View style={styles.notFoundHeader}>
                 <MaterialCommunityIcons name="alert-circle-outline" size={16} color={colors.warning} />
                 <Text style={styles.notFoundTitle}>Không tìm thấy địa điểm này</Text>
@@ -523,55 +523,55 @@ export default function LocationMapPicker({
                 {'\n'}• Bấm "Vị trí hiện tại" để dùng GPS
               </Text>
             </View>
-          )}
-          {addressSearch === 'found_mixed' && (
-            <View style={styles.searchStatus}>
+        }
+          {addressSearch === 'found_mixed' &&
+        <View style={styles.searchStatus}>
               <MaterialCommunityIcons name="information-outline" size={14} color={colors.warning} />
               <Text style={[styles.searchStatusText, { color: colors.warning }]}>Một số kết quả nằm ngoài phường/xã (gắn thẻ cam)</Text>
             </View>
-          )}
-          {suggestions.length > 0 && (
-            <View style={styles.suggestionList}>
-              {suggestions.map((s, i) => (
-                <TouchableOpacity
-                  key={`${s.lat}-${s.lng}-${i}`}
-                  style={[styles.suggestionItem, !s.inWard && styles.suggestionItemOut]}
-                  onPress={() => pickSuggestion(s)}
-                  activeOpacity={0.7}
-                >
+        }
+          {suggestions.length > 0 &&
+        <View style={styles.suggestionList}>
+              {suggestions.map((s, i) =>
+          <TouchableOpacity
+            key={`${s.lat}-${s.lng}-${i}`}
+            style={[styles.suggestionItem, !s.inWard && styles.suggestionItemOut]}
+            onPress={() => pickSuggestion(s)}
+            activeOpacity={0.7}>
+            
                   <MaterialCommunityIcons
-                    name={iconForOsm(s.osmValue, s.type)}
-                    size={16}
-                    color={s.inWard ? accentColor : colors.warning}
-                    style={styles.suggestionIcon}
-                  />
+              name={iconForOsm(s.osmValue, s.type)}
+              size={16}
+              color={s.inWard ? accentColor : colors.warning}
+              style={styles.suggestionIcon} />
+            
                   <View style={{ flex: 1 }}>
                     <Text style={styles.suggestionPrimary} numberOfLines={1}>{s.primary}</Text>
-                    {!!s.secondary && (
-                      <Text style={styles.suggestionSecondary} numberOfLines={1}>{s.secondary}</Text>
-                    )}
+                    {!!s.secondary &&
+              <Text style={styles.suggestionSecondary} numberOfLines={1}>{s.secondary}</Text>
+              }
                   </View>
-                  {!s.inWard && (
-                    <View style={styles.outBadge}>
+                  {!s.inWard &&
+            <View style={styles.outBadge}>
                       <Text style={styles.outBadgeText}>Ngoài</Text>
                     </View>
-                  )}
+            }
                   <MaterialCommunityIcons name="chevron-right" size={14} color={colors.textMuted} />
                 </TouchableOpacity>
-              ))}
-            </View>
           )}
-        </>
-      ) : (
-        <View style={styles.mapPlaceholder}>
+            </View>
+        }
+        </> :
+
+      <View style={styles.mapPlaceholder}>
           <MaterialCommunityIcons name="map-outline" size={32} color={colors.border} />
           <Text style={styles.mapPlaceholderText}>Chọn Phường/Xã để hiển thị bản đồ</Text>
         </View>
-      )}
+      }
 
       {localError ? <Text style={styles.errorText}>{localError}</Text> : null}
-    </View>
-  );
+    </View>);
+
 }
 
 const styles = StyleSheet.create({
@@ -586,23 +586,23 @@ const styles = StyleSheet.create({
   wardBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     backgroundColor: colors.surfaceMuted, borderWidth: 1, borderColor: colors.borderLight,
-    borderRadius: 10, paddingHorizontal: 14, height: 48,
+    borderRadius: 10, paddingHorizontal: 14, height: 48
   },
   wardBtnText: { flex: 1, color: colors.textSecondary, fontSize: 14 },
   // Ward info (read-only, khi parent đã chọn sẵn)
   wardInfo: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
     backgroundColor: colors.surfaceMuted, borderWidth: 1,
-    borderRadius: 10, paddingHorizontal: 14, height: 48,
+    borderRadius: 10, paddingHorizontal: 14, height: 48
   },
   wardInfoText: { color: colors.textDark, fontSize: 14, fontWeight: '600' },
   wardList: {
     backgroundColor: colors.surface, borderRadius: 10, borderWidth: 1,
-    borderColor: colors.borderLight, marginTop: 4, overflow: 'hidden',
+    borderColor: colors.borderLight, marginTop: 4, overflow: 'hidden'
   },
   wardItem: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.bg,
+    paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.bg
   },
   wardItemText: { color: colors.textDark, fontSize: 14, flex: 1 },
   emptyText: { padding: 14, color: colors.textMuted, fontSize: 12, textAlign: 'center' },
@@ -611,7 +611,7 @@ const styles = StyleSheet.create({
   gpsBtn: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceMuted,
     borderWidth: 1, borderColor: colors.borderLight, paddingHorizontal: 10, paddingVertical: 5,
-    borderRadius: 8, gap: 4,
+    borderRadius: 8, gap: 4
   },
   gpsBtnText: { color: colors.textDark, fontSize: 11, fontWeight: '600' },
   hint: { color: colors.textSecondary, fontSize: 11, marginBottom: 8 },
@@ -620,7 +620,7 @@ const styles = StyleSheet.create({
   mapPlaceholder: {
     height: 80, backgroundColor: colors.surfaceMuted, borderRadius: 12,
     borderWidth: 1, borderColor: colors.borderLight, borderStyle: 'dashed',
-    justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 8,
+    justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 8
   },
   mapPlaceholderText: { color: colors.textSecondary, fontSize: 13 },
 
@@ -630,23 +630,23 @@ const styles = StyleSheet.create({
   // Address input
   addressInput: {
     backgroundColor: colors.surfaceMuted, borderWidth: 1, borderColor: colors.borderLight,
-    borderRadius: 10, paddingHorizontal: 14, height: 48, color: colors.textDark, fontSize: 14,
+    borderRadius: 10, paddingHorizontal: 14, height: 48, color: colors.textDark, fontSize: 14
   },
   searchStatus: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    marginTop: 6, marginLeft: 2,
+    marginTop: 6, marginLeft: 2
   },
   searchStatusText: { fontSize: 11, fontStyle: 'italic' },
 
   // Suggestion list (autocomplete)
   suggestionList: {
     marginTop: 6, backgroundColor: colors.surface, borderWidth: 1,
-    borderColor: colors.borderLight, borderRadius: 10, overflow: 'hidden',
+    borderColor: colors.borderLight, borderRadius: 10, overflow: 'hidden'
   },
   suggestionItem: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     paddingHorizontal: 12, paddingVertical: 10,
-    borderBottomWidth: 1, borderBottomColor: colors.bg,
+    borderBottomWidth: 1, borderBottomColor: colors.bg
   },
   suggestionIcon: { marginTop: 1 },
   suggestionPrimary: { color: colors.textDark, fontSize: 13, fontWeight: '600' },
@@ -654,17 +654,17 @@ const styles = StyleSheet.create({
   suggestionItemOut: { backgroundColor: '#fef3c7' },
   outBadge: {
     backgroundColor: colors.warning, paddingHorizontal: 6, paddingVertical: 2,
-    borderRadius: 4, marginRight: 4,
+    borderRadius: 4, marginRight: 4
   },
   outBadgeText: { color: 'white', fontSize: 9, fontWeight: '700' },
 
   // Not found box
   notFoundBox: {
     marginTop: 8, padding: 12, backgroundColor: '#fef3c7',
-    borderRadius: 10, borderWidth: 1, borderColor: '#fde68a',
+    borderRadius: 10, borderWidth: 1, borderColor: '#fde68a'
   },
   notFoundHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
   notFoundTitle: { color: colors.warning, fontSize: 12, fontWeight: '700' },
   notFoundHint: { color: colors.textDark, fontSize: 11, lineHeight: 17 },
-  errorText: { color: colors.danger, fontSize: 11, marginTop: 6 },
+  errorText: { color: colors.danger, fontSize: 11, marginTop: 6 }
 });

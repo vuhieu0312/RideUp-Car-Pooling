@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import ChatScreen from '../screens/ChatScreen';
+import ConversationsScreen from '../screens/ConversationsScreen';
 import { ActivityIndicator, DeviceEventEmitter, View } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -27,6 +29,7 @@ const Tab = createBottomTabNavigator();
 const HomeStack = createNativeStackNavigator();
 const AllTripsStack = createNativeStackNavigator();
 const PlaceholderStack = createNativeStackNavigator();
+const MessagesStack = createNativeStackNavigator();
 const AccountStack = createNativeStackNavigator();
 
 const TAB_ICON_SIZE = 22;
@@ -54,6 +57,7 @@ function AllTripsTab() {
     <AllTripsStack.Navigator screenOptions={{ headerShown: false }}>
       <AllTripsStack.Screen name="AllTrips" component={AllTripsScreen} />
       <AllTripsStack.Screen name="Bookings" component={BookingsScreen} />
+      <AllTripsStack.Screen name="Chat" component={ChatScreen} />
     </AllTripsStack.Navigator>
   );
 }
@@ -72,7 +76,15 @@ function makePlaceholderTab(title, icon, subtitle) {
   };
 }
 
-const MessagesTab = makePlaceholderTab('Tin nhắn', 'message-text-outline', 'Hộp thư với khách và admin sẽ có ở đây');
+function MessagesTab() {
+  return (
+    <MessagesStack.Navigator screenOptions={{ headerShown: false }}>
+      <MessagesStack.Screen name="Conversations" component={ConversationsScreen} />
+      <MessagesStack.Screen name="Chat" component={ChatScreen} />
+    </MessagesStack.Navigator>
+  );
+}
+
 const NotificationsTab = makePlaceholderTab('Thông báo', 'bell-outline', 'Cập nhật về booking và chuyến xe');
 
 /**

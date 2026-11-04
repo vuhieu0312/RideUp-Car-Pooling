@@ -42,13 +42,13 @@ export default function HomeScreen({ navigation }) {
 
   // Đếm booking của khách cho 2 ô thống kê
   const loadStats = useCallback(() => {
-    listMyBookings()
-      .then((list) => {
-        const all = list || [];
-        setUpcomingCount(all.filter((b) => UPCOMING_STATUSES.includes(b.status)).length);
-        setCompletedCount(all.filter((b) => b.status === 'COMPLETED').length);
-      })
-      .catch(() => {});
+    listMyBookings().
+    then((list) => {
+      const all = list || [];
+      setUpcomingCount(all.filter((b) => UPCOMING_STATUSES.includes(b.status)).length);
+      setCompletedCount(all.filter((b) => b.status === 'COMPLETED').length);
+    }).
+    catch(() => {});
   }, []);
 
   useFocusEffect(loadStats);
@@ -56,14 +56,14 @@ export default function HomeScreen({ navigation }) {
 
   useEffect(() => {
     setPickupWardId('');
-    if (fromProvinceId) listWards(fromProvinceId).then(setPickupWards).catch(() => setPickupWards([]));
-    else setPickupWards([]);
+    if (fromProvinceId) listWards(fromProvinceId).then(setPickupWards).catch(() => setPickupWards([]));else
+    setPickupWards([]);
   }, [fromProvinceId]);
 
   useEffect(() => {
     setDropoffWardId('');
-    if (toProvinceId) listWards(toProvinceId).then(setDropoffWards).catch(() => setDropoffWards([]));
-    else setDropoffWards([]);
+    if (toProvinceId) listWards(toProvinceId).then(setDropoffWards).catch(() => setDropoffWards([]));else
+    setDropoffWards([]);
   }, [toProvinceId]);
 
   async function searchTripsAction() {
@@ -90,20 +90,20 @@ export default function HomeScreen({ navigation }) {
         startWardId: pickupWardId,
         endProvinceId: toProvinceId,
         endWardId: dropoffWardId,
-        departureDate: date,
+        departureDate: date
       });
       setTrips(result);
-    } catch (e) {
+    } catch (e) {var _e$response;
       setTrips([]);
-      setSearchError(e.response?.data?.message || 'Không tìm được chuyến phù hợp');
+      setSearchError(((_e$response = e.response) == null || (_e$response = _e$response.data) == null ? void 0 : _e$response.message) || 'Không tìm được chuyến phù hợp');
     } finally {
       setSearching(false);
     }
   }
 
-  const provinceName = (id) => provinces.find((p) => p.id === id)?.name || id || '?';
+  const provinceName = (id) => {var _provinces$find;return ((_provinces$find = provinces.find((p) => p.id === id)) == null ? void 0 : _provinces$find.name) || id || '?';};
   const fmtMoney = (v) => `${new Intl.NumberFormat('vi-VN').format(v || 0)} đ`;
-  const fmtTime = (v) => (v ? v.replace('T', ' ').slice(0, 16) : '--');
+  const fmtTime = (v) => v ? v.replace('T', ' ').slice(0, 16) : '--';
 
   return (
     <View style={styles.container}>
@@ -114,12 +114,12 @@ export default function HomeScreen({ navigation }) {
           <View style={styles.heroTop}>
             <View>
               <Logo size="sm" />
-              <Text style={styles.greeting}>Xin chào, {user?.fullName || 'bạn'}</Text>
+              <Text style={styles.greeting}>Xin chào, {(user == null ? void 0 : user.fullName) || 'bạn'}</Text>
             </View>
             <TouchableOpacity
               onPress={() => navigation.navigate('AccountTab', { screen: 'Account' })}
-              accessibilityLabel="Mở tài khoản"
-            >
+              accessibilityLabel="Mở tài khoản">
+              
               {renderHeroAvatar(user)}
             </TouchableOpacity>
           </View>
@@ -150,9 +150,9 @@ export default function HomeScreen({ navigation }) {
             isOpen={pickerOpen === 'from'}
             onOpenMenu={() => setPickerOpen('from')}
             onCloseMenu={() => setPickerOpen(null)}
-            onSelect={(id) => { setFromProvinceId(id); setPickerOpen(null); }}
-            placeholder="Chọn tỉnh/thành phố đón"
-          />
+            onSelect={(id) => {setFromProvinceId(id);setPickerOpen(null);}}
+            placeholder="Chọn tỉnh/thành phố đón" />
+          
           <PickerField
             icon="map-marker-radius"
             label="KHU VỰC ĐÓN"
@@ -161,9 +161,9 @@ export default function HomeScreen({ navigation }) {
             isOpen={pickerOpen === 'pickup'}
             onOpenMenu={() => setPickerOpen('pickup')}
             onCloseMenu={() => setPickerOpen(null)}
-            onSelect={(id) => { setPickupWardId(id); setPickerOpen(null); }}
-            placeholder="Chọn quận/huyện, phường/xã đón"
-          />
+            onSelect={(id) => {setPickupWardId(id);setPickerOpen(null);}}
+            placeholder="Chọn quận/huyện, phường/xã đón" />
+          
           <PickerField
             icon="map-marker"
             label="TỈNH TRẢ"
@@ -172,9 +172,9 @@ export default function HomeScreen({ navigation }) {
             isOpen={pickerOpen === 'to'}
             onOpenMenu={() => setPickerOpen('to')}
             onCloseMenu={() => setPickerOpen(null)}
-            onSelect={(id) => { setToProvinceId(id); setPickerOpen(null); }}
-            placeholder="Chọn tỉnh/thành phố trả"
-          />
+            onSelect={(id) => {setToProvinceId(id);setPickerOpen(null);}}
+            placeholder="Chọn tỉnh/thành phố trả" />
+          
           <PickerField
             icon="map-marker-radius"
             label="KHU VỰC TRẢ"
@@ -183,9 +183,9 @@ export default function HomeScreen({ navigation }) {
             isOpen={pickerOpen === 'dropoff'}
             onOpenMenu={() => setPickerOpen('dropoff')}
             onCloseMenu={() => setPickerOpen(null)}
-            onSelect={(id) => { setDropoffWardId(id); setPickerOpen(null); }}
-            placeholder="Chọn quận/huyện, phường/xã trả"
-          />
+            onSelect={(id) => {setDropoffWardId(id);setPickerOpen(null);}}
+            placeholder="Chọn quận/huyện, phường/xã trả" />
+          
 
           <DateField value={date} onChange={setDate} minDate={todayIso()} />
 
@@ -210,38 +210,38 @@ export default function HomeScreen({ navigation }) {
             </TouchableOpacity>
           </View>
 
-          {searched && trips.length > 0 ? (
-            <View style={{ marginTop: 12 }}>
-              {trips.map((trip) => (
-                <TripCard
-                  key={trip.id}
-                  trip={trip}
-                  provinceName={provinceName}
-                  fmtTime={fmtTime}
-                  fmtMoney={fmtMoney}
-                  onBook={() => navigation.navigate('BookingCreate', {
-                    trip, pickupWardId, dropoffWardId,
-                  })}
-                />
-              ))}
-            </View>
-          ) : searched ? (
-            <View style={styles.emptyState}>
+          {searched && trips.length > 0 ?
+          <View style={{ marginTop: 12 }}>
+              {trips.map((trip) =>
+            <TripCard
+              key={trip.id}
+              trip={trip}
+              provinceName={provinceName}
+              fmtTime={fmtTime}
+              fmtMoney={fmtMoney}
+              onBook={() => navigation.navigate('BookingCreate', {
+                trip, pickupWardId, dropoffWardId
+              })} />
+
+            )}
+            </View> :
+          searched ?
+          <View style={styles.emptyState}>
               <View style={styles.emptyIcon}><MaterialCommunityIcons name="car-outline" size={18} color={colors.primaryAccent} /></View>
               <Text style={styles.emptyStrong}>Không có chuyến phù hợp</Text>
               <Text style={styles.emptySpan}>Thử đổi ngày hoặc điểm đi, điểm đến.</Text>
-            </View>
-          ) : (
-            <View style={styles.emptyState}>
+            </View> :
+
+          <View style={styles.emptyState}>
               <View style={styles.emptyIcon}><MaterialCommunityIcons name="car-outline" size={18} color={colors.primaryAccent} /></View>
               <Text style={styles.emptyStrong}>Chưa có chuyến xe đang mở</Text>
               <Text style={styles.emptySpan}>Hãy chọn điểm đi và điểm đến để tìm chuyến phù hợp.</Text>
             </View>
-          )}
+          }
         </View>
       </ScrollView>
-    </View>
-  );
+    </View>);
+
 }
 
 function Stat({ icon, value, label, accent }) {
@@ -250,8 +250,8 @@ function Stat({ icon, value, label, accent }) {
       <MaterialCommunityIcons name={icon} size={14} color={accent ? '#f2a900' : colors.primaryAccent} />
       <Text style={styles.statValue}>{value}</Text>
       <Text style={styles.statLabel}>{label}</Text>
-    </View>
-  );
+    </View>);
+
 }
 
 function PickerField({ icon, label, value, options, isOpen, onOpenMenu, onCloseMenu, onSelect, placeholder }) {
@@ -267,19 +267,19 @@ function PickerField({ icon, label, value, options, isOpen, onOpenMenu, onCloseM
           onOpen={onOpenMenu}
           onClose={onCloseMenu}
           onSelect={onSelect}
-          placeholder={placeholder}
-        />
+          placeholder={placeholder} />
+        
       </View>
-    </View>
-  );
+    </View>);
+
 }
 
 function ShortcutButton({ label, onPress }) {
   return (
     <TouchableOpacity onPress={onPress} style={styles.shortcut}>
       <Text style={styles.shortcutText}>{label}</Text>
-    </TouchableOpacity>
-  );
+    </TouchableOpacity>);
+
 }
 
 function TripCard({ trip, provinceName, fmtTime, fmtMoney, onBook }) {
@@ -302,36 +302,36 @@ function TripCard({ trip, provinceName, fmtTime, fmtMoney, onBook }) {
       <TouchableOpacity style={styles.bookButton} onPress={onBook}>
         <Text style={styles.bookButtonText}>Đặt chỗ</Text>
       </TouchableOpacity>
-    </View>
-  );
+    </View>);
+
 }
 
 /** Avatar nhỏ ở góc phải header — ưu tiên ảnh từ user.avatarUrl, fallback initials. */
 function renderHeroAvatar(user) {
-  const initials = (user?.fullName || user?.email || 'U')
-    .split(/\s+/)
-    .map((s) => s[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join('')
-    .toUpperCase();
-  const url = user?.avatarUrl
-    ? (user.avatarUrl.startsWith('http') ? user.avatarUrl : `http://localhost:8080${user.avatarUrl}`)
-    : null;
+  const initials = ((user == null ? void 0 : user.fullName) || (user == null ? void 0 : user.email) || 'U').
+  split(/\s+/).
+  map((s) => s[0]).
+  filter(Boolean).
+  slice(0, 2).
+  join('').
+  toUpperCase();
+  const url = user != null && user.avatarUrl ?
+  user.avatarUrl.startsWith('http') ? user.avatarUrl : `http://localhost:8080${user.avatarUrl}` :
+  null;
   return (
     <View style={styles.heroAvatarWrap}>
-      {url ? (
-        <Avatar.Image size={36} source={{ uri: url }} />
-      ) : (
-        <Avatar.Text
-          size={36}
-          label={initials}
-          style={{ backgroundColor: colors.primaryAccent }}
-          labelStyle={{ fontSize: 12, fontWeight: '700' }}
-        />
-      )}
-    </View>
-  );
+      {url ?
+      <Avatar.Image size={36} source={{ uri: url }} /> :
+
+      <Avatar.Text
+        size={36}
+        label={initials}
+        style={{ backgroundColor: colors.primaryAccent }}
+        labelStyle={{ fontSize: 12, fontWeight: '700' }} />
+
+      }
+    </View>);
+
 }
 
 const styles = StyleSheet.create({
@@ -346,7 +346,7 @@ const styles = StyleSheet.create({
   heroAvatarWrap: {
     width: 40, height: 40, borderRadius: 20, overflow: 'hidden',
     borderWidth: 2, borderColor: 'rgba(255,255,255,0.45)',
-    backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center'
   },
   heroTitle: { fontFamily: FONT[700], marginTop: 28, fontSize: 25, fontWeight: '700', color: 'white', lineHeight: 28 },
   heroSubtitle: { fontFamily: FONT[400], marginTop: 4, fontSize: 11, color: 'rgba(255,255,255,0.82)' },
@@ -395,5 +395,5 @@ const styles = StyleSheet.create({
   tripMeta: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 9, fontSize: 10, color: colors.textSubtle },
   driverMeta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   bookButton: { marginTop: 10, paddingVertical: 8, borderRadius: 7, backgroundColor: colors.primary, alignItems: 'center' },
-  bookButtonText: { color: 'white', fontSize: 11, fontWeight: '700' },
+  bookButtonText: { color: 'white', fontSize: 11, fontWeight: '700' }
 });
