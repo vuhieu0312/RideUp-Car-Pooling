@@ -49,7 +49,6 @@ public class VehicleService {
             .seatCapacity(req.getSeatCapacity())
             .vehicleType(req.getVehicleType())
             .registrationExpiryDate(req.getRegistrationExpiryDate())
-            .insuranceExpiryDate(req.getInsuranceExpiryDate())
             .isVerified(false)
             .isActive(false)
             .build();
@@ -142,8 +141,6 @@ public class VehicleService {
             .vehicleImage(v.getVehicleImage())
             .registrationImage(v.getRegistrationImage())
             .registrationExpiryDate(v.getRegistrationExpiryDate())
-            .insuranceImage(v.getInsuranceImage())
-            .insuranceExpiryDate(v.getInsuranceExpiryDate())
             .isVerified(v.getIsVerified())
             .isActive(v.getIsActive())
             .approvedAt(v.getApprovedAt())

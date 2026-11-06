@@ -33,6 +33,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -60,6 +61,9 @@ public class PaymentService {
 
     @Value("${stripe.webhook-secret:}")
     String webhookSecret;
+
+    @Value("${stripe.allow-unsigned-webhook:false}")
+    boolean allowUnsignedWebhook;
 
     public boolean isStripeConfigured() {
         return Stripe.apiKey != null && !Stripe.apiKey.isBlank();
@@ -209,7 +213,7 @@ public class PaymentService {
         return paymentRepository.save(payment);
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void capturePayment(String bookingId) {
         Payment payment = paymentRepository.findByBookingId(bookingId)
             .orElseThrow(() -> new AppException(ErrorCode.PAYMENT_NOT_FOUND));
@@ -407,9 +411,11 @@ public class PaymentService {
     @Transactional
     public void handleWebhookEvent(String payload, String signatureHeader) {
         if (webhookSecret == null || webhookSecret.isBlank()) {
-            log.warn("Webhook secret chưa config (STRIPE_WEBHOOK_SECRET). "
-                + "Bỏ qua verify — chỉ dùng cho local dev.");
-            // production nên throw, dev thì vẫn parse event dù không verify chữ ký
+            if (!allowUnsignedWebhook) {
+                log.error("Từ chối webhook: chưa cấu hình STRIPE_WEBHOOK_SECRET");
+                throw new AppException(ErrorCode.STRIPE_PAYMENT_FAILED);
+            }
+            log.warn("Webhook không verify chữ ký (STRIPE_ALLOW_UNSIGNED_WEBHOOK=true), chỉ dùng cho local dev.");
         }
 
         Event event;

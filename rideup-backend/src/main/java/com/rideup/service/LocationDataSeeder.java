@@ -284,11 +284,9 @@ public class LocationDataSeeder {
                     String name = tags.containsKey("name:vi")
                             ? (String) tags.get("name:vi")
                             : (String) tags.get("name");
-                    String displayName = (String) tags.getOrDefault("name", name);
 
                     return Ward.builder()
                             .name(name)
-                            .displayName(displayName)
                             .osmId(toLong(el.get("id")))
                             .lat(toBigDecimal(center.get("lat")))
                             .lng(toBigDecimal(center.get("lon")))

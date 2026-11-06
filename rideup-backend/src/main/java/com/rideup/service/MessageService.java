@@ -3,6 +3,7 @@ package com.rideup.service;
 import com.rideup.entity.Conversation;
 import com.rideup.entity.Message;
 import com.rideup.enums.BookingStatus;
+import com.rideup.enums.MessageType;
 import com.rideup.exception.AppException;
 import com.rideup.exception.ErrorCode;
 import com.rideup.repository.BookingRepository;
@@ -21,27 +22,36 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 public class MessageService {
 
+        private static final int MAX_CONTENT_LENGTH = 1000;
+
         private final MessageRepository messageRepository;
 
         private final ConversationRepository conversationRepository;
 
         private final BookingRepository bookingRepository;
 
-        public Message saveMessage(Message message, String senderId) {
-
-                if (message.getConversationId() == null) {
-                        throw new RuntimeException(
-                                        "conversationId không được null");
+        public Message saveMessage(String conversationId, String rawContent, String senderId) {
+                if (conversationId == null || conversationId.isBlank()) {
+                        throw AppException.badRequest("conversationId không được để trống");
+                }
+                String content = rawContent == null ? "" : rawContent.trim();
+                if (content.isEmpty()) {
+                        throw AppException.badRequest("Tin nhắn không được để trống");
+                }
+                if (content.length() > MAX_CONTENT_LENGTH) {
+                        throw AppException.badRequest("Tin nhắn tối đa " + MAX_CONTENT_LENGTH + " ký tự");
                 }
 
-                Conversation conversation = conversationRepository.findById(message.getConversationId())
+                Conversation conversation = conversationRepository.findById(conversationId)
                                 .orElseThrow(() -> new AppException(ErrorCode.CHAT_THREAD_NOT_FOUND));
+
                 boolean isParticipant = conversation.getParticipants() != null
                                 && java.util.Arrays.asList(conversation.getParticipants().split(","))
                                                 .contains(senderId);
                 if (!isParticipant) {
                         throw new AppException(ErrorCode.CHAT_FORBIDDEN);
                 }
+
                 BookingStatus status = bookingRepository.findById(conversation.getBookingId())
                                 .map(booking -> booking.getStatus())
                                 .orElse(null);
@@ -49,17 +59,15 @@ public class MessageService {
                         throw new AppException(ErrorCode.CHAT_NOT_ALLOWED);
                 }
 
-                message.setSenderId(senderId);
-
-                if (message.getCreatedAt() == null) {
-                        message.setCreatedAt(
-                                        LocalDateTime.now());
-                }
-
+                Message message = Message.builder()
+                                .conversationId(conversationId)
+                                .senderId(senderId)
+                                .type(MessageType.TEXT)
+                                .content(content)
+                                .createdAt(LocalDateTime.now())
+                                .build();
                 Message saved = messageRepository.save(message);
-
                 updateConversationLastMessage(saved);
-
                 return saved;
         }
 

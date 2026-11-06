@@ -71,6 +71,4 @@ public class User {
     @Column(name = "updated_at")
     LocalDateTime updatedAt;
 
-    @Column(name = "last_login_at")
-    LocalDateTime lastLoginAt;
 }

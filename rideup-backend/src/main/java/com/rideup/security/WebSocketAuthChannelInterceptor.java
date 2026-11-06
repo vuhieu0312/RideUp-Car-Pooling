@@ -1,5 +1,7 @@
 package com.rideup.security;
 
+import com.rideup.service.ConversationService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
@@ -18,7 +20,12 @@ import java.util.Map;
 
 @Component
 @Slf4j
+@RequiredArgsConstructor
 public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
+
+    private static final String CHAT_TOPIC_PREFIX = "/topic/chat/";
+
+    private final ConversationService conversationService;
 
     @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
@@ -51,8 +58,30 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
             );
             accessor.setUser(auth);
             log.info("WebSocket CONNECT userId={} roles={}", userId, roles);
+        } else if (StompCommand.SUBSCRIBE.equals(accessor.getCommand())) {
+            String destination = accessor.getDestination();
+            if (destination != null && destination.startsWith("/topic/")) {
+                checkChatSubscription(accessor, destination);
+            }
+        } else if (StompCommand.SEND.equals(accessor.getCommand())) {
+            String destination = accessor.getDestination();
+            if (destination == null || !destination.startsWith("/app/")) {
+                throw new MessageDeliveryException("WebSocket: chỉ được gửi tới /app/**");
+            }
         }
 
         return message;
+    }
+
+    private void checkChatSubscription(StompHeaderAccessor accessor, String destination) {
+        if (!destination.startsWith(CHAT_TOPIC_PREFIX) || accessor.getUser() == null) {
+            throw new MessageDeliveryException("WebSocket: không được đăng ký " + destination);
+        }
+        String conversationId = destination.substring(CHAT_TOPIC_PREFIX.length());
+        try {
+            conversationService.getForParticipant(conversationId, accessor.getUser().getName());
+        } catch (Exception e) {
+            throw new MessageDeliveryException("WebSocket: không có quyền vào phòng chat " + conversationId);
+        }
     }
 }

@@ -31,6 +31,8 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
@@ -232,12 +234,19 @@ public class BookingService {
 
         booking.setStatus(BookingStatus.CONFIRMED);
         booking = bookingRepository.save(booking);
-        try {
-            conversationService.createIfNotExist(booking.getId(), booking.getCustomer().getId(),
-                    booking.getTrip().getDriver().getId());
-        } catch (Exception e) {
-            log.warn("Không tạo được phòng chat cho booking {}: {}", bookingId, e.getMessage());
-        }
+        final String chatBookingId = booking.getId();
+        final String chatCustomerId = booking.getCustomer().getId();
+        final String chatDriverId = booking.getTrip().getDriver().getId();
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    conversationService.createIfNotExist(chatBookingId, chatCustomerId, chatDriverId);
+                } catch (Exception e) {
+                    log.warn("Không tạo được phòng chat cho booking {}: {}", chatBookingId, e.getMessage());
+                }
+            }
+        });
         realtimeService.bookingChanged(booking);
         log.info("Driver {} confirmed booking {}", driverUserId, bookingId);
         return toResponse(booking);
@@ -261,7 +270,7 @@ public class BookingService {
 
         booking.setStatus(BookingStatus.REJECTED_BY_DRIVER);
         booking.setCancelledAt(LocalDateTime.now());
-        booking.setCancelReason("Tài xế từ chối: " + reason);
+        booking.setCancelReason("Tài xế từ chối: " + (reason == null || reason.isBlank() ? "Không rõ" : reason));
         booking = bookingRepository.save(booking);
         realtimeService.bookingChanged(booking);
 
@@ -326,6 +335,9 @@ public class BookingService {
         Payment payment = booking.getPayment();
         if (payment.getMethod() != PaymentMethod.CASH) {
             throw AppException.badRequest("Booking này không phải CASH");
+        }
+        if (booking.getStatus() != BookingStatus.CONFIRMED && booking.getStatus() != BookingStatus.COMPLETED) {
+            throw AppException.badRequest("Chỉ xác nhận đã nhận tiền khi booking đã được duyệt");
         }
         if (payment.getStatus() == PaymentStatus.PAID) {
             log.info("confirmCashPayment idempotent noop for booking={} (already PAID)", bookingId);

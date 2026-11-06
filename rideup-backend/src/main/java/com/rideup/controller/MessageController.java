@@ -1,18 +1,24 @@
 package com.rideup.controller;
 
 import org.springframework.security.core.Authentication;
+import com.rideup.dto.request.ChatMessageRequest;
 import com.rideup.entity.Message;
 import com.rideup.service.ConversationService;
 import com.rideup.service.MessageService;
 
 import lombok.RequiredArgsConstructor;
 
+import com.rideup.exception.AppException;
+import org.springframework.messaging.handler.annotation.MessageExceptionHandler;
 import org.springframework.messaging.handler.annotation.MessageMapping;
+import org.springframework.messaging.simp.annotation.SendToUser;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
@@ -55,10 +61,11 @@ public class MessageController {
          */
         @MessageMapping("/chat.send")
         public void send(
-                        Message message,
+                        ChatMessageRequest request,
                         Authentication authentication) {
 
-                Message saved = messageService.saveMessage(message, authentication.getName());
+                Message saved = messageService.saveMessage(
+                                request.getConversationId(), request.getContent(), authentication.getName());
 
                 messagingTemplate.convertAndSend(
                                 "/topic/chat/"
@@ -67,4 +74,15 @@ public class MessageController {
 
         }
 
+        @MessageExceptionHandler(AppException.class)
+        @SendToUser("/queue/events")
+        public Map<String, Object> handleChatError(AppException e) {
+                return Map.of("type", "CHAT_ERROR", "message", e.getMessage());
+        }
+
+        @MessageExceptionHandler(Exception.class)
+        @SendToUser("/queue/events")
+        public Map<String, Object> handleUnexpected(Exception e) {
+                return Map.of("type", "CHAT_ERROR", "message", "Không gửi được tin nhắn.");
+        }
 }

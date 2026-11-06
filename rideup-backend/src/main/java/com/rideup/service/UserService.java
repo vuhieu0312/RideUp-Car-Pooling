@@ -91,8 +91,7 @@ public class UserService {
             .verified(user.getVerified())
             .roles(user.getRoles())
             .createdAt(user.getCreatedAt())
-            .updatedAt(user.getUpdatedAt())
-            .lastLoginAt(user.getLastLoginAt());
+            .updatedAt(user.getUpdatedAt());
 
         DriverProfile profile = user.getDriverProfile();
         if (profile != null) {

@@ -59,11 +59,6 @@ public class Vehicle {
 
     LocalDate registrationExpiryDate;
 
-    @Column(length = 500)
-    String insuranceImage;
-
-    LocalDate insuranceExpiryDate;
-
     @Column(nullable = false)
     Boolean isVerified;
 

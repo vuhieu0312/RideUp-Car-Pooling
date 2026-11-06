@@ -32,7 +32,6 @@ public class UserResponse {
     Set<Role> roles;
     LocalDateTime createdAt;
     LocalDateTime updatedAt;
-    LocalDateTime lastLoginAt;
     // chỉ có khi user đã đăng ký tài xế
     DriverSummary driver;
 }

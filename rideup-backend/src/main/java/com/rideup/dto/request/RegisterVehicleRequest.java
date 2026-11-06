@@ -39,6 +39,4 @@ public class RegisterVehicleRequest {
     VehicleType vehicleType;
 
     LocalDate registrationExpiryDate;
-
-    LocalDate insuranceExpiryDate;
 }

@@ -29,8 +29,6 @@ public class VehicleResponse {
     String vehicleImage;
     String registrationImage;
     LocalDate registrationExpiryDate;
-    String insuranceImage;
-    LocalDate insuranceExpiryDate;
     Boolean isVerified;
     Boolean isActive;
     LocalDateTime approvedAt;

@@ -177,7 +177,6 @@ public class AuthenticationService {
                 .roles(user.getRoles())
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
-                .lastLoginAt(user.getLastLoginAt())
                 .build())
             .build();
     }

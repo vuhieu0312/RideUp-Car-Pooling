@@ -103,13 +103,12 @@ export default function DashboardScreen() {
         ['Biển số', x.plateNumber], ['Tài xế', x.driverName], ['Hãng xe', x.vehicleBrand],
         ['Dòng xe', x.vehicleModel], ['Năm sản xuất', x.vehicleYear], ['Màu sắc', x.vehicleColor],
         ['Loại xe', x.vehicleType], ['Số chỗ', x.seatCapacity],
-        ['Hạn đăng ký', fmtDate(x.registrationExpiryDate)], ['Hạn bảo hiểm', fmtDate(x.insuranceExpiryDate)],
+        ['Hạn đăng ký', fmtDate(x.registrationExpiryDate)],
         ['Ngày đăng ký', fmtDate(x.createdAt)],
       ],
       images: [
         { label: 'Ảnh xe', path: x.vehicleImage },
         { label: 'Giấy đăng ký xe', path: x.registrationImage },
-        { label: 'Giấy bảo hiểm', path: x.insuranceImage },
       ],
     };
   }

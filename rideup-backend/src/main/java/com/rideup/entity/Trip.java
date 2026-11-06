@@ -43,10 +43,6 @@ public class Trip {
     @JoinColumn(name = "end_province_id", nullable = false)
     Province endProvince;
 
-    // toạ độ điểm đón, lấy từ ward đầu tiên hoặc tài xế nhập
-    Double pickupLat;
-    Double pickupLng;
-
     @Column(nullable = false)
     LocalDateTime departureTime;
 

@@ -13,6 +13,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '../components/Typography';
 import { useAuth } from '../auth/AuthContext';
+import { subscribeEvents } from '../realtime/realtime';
 import { getConversationMessages } from '../api/api';
 import { sendChatMessage, subscribeChat, subscribeConversation, unsubscribeConversation } from '../realtime/realtime';
 import { colors, FONT } from '../theme';
@@ -34,7 +35,7 @@ function formatMessageTime(value) {
 }
 
 export default function ChatScreen({ route, navigation }) {
-  const { conversationId, name } = route.params;
+  const { conversationId, bookingId, name } = route.params;
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const listRef = useRef(null);
@@ -42,10 +43,18 @@ export default function ChatScreen({ route, navigation }) {
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [closed, setClosed] = useState(false);
 
   useEffect(() => {
     let active = true;
     subscribeConversation(conversationId);
+    const unsubscribeEvents = subscribeEvents((event) => {
+      if (event.type === 'CHAT_ERROR') {
+        setError(event.message || 'Không gửi được tin nhắn.');
+      } else if (event.type === 'BOOKING_UPDATED' && event.bookingId === bookingId && event.status !== 'CONFIRMED') {
+        setClosed(true);
+      }
+    });
     const unsubscribe = subscribeChat((message) => {
       if (message.conversationId === conversationId) {
         setMessages((current) => mergeMessages(current, [message]));
@@ -66,6 +75,7 @@ export default function ChatScreen({ route, navigation }) {
     return () => {
       active = false;
       unsubscribe();
+      unsubscribeEvents();
       unsubscribeConversation(conversationId);
     };
   }, [conversationId]);
@@ -76,6 +86,7 @@ export default function ChatScreen({ route, navigation }) {
 
   function send() {
     const content = text.trim();
+    if (closed) return;
     if (!content || !(user != null && user.id)) return;
     const sent = sendChatMessage({ conversationId, type: 'TEXT', content });
     if (!sent) {
@@ -134,6 +145,12 @@ export default function ChatScreen({ route, navigation }) {
         }} />
       
 
+      {closed ? (
+        <View style={[styles.closedWrap, { paddingBottom: Math.max(insets.bottom, 10) }]}>
+          <MaterialCommunityIcons name="message-off-outline" size={16} color={colors.textMuted} />
+          <Text style={styles.closedText}>Chuyến đã bị huỷ hoặc kết thúc, không thể nhắn tin nữa.</Text>
+        </View>
+      ) : (
       <View style={[styles.composerWrap, { paddingBottom: Math.max(insets.bottom, 10) }]}>
         <View style={styles.composer}>
           <TextInput
@@ -142,6 +159,7 @@ export default function ChatScreen({ route, navigation }) {
             placeholder="Nhập tin nhắn..."
             placeholderTextColor={colors.textMuted}
             multiline
+                        editable={!closed}
             maxLength={2000}
             style={styles.input}
             onSubmitEditing={send} />
@@ -150,13 +168,14 @@ export default function ChatScreen({ route, navigation }) {
             accessibilityRole="button"
             accessibilityLabel="Gửi tin nhắn"
             onPress={send}
-            disabled={!text.trim()}
+            disabled={closed || !text.trim()}
             style={[styles.sendButton, !text.trim() && styles.sendDisabled]}>
             
             <MaterialCommunityIcons name="send" size={18} color={colors.textOnPrimary} />
           </TouchableOpacity>
         </View>
       </View>
+      )}
     </KeyboardAvoidingView>);
 
 }
@@ -194,6 +213,8 @@ const styles = StyleSheet.create({
   empty: { alignItems: 'center', paddingVertical: 28 },
   emptyText: { fontFamily: FONT[400], fontSize: 12, color: colors.textMuted, textAlign: 'center', marginTop: 9 },
   error: { alignSelf: 'center', fontFamily: FONT[500], fontSize: 12, color: colors.dangerText, marginBottom: 12, textAlign: 'center' },
+  closedWrap: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingHorizontal: 16, paddingTop: 14, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border },
+  closedText: { fontSize: 12, color: colors.textMuted, textAlign: 'center' },
   composerWrap: { paddingHorizontal: 12, paddingTop: 10, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border },
   composer: { flexDirection: 'row', alignItems: 'flex-end', gap: 9 },
   input: {

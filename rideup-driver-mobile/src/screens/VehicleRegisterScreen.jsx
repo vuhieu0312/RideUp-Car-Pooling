@@ -18,7 +18,7 @@ export default function VehicleRegisterScreen({ navigation }) {
     plateNumber: '', vehicleBrand: '', vehicleModel: '',
     vehicleYear: '', vehicleColor: '',
     seatCapacity: 4, vehicleType: 'CAR',
-    registrationExpiryDate: '', insuranceExpiryDate: '',
+    registrationExpiryDate: '',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -42,7 +42,6 @@ export default function VehicleRegisterScreen({ navigation }) {
         seatCapacity: Number(form.seatCapacity),
         vehicleType: form.vehicleType,
         registrationExpiryDate: form.registrationExpiryDate || null,
-        insuranceExpiryDate: form.insuranceExpiryDate || null,
       });
       navigation.navigate('VehicleList');
     } catch (e) {
@@ -99,8 +98,6 @@ export default function VehicleRegisterScreen({ navigation }) {
             </View>
             <TextInput mode="outlined" label="Hạn đăng ký" value={form.registrationExpiryDate}
               onChangeText={set('registrationExpiryDate')} placeholder="2030-12-31" style={{ marginBottom: 8 }} />
-            <TextInput mode="outlined" label="Hạn bảo hiểm" value={form.insuranceExpiryDate}
-              onChangeText={set('insuranceExpiryDate')} placeholder="2030-12-31" style={{ marginBottom: 8 }} />
           </Card.Content>
         </Card>
 

@@ -325,21 +325,21 @@ public class TripService {
             driverProfileRepository.save(p);
         });
 
-        try {
-            java.util.List<Booking> bookings = bookingRepository.findByTripIdAndStatusIn(tripId,
-                java.util.List.of(BookingStatus.CONFIRMED));
-            for (Booking b : bookings) {
-                if (b.getPayment() != null
-                    && b.getPayment().getMethod() == PaymentMethod.STRIPE
-                    && b.getPayment().getStatus() == PaymentStatus.HOLDING) {
+        java.util.List<Booking> bookings = bookingRepository.findByTripIdAndStatusIn(tripId,
+            java.util.List.of(BookingStatus.CONFIRMED));
+        for (Booking b : bookings) {
+            if (b.getPayment() != null
+                && b.getPayment().getMethod() == PaymentMethod.STRIPE
+                && b.getPayment().getStatus() == PaymentStatus.HOLDING) {
+                try {
                     paymentService.capturePayment(b.getId());
+                } catch (Exception ex) {
+                    log.error("Capture lỗi cho booking {} của chuyến {}: {}", b.getId(), tripId, ex.getMessage());
                 }
-                b.setStatus(BookingStatus.COMPLETED);
-                bookingRepository.save(b);
-                realtimeService.bookingChanged(b);
             }
-        } catch (Exception ex) {
-            log.warn("Failed to auto-capture payments for trip {}: {}", tripId, ex.getMessage());
+            b.setStatus(BookingStatus.COMPLETED);
+            bookingRepository.save(b);
+            realtimeService.bookingChanged(b);
         }
 
         log.info("Driver {} completed trip {}", driverUserId, tripId);
