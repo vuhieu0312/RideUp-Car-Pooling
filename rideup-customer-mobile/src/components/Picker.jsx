@@ -4,7 +4,6 @@ import { colors, shadow } from '../theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Text, TextInput } from './Typography';
 
-/** Custom dropdown picker (giống CustomerHomePage web). */
 export default function Picker({ value, options, isOpen, onOpen, onClose, onSelect, placeholder }) {
   const [keyword, setKeyword] = useState('');
   const selected = options.find((o) => o.id === value);

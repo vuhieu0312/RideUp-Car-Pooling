@@ -48,8 +48,7 @@ public class LocationService {
             : wardRepository.findByProvinceId(provinceId);
         return wards.stream()
             .filter(w -> keyword == null || keyword.isBlank()
-                || w.getName().toLowerCase().contains(keyword.toLowerCase())
-                || (w.getCode() != null && w.getCode().toLowerCase().contains(keyword.toLowerCase())))
+                || w.getName().toLowerCase().contains(keyword.toLowerCase()))
             .sorted(Comparator.comparing(Ward::getName, String.CASE_INSENSITIVE_ORDER))
             .map(this::toWardResponse)
             .toList();
@@ -89,8 +88,6 @@ public class LocationService {
             .provinceId(p != null ? p.getId() : null)
             .provinceName(p != null ? p.getName() : null)
             .name(w.getName())
-            .code(w.getCode())
-            .displayName(w.getDisplayName())
             .lat(w.getLat())
             .lng(w.getLng())
             .osmId(w.getOsmId())

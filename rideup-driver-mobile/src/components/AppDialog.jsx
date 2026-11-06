@@ -3,14 +3,6 @@ import { KeyboardAvoidingView, Modal, Platform, StyleSheet, TouchableOpacity, Vi
 import { colors } from '../theme';
 import { Text, TextInput } from './Typography';
 
-/**
- * Hộp thoại của chính app (thay Alert mặc định của iOS/Android).
- *   const dialog = useDialog();
- *   await dialog.alert('Tiêu đề', 'Nội dung');
- *   const ok = await dialog.confirm({ title, message, confirmText, cancelText, danger });
- *   const text = await dialog.prompt({ title, message, defaultValue, confirmText, cancelText, danger });
- * confirm trả true/false, prompt trả chuỗi nhập (hoặc null nếu bấm Huỷ).
- */
 const DialogContext = createContext(null);
 
 export function DialogProvider({ children }) {

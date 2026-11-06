@@ -4,10 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AuthImage from './AuthImage';
 import { Text } from './Typography';
 
-/**
- * Màn chi tiết hồ sơ: đầy đủ thông tin + ảnh giấy tờ, có nút Duyệt / Từ chối.
- * rows: [[nhãn, giá trị], ...]   images: [{ label, path }, ...]
- */
+// rows: [[nhãn, giá trị]], images: [{ label, path }]
 export default function DetailModal({ visible, title, rows, images, onClose, onApprove, onReject }) {
   const insets = useSafeAreaInsets();
 

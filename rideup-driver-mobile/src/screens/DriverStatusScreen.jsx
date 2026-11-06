@@ -1,14 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { DeviceEventEmitter, ScrollView, StyleSheet, View } from 'react-native';
-import { ActivityIndicator } from 'react-native-paper';
+import { ActivityIndicator, Button } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAuth } from '../auth/AuthContext';
 import { getDriverProfile, getDriverStatus } from '../api/api';
+import { colors } from '../theme';
 import IconText from '../components/IconText';
 import { Text } from '../components/Typography';
 import { useRealtimeRefresh } from '../realtime/useRealtime';
 
 export default function DriverStatusScreen() {
   const insets = useSafeAreaInsets();
+  const { doLogout } = useAuth();
   const [status, setStatus] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -21,14 +24,13 @@ export default function DriverStatusScreen() {
       if (!aliveRef.current) return;
       setStatus(s);
       if (s.status === 'APPROVED') {
-        // AppNavigator lắng nghe sự kiện này để chuyển sang màn hình chính
+        // AppNavigator nghe sự kiện này để chuyển sang màn chính
         DeviceEventEmitter.emit('rideup-driver-approved');
         return;
       }
       const p = await getDriverProfile();
       if (aliveRef.current) setProfile(p);
     } catch (e) {
-      // ignore
     } finally {
       if (aliveRef.current) setLoading(false);
     }
@@ -40,7 +42,6 @@ export default function DriverStatusScreen() {
     return () => { aliveRef.current = false; };
   }, [check]);
 
-  // Admin duyệt / từ chối hồ sơ hoặc xe → server đẩy về ngay (mất kết nối thì tự hỏi lại mỗi 30 giây)
   useRealtimeRefresh(check, ['DRIVER_PROFILE_UPDATED', 'VEHICLE_UPDATED']);
 
   if (loading) {
@@ -76,6 +77,16 @@ export default function DriverStatusScreen() {
           <Field label="SĐT" value={profile.phone} />
         </View>
       )}
+
+      <Button
+        mode="text"
+        icon="logout"
+        onPress={doLogout}
+        textColor={colors.danger}
+        style={styles.logoutBtn}
+      >
+        Đăng xuất
+      </Button>
     </ScrollView>
   );
 }
@@ -94,4 +105,5 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   alert: { padding: 12, borderRadius: 8, marginTop: 12 },
   card: { backgroundColor: '#fff', borderRadius: 12, padding: 16, marginTop: 16, elevation: 1 },
+  logoutBtn: { marginTop: 24, alignSelf: 'center' },
 });

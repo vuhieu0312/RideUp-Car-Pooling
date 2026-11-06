@@ -14,7 +14,6 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "booking")
-// Đã BỎ unique constraint (customer_id, trip_id, status) từng có ở đây.
 @Getter
 @Setter
 @NoArgsConstructor
@@ -47,7 +46,7 @@ public class Booking {
     @OneToOne(mappedBy = "booking", fetch = FetchType.LAZY)
     Payment payment;
 
-    // paymentStatus đã bỏ — trạng thái thanh toán lấy từ payment.status (tránh lệch dữ liệu)
+    // trạng thái thanh toán lấy từ payment.status, không lưu lại ở đây
 
     Integer seatCount;
     BigDecimal pricePerSeat;

@@ -4,7 +4,6 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors, shadow } from '../theme';
 import { Text } from './Typography';
 
-/** Date picker dạng lịch tháng — grid 6×7 với prev/next tháng. */
 export default function DateField({ value, onChange, placeholder = 'Chọn ngày' }) {
   const [open, setOpen] = useState(false);
   const current = value ? new Date(`${value}T00:00:00`) : new Date();
@@ -15,7 +14,7 @@ export default function DateField({ value, onChange, placeholder = 'Chọn ngày
   const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
   const days = new Date(year, month + 1, 0).getDate();
-  const firstDay = (new Date(year, month, 1).getDay() + 6) % 7; // Thứ 2 = 0
+  const firstDay = (new Date(year, month, 1).getDay() + 6) % 7;
   const monthLabel = new Intl.DateTimeFormat('vi-VN', { month: 'long', year: 'numeric' }).format(new Date(year, month, 1));
   const selectedDay = value ? Number(value.slice(8, 10)) : null;
 

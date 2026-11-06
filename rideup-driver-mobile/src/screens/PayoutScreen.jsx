@@ -9,7 +9,6 @@ import { colors } from '../theme';
 import { Text } from '../components/Typography';
 import { useDialog } from '../components/AppDialog';
 
-/** amount (đơn vị nhỏ nhất của Stripe) -> chuỗi hiển thị, theo exponent của tiền tệ. */
 function fmtMoney(amount, currency, exponent) {
   const value = amount / Math.pow(10, exponent || 0);
   const cur = (currency || '').toUpperCase();
@@ -61,7 +60,6 @@ export default function PayoutScreen({ navigation }) {
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
-  // Quay lại app sau khi thiết lập trên trình duyệt -> tải lại trạng thái
   useEffect(() => {
     const sub = AppState.addEventListener('change', (st) => {
       if (st === 'active' && openedStripe.current) {

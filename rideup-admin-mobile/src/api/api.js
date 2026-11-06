@@ -3,15 +3,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import { DeviceEventEmitter } from 'react-native';
 
-/** Tự detect base URL theo thứ tự ưu tiên — đổi WiFi không cần sửa file */
+// tự lấy base URL: web → localhost, native → IP LAN từ hostUri, cuối cùng là env/extra
 const DEV_PORT = 8080;
 
 function resolveBaseUrl() {
-  // 1. Web (browser) → dùng localhost, browser cùng máy backend
   if (typeof window !== 'undefined' && typeof window.document !== 'undefined') {
     return `http://localhost:${DEV_PORT}/api`;
   }
-  // 2. Native (Expo Go qua QR LAN) → lấy IP LAN của máy dev từ hostUri
   const hostUri = Constants.expoConfig?.hostUri;
   if (hostUri) {
     const host = hostUri.split(':')[0];
@@ -19,7 +17,6 @@ function resolveBaseUrl() {
       return `http://${host}:${DEV_PORT}/api`;
     }
   }
-  // 3. Override thủ công qua env hoặc extra (prod/tunnel/IP tĩnh)
   if (process.env.EXPO_PUBLIC_API_URL) {
     return process.env.EXPO_PUBLIC_API_URL;
   }
@@ -32,7 +29,6 @@ function resolveBaseUrl() {
 
 const baseURL = resolveBaseUrl();
 
-/** Ghép đường dẫn ảnh (/uploads/...) với địa chỉ server (đã gồm /api). */
 export const fileUrl = (path) => {
   if (!path) return '';
   return /^https?:/.test(path) ? path : `${baseURL}${path}`;

@@ -76,6 +76,9 @@ app:
   booking:
     pending-expiration-minutes: ${BOOKING_PENDING_MINUTES:15}
     expiration-check-ms: ${BOOKING_EXPIRATION_CHECK_MS:60000}
+  trip:
+    no-show-cancel-minutes: ${TRIP_NO_SHOW_CANCEL_MINUTES:15}
+    no-show-check-ms: ${TRIP_NO_SHOW_CHECK_MS:60000}
 
 stripe:
   secret-key: ${STRIPE_SECRET_KEY:}

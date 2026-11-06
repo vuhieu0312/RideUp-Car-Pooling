@@ -50,7 +50,6 @@ public class GlobalExceptionHandler {
             .body(ApiResponse.error(403, "Access denied"));
     }
 
-    /** Optimistic lock conflict (vd. */
     @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
     public ResponseEntity<ApiResponse<Void>> handleOptimisticLock(
             ObjectOptimisticLockingFailureException ex) {
@@ -58,7 +57,6 @@ public class GlobalExceptionHandler {
             .body(ApiResponse.error(409, "Dữ liệu vừa được cập nhật, vui lòng thử lại"));
     }
 
-    /** Unique constraint / FK violation (vd. */
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiResponse<Void>> handleDataIntegrity(
             DataIntegrityViolationException ex) {
@@ -80,7 +78,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleGeneric(Exception ex) {
-        // Không leak ex.getMessage() ra client — log chi tiết ở server.
+        // không trả ex.getMessage() ra client, chỉ log ở server
         org.slf4j.LoggerFactory.getLogger(GlobalExceptionHandler.class)
             .error("Unhandled exception", ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

@@ -6,11 +6,9 @@ import lombok.experimental.FieldDefaults;
 
 import java.math.BigDecimal;
 
-/** Phường / xã / thị trấn thuộc 1 Province. */
 @Entity
 @Table(name = "ward", indexes = {
-    @Index(name = "idx_ward_province", columnList = "province_id"),
-    @Index(name = "idx_ward_code", columnList = "code")
+    @Index(name = "idx_ward_province", columnList = "province_id")
 })
 @Getter
 @Setter
@@ -25,31 +23,19 @@ public class Ward {
     @Column(length = 36)
     String id;
 
-    /** Tên xã / phường / thị trấn */
     @Column(nullable = false, length = 150)
     String name;
 
-    /** Mã đơn vị hành chính (nullable — không phải nguồn nào cũng có code) */
-    @Column(length = 20)
-    String code;
-
-    /** Vĩ độ trung tâm (từ OSM) */
     @Column(precision = 10, scale = 7)
     BigDecimal lat;
 
-    /** Kinh độ trung tâm (từ OSM) */
     @Column(precision = 10, scale = 7)
     BigDecimal lng;
 
-    /** OSM relation id (dùng để tra cứu/cào dữ liệu, idempotent seed) */
+    // id relation của OSM
     @Column(name = "osmid")
     Long osmId;
 
-    /** Tên đầy đủ (display_name từ Nominatim) */
-    @Column(length = 500)
-    String displayName;
-
-    /** Tỉnh / TP chứa ward này */
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "province_id", nullable = false)
     Province province;

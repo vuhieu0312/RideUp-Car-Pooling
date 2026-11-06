@@ -5,7 +5,6 @@ import { useAuth } from '../auth/AuthContext';
 import { colors } from '../theme';
 import { Text } from '../components/Typography';
 
-/** Placeholder cho các tab chưa implement (Tin nhắn / Thông báo / Tài khoản). */
 export default function PlaceholderScreen({ route }) {
   const { title, icon = 'star-outline', subtitle = 'Tính năng đang được phát triển' } = route.params || {};
   const { user, doLogout } = useAuth();

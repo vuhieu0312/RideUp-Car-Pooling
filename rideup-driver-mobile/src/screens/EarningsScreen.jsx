@@ -15,7 +15,6 @@ const short = (n) => {
   return `${v}`;
 };
 
-/** Biểu đồ cột đơn giản (không cần thư viện): mỗi cột = thực nhận của 1 ngày/tháng. */
 function BarChart({ data }) {
   const max = Math.max(1, ...data.map((b) => Number(b.net)));
   return (

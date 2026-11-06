@@ -6,7 +6,7 @@ import { Avatar } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../auth/AuthContext';
-import { listMyTrips, listProvinces } from '../api/api';
+import { getDriverProfile, getEarningsStats, listMyTrips, listProvinces, resolveMediaUrl } from '../api/api';
 import { colors, FONT, HERO_IMAGE, shadow, typography } from '../theme';
 import { Text } from '../components/Typography';
 import Logo from '../components/Logo';
@@ -17,13 +17,24 @@ export default function HomeScreen({ navigation }) {
   const [trips, setTrips] = useState([]);
   const [provinces, setProvinces] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [rating, setRating] = useState(null);
+  const [totalNet, setTotalNet] = useState(null);
 
-  // Refetch mỗi lần HomeScreen được focus (sau khi tạo chuyến xong, quay về sẽ thấy chuyến mới)
   useFocusEffect(
     useCallback(() => {
       setLoading(true);
-      Promise.all([listMyTrips().catch(() => []), listProvinces().catch(() => [])])
-        .then(([t, p]) => { setTrips(t); setProvinces(p); })
+      Promise.all([
+        listMyTrips().catch(() => []),
+        listProvinces().catch(() => []),
+        getDriverProfile().catch(() => null),
+        getEarningsStats().catch(() => null),
+      ])
+        .then(([t, p, profile, earnings]) => {
+          setTrips(t);
+          setProvinces(p);
+          setRating(Number(profile?.driverRating) > 0 ? Number(profile.driverRating).toFixed(1) : null);
+          setTotalNet(earnings ? Number(earnings.totalNet || 0) : null);
+        })
         .finally(() => setLoading(false));
     }, [])
   );
@@ -31,8 +42,7 @@ export default function HomeScreen({ navigation }) {
   const running = trips.filter((t) => t.status === 'STARTED');
   const scheduled = trips.filter((t) => t.status === 'OPEN' || t.status === 'FULL');
 
-  // Mở danh sách khách của chuyến (màn Bookings nằm trong stack của tab "Chuyến xe").
-  // initial: false → giữ AllTrips ở dưới để nút quay lại vẫn hoạt động.
+  // initial: false để giữ AllTrips bên dưới cho nút quay lại
   const openTrip = (trip) => navigation.navigate('AllTripsTab', {
     screen: 'Bookings',
     params: { tripId: trip.id },
@@ -65,8 +75,8 @@ export default function HomeScreen({ navigation }) {
 
         <View style={styles.statsRow}>
           <Stat icon="car-outline" value={trips.length} label="Tổng chuyến" />
-          <Stat icon="star-outline" value="4.8" label="Đánh giá" accent />
-          <Stat icon="cash-multiple" value="120K" label="Doanh thu" />
+          <Stat icon="star-outline" value={rating ?? '--'} label="Đánh giá" accent />
+          <Stat icon="cash-multiple" value={totalNet == null ? '--' : shortMoney(totalNet)} label="Thực nhận" />
         </View>
 
         <View style={styles.actions}>
@@ -92,6 +102,12 @@ export default function HomeScreen({ navigation }) {
       </ScrollView>
     </View>
   );
+}
+
+function shortMoney(n) {
+  if (n >= 1e6) return `${(n / 1e6).toFixed(1)}tr`;
+  if (n >= 1e3) return `${Math.round(n / 1e3)}k`;
+  return String(n);
 }
 
 function Section({ title, children }) {
@@ -156,7 +172,6 @@ function TripCard({ trip, fmtTime, provinceName, running, onOpen }) {
   );
 }
 
-/** Avatar nhỏ ở góc phải header — ưu tiên ảnh từ user.avatarUrl, fallback initials. */
 function renderHeroAvatar(user) {
   const initials = (user?.fullName || user?.email || 'U')
     .split(/\s+/)
@@ -166,7 +181,7 @@ function renderHeroAvatar(user) {
     .join('')
     .toUpperCase();
   const url = user?.avatarUrl
-    ? (user.avatarUrl.startsWith('http') ? user.avatarUrl : `http://localhost:8080${user.avatarUrl}`)
+    ? resolveMediaUrl(user.avatarUrl)
     : null;
   return (
     <View style={styles.heroAvatarWrap}>

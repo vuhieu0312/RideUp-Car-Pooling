@@ -11,10 +11,6 @@ import lombok.experimental.FieldDefaults;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-/**
- * Tóm tắt trạng thái tài xế, trả về kèm AuthResponse.UserInfo
- * để frontend biết đang PENDING / APPROVED / REJECTED và route đúng.
- */
 @Data
 @Builder
 @AllArgsConstructor

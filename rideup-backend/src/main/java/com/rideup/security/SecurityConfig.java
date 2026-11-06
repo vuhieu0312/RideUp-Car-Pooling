@@ -23,7 +23,7 @@ import lombok.RequiredArgsConstructor;
 import java.util.List;
 
 @Configuration
-@EnableMethodSecurity   // Bật @PreAuthorize / @PostAuthorize cho admin endpoints
+@EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
@@ -52,7 +52,7 @@ public class SecurityConfig {
                 .requestMatchers("/ws/**").permitAll()
                 .requestMatchers("/ws-test.html", "/static/**").permitAll()
                 .requestMatchers("/locations/**").permitAll()
-                // Stripe webhook (server-to-server từ Stripe infrastructure) — không cần JWT.
+                // webhook Stripe gọi từ server Stripe nên không có JWT
                 .requestMatchers(HttpMethod.POST, "/payments/wallet/confirm", "/payments/webhook").permitAll()
                 .anyRequest().authenticated()
             )
@@ -63,8 +63,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration cfg = new CorsConfiguration();
-        // Dev mode: allow mọi localhost port (5173, 5174, 5175, 3000, 8081 Expo web, 19000-19010 Metro)
-        // Production nên dùng setAllowedOrigins với domain cụ thể.
+        // dev: cho các port localhost, production nên đặt domain cụ thể
         cfg.setAllowedOriginPatterns(List.of(
             "http://localhost:*",
             "http://127.0.0.1:*"

@@ -25,7 +25,7 @@ public class Vehicle {
     @Column(length = 36)
     String id;
 
-    /** Tài xế sở hữu xe (1 tài xế – tối đa 1 xe). Cột vẫn tên driver_id = driver_profile.id. */
+    // 1 tài xế chỉ có tối đa 1 xe, cột vẫn tên driver_id
     @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "driver_id", nullable = false, unique = true)
     DriverProfile driverProfile;
@@ -58,11 +58,6 @@ public class Vehicle {
     String registrationImage;
 
     LocalDate registrationExpiryDate;
-
-    @Column(length = 500)
-    String insuranceImage;
-
-    LocalDate insuranceExpiryDate;
 
     @Column(nullable = false)
     Boolean isVerified;

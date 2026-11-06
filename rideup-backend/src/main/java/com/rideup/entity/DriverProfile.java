@@ -67,7 +67,7 @@ public class DriverProfile {
     @Column(length = 500)
     String rejectionReason;
 
-    /** Tài khoản Stripe Connect (Express) nhận tiền của tài xế — acct_xxx. Null = chưa thiết lập. */
+    // tài khoản Stripe Connect của tài xế (acct_xxx), null là chưa thiết lập
     @Column(length = 64)
     String stripeAccountId;
 

@@ -16,7 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/** Nghiệp vụ duyệt/từ chối hồ sơ tài xế. */
 @Service
 @RequiredArgsConstructor
 @Slf4j

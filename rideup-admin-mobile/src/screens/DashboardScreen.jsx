@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { Button, Card, Chip, Dialog, HelperText, IconButton, Portal, SegmentedButtons, TextInput } from 'react-native-paper';
+import { Button, Card, Dialog, HelperText, IconButton, Portal, SegmentedButtons, TextInput } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   approveDriver, approveVehicle, getLocationStats,
@@ -103,13 +103,12 @@ export default function DashboardScreen() {
         ['Biển số', x.plateNumber], ['Tài xế', x.driverName], ['Hãng xe', x.vehicleBrand],
         ['Dòng xe', x.vehicleModel], ['Năm sản xuất', x.vehicleYear], ['Màu sắc', x.vehicleColor],
         ['Loại xe', x.vehicleType], ['Số chỗ', x.seatCapacity],
-        ['Hạn đăng ký', fmtDate(x.registrationExpiryDate)], ['Hạn bảo hiểm', fmtDate(x.insuranceExpiryDate)],
+        ['Hạn đăng ký', fmtDate(x.registrationExpiryDate)],
         ['Ngày đăng ký', fmtDate(x.createdAt)],
       ],
       images: [
         { label: 'Ảnh xe', path: x.vehicleImage },
         { label: 'Giấy đăng ký xe', path: x.registrationImage },
-        { label: 'Giấy bảo hiểm', path: x.insuranceImage },
       ],
     };
   }
