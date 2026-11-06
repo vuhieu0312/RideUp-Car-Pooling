@@ -22,7 +22,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-/** Booking endpoints dành cho CUSTOMER. */
 @RestController
 @RequestMapping("/customer/bookings")
 @RequiredArgsConstructor

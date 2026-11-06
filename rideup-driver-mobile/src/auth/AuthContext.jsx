@@ -18,7 +18,6 @@ export function AuthProvider({ children }) {
         if (storedUser?.roles?.includes('DRIVER')) setUser(storedUser);
         else if (storedUser) await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'user']);
       } catch {
-        // ignore
       } finally {
         setLoading(false);
       }
@@ -48,7 +47,6 @@ export function AuthProvider({ children }) {
     setUser(null);
   }
 
-  /** Merge patch vào user hiện tại + persist xuống AsyncStorage. */
   async function updateUser(patch) {
     setUser((prev) => {
       if (!prev) return prev;

@@ -4,7 +4,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../auth/AuthContext';
-import { cancelBooking, listMyBookings } from '../api/api';
+import { cancelBooking, listMyBookings, listMyConversations } from '../api/api';
 import { usePayment } from '../hooks/usePayment';
 import { useDialog } from '../components/AppDialog';
 import { useRealtimeRefresh } from '../realtime/useRealtime';
@@ -48,40 +48,40 @@ export default function MyBookingsScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('ALL');
   const [actionMsg, setActionMsg] = useState('');
+  const [conversationByBooking, setConversationByBooking] = useState({});
 
-  // silent = true: tải ngầm khi có cập nhật realtime, không nháy vòng xoay
   function load(silent = false) {
     if (!silent) setLoading(true);
-    listMyBookings()
-      .then(setBookings)
+    Promise.all([listMyBookings(), listMyConversations().catch(() => [])])
+      .then(([myBookings, conversations]) => {
+        setBookings(myBookings);
+        setConversationByBooking(Object.fromEntries(
+          conversations.map((conversation) => [conversation.bookingId, conversation]),
+        ));
+      })
       .catch(() => setActionMsg('Lỗi tải booking'))
       .finally(() => setLoading(false));
   }
 
-  // Refetch mỗi khi screen focus (lần đầu vào tab, và khi quay lại từ Stripe / màn đặt chỗ).
-  // Rời tab thì xoá banner thông báo — tab navigator giữ screen mounted nên state không tự reset.
+  // tab navigator giữ screen mounted nên rời tab phải tự xoá banner
   useFocusEffect(useCallback(() => {
     load();
     return () => setActionMsg('');
   }, []));
 
-  // Server báo booking đổi trạng thái (tài xế xác nhận, thanh toán xong...) → tự tải lại
   useRealtimeRefresh(() => load(true), ['BOOKING_UPDATED']);
 
-  // Banner tự tắt sau 3 giây (trước đây không bao giờ biến mất)
   useEffect(() => {
     if (!actionMsg) return undefined;
     const t = setTimeout(() => setActionMsg(''), 3000);
     return () => clearTimeout(t);
   }, [actionMsg]);
 
-  // ScrollView dọc cũ tự "clamp" scroll position khi content ngắn đi → cảm giác màn dịch xuống.
-  // FlatList + `key={filter}` ép remount với filter mới → scroll bắt đầu từ 0, không có transition.
+  // FlatList + key={filter} để remount, scroll về 0 khi đổi filter
 
   const fmtMoney = (v) => `${new Intl.NumberFormat('vi-VN').format(v || 0)} đ`;
   const fmtTime = (iso) => (iso ? iso.replace('T', ' ').substring(0, 16) : '');
 
-  // "2026-10-15T08:00:00" -> "08:00 · 15/10"
   const fmtDeparture = (iso) => {
     if (!iso) return '';
     const [date, time] = iso.split('T');
@@ -89,7 +89,6 @@ export default function MyBookingsScreen({ navigation }) {
     return `${time.substring(0, 5)} · ${day}/${month}`;
   };
 
-  // "Ân Thi, Hưng Yên"
   const place = (ward, province, fallback) => [ward || fallback, province].filter(Boolean).join(', ');
 
   function routeText(b) {
@@ -147,11 +146,9 @@ export default function MyBookingsScreen({ navigation }) {
   };
 
   async function doCancel(b) {
-    // Cho phép huỷ khi: PENDING_PAYMENT (chưa trả), WAITING_DRIVER_APPROVAL (đã trả nhưng chờ duyệt), CONFIRMED (đã duyệt)
     const cancellable = ['PENDING_PAYMENT', 'WAITING_DRIVER_APPROVAL', 'CONFIRMED'].includes(b.status);
     if (!cancellable) return;
 
-    // Xác định có thông báo hoàn tiền không
     const isStripe = b.paymentMethod === 'STRIPE';
     const hasMoney = ['HOLDING', 'PAID'].includes(b.paymentStatus);
     let detail = 'Bạn có chắc muốn huỷ booking này?';
@@ -245,9 +242,9 @@ export default function MyBookingsScreen({ navigation }) {
         }
         renderItem={({ item: b }) => {
           const meta = STATUS_META[b.status] || { label: b.status, bg: colors.pendingBg, fg: '#92400e' };
+          const conversation = conversationByBooking[b.id];
           const canCancel = ['PENDING_PAYMENT', 'WAITING_DRIVER_APPROVAL', 'CONFIRMED'].includes(b.status);
-          // Chỉ còn cần trả tiền khi: còn PENDING_PAYMENT + chọn STRIPE + chưa authorize
-          // (paymentStatus vẫn PENDING). Sau khi thanh toán xong, paymentStatus → HOLDING.
+          // chỉ cần trả tiền khi PENDING_PAYMENT + STRIPE + paymentStatus còn PENDING
           const canPay = b.status === 'PENDING_PAYMENT'
             && b.paymentMethod === 'STRIPE'
             && b.paymentStatus === 'PENDING';
@@ -297,6 +294,17 @@ export default function MyBookingsScreen({ navigation }) {
                   <TouchableOpacity style={styles.detailBtn} onPress={() => showDetail(b)}>
                     <Text style={styles.detailBtnText}>Xem chi tiết</Text>
                   </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.chatBtn, !conversation && styles.chatBtnDisabled]}
+                    disabled={!conversation}
+                    onPress={() => navigation.navigate('Chat', {
+                      conversationId: conversation.conversationId,
+                      bookingId: b.id,
+                      name: b.driverName,
+                    })}>
+                    <MaterialCommunityIcons name="message-text-outline" size={14} color={colors.primaryAccent} />
+                    <Text style={styles.chatBtnText}>{conversation ? 'Chat tài xế' : 'Chat sau khi xác nhận'}</Text>
+                  </TouchableOpacity>
                   {canPay && (
                     <TouchableOpacity
                       style={[styles.payBtn, payLoading && styles.payBtnDisabled]}
@@ -332,7 +340,7 @@ const styles = StyleSheet.create({
   filters: { marginTop: 10, marginBottom: 10, flexGrow: 0 },
   filtersContent: {
     paddingHorizontal: 12,
-    paddingVertical: 6,         // tạo khoảng thở cho border-radius, không bị clip ở mép ScrollView
+    paddingVertical: 6,
     gap: 6,
     alignItems: 'center',
   },
@@ -376,6 +384,9 @@ const styles = StyleSheet.create({
   route: { fontSize: 12, color: colors.textDark, marginTop: 3 },
   detailBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 6, borderWidth: 1, borderColor: colors.primaryAccent },
   detailBtnText: { color: colors.primaryAccent, fontSize: 11, fontWeight: '700' },
+  chatBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6, backgroundColor: colors.primaryLight, borderWidth: 1, borderColor: colors.primaryAccent },
+  chatBtnDisabled: { opacity: 0.55 },
+  chatBtnText: { color: colors.primaryAccent, fontSize: 11, fontWeight: '700' },
   dangerBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 6, backgroundColor: colors.dangerBg, borderWidth: 1, borderColor: '#fecaca' },
   dangerBtnText: { color: colors.danger, fontSize: 11, fontWeight: '700' },
   payBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 6, backgroundColor: colors.primary },

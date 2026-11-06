@@ -3,15 +3,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import { DeviceEventEmitter, Platform } from 'react-native';
 
-/** Tự detect base URL theo thứ tự ưu tiên — đổi WiFi không cần sửa file */
+// tự lấy base URL: web → localhost, native → IP LAN từ hostUri, cuối cùng là env/extra
 const DEV_PORT = 8080;
 
 function resolveBaseUrl() {
-  // 1. Web (browser) → dùng localhost, browser cùng máy backend
   if (typeof window !== 'undefined' && typeof window.document !== 'undefined') {
     return `http://localhost:${DEV_PORT}/api`;
   }
-  // 2. Native (Expo Go qua QR LAN) → lấy IP LAN của máy dev từ hostUri
   const hostUri = Constants.expoConfig?.hostUri;
   if (hostUri) {
     const host = hostUri.split(':')[0];
@@ -19,7 +17,6 @@ function resolveBaseUrl() {
       return `http://${host}:${DEV_PORT}/api`;
     }
   }
-  // 3. Override thủ công qua env hoặc extra (prod/tunnel/IP tĩnh)
   if (process.env.EXPO_PUBLIC_API_URL) {
     return process.env.EXPO_PUBLIC_API_URL;
   }
@@ -32,24 +29,29 @@ function resolveBaseUrl() {
 
 const baseURL = resolveBaseUrl();
 
+export const resolveMediaUrl = (path) => {
+  if (!path) return null;
+  return /^https?:\/\//.test(path) ? path : `${baseURL}${path}`;
+};
+
 const api = axios.create({ baseURL, timeout: 30000 });
 
-console.log('[API] baseURL =', baseURL);
+if (__DEV__) console.log('[API] baseURL =', baseURL);
 
 api.interceptors.request.use(async (config) => {
   const token = await AsyncStorage.getItem('accessToken');
   if (token) config.headers.Authorization = `Bearer ${token}`;
-  console.log('[API] →', config.method?.toUpperCase(), config.url);
+  if (__DEV__) console.log('[API] →', config.method?.toUpperCase(), config.url);
   return config;
 });
 
-// Dùng chung 1 lần refresh khi nhiều request cùng bị 401 (refresh token bị xoay vòng, chỉ dùng được 1 lần)
+// nhiều request cùng 401 thì dùng chung 1 lần refresh (refresh token xoay vòng, chỉ dùng được 1 lần)
 let refreshing = null;
 
 async function refreshAccessToken() {
   const refreshToken = await AsyncStorage.getItem('refreshToken');
   if (!refreshToken) throw new Error('Không có refresh token');
-  // axios trần để không đi qua interceptor của `api`
+  // axios trần để không đi qua interceptor của api
   const res = await axios.post(`${baseURL}/auth/refresh-token`, { refreshToken }, { timeout: 30000 });
   const data = res.data.data;
   await AsyncStorage.multiSet([
@@ -61,16 +63,16 @@ async function refreshAccessToken() {
 
 api.interceptors.response.use(
   (response) => {
-    console.log('[API] ✓', response.config.method?.toUpperCase(), response.config.url, '→', response.status);
+    if (__DEV__) console.log('[API] ✓', response.config.method?.toUpperCase(), response.config.url, '→', response.status);
     return response;
   },
   async (error) => {
-    console.log('[API] ✗', error.config?.method?.toUpperCase(), error.config?.url,
+    if (__DEV__) console.log('[API] ✗', error.config?.method?.toUpperCase(), error.config?.url,
       '→', error.response?.status || error.message);
     const original = error.config;
     const isAuthCall = original?.url?.includes('/auth/');
     if (error.response?.status === 401 && original && !original._retried && !isAuthCall) {
-      // Access token hết hạn (15 phút) → thử đổi refresh token lấy token mới rồi gọi lại request
+      // access token hết hạn thì đổi bằng refresh token rồi gọi lại
       original._retried = true;
       try {
         refreshing = refreshing || refreshAccessToken().finally(() => { refreshing = null; });
@@ -78,7 +80,7 @@ api.interceptors.response.use(
         original.headers.Authorization = `Bearer ${newToken}`;
         return api(original);
       } catch {
-        // refresh cũng hỏng (hết hạn/bị thu hồi) → đăng xuất
+        // refresh cũng hỏng thì đăng xuất
       }
     }
     if (error.response?.status === 401) {
@@ -89,10 +91,9 @@ api.interceptors.response.use(
   }
 );
 
-/** URL WebSocket cho realtime: http(s)://host/api → ws(s)://host/api/ws */
 export const getWsUrl = () => `${baseURL.replace(/^http/, 'ws')}/ws`;
 
-/** JWT còn hạn ít hơn 30 giây (hoặc không đọc được exp) → coi như sắp hết hạn. */
+// token còn dưới 30s coi như sắp hết hạn
 function isTokenExpiring(token) {
   try {
     const part = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
@@ -100,14 +101,11 @@ function isTokenExpiring(token) {
     const { exp } = JSON.parse(atob(padded));
     return !exp || exp * 1000 - Date.now() < 30000;
   } catch {
-    return false; // không decode được → cứ dùng token hiện có
+    return false;
   }
 }
 
-/**
- * Access token còn hạn cho WebSocket. WebSocket không đi qua interceptor 401 của axios,
- * nên phải tự refresh trước khi kết nối (token chỉ sống 15 phút). Trả null nếu chưa đăng nhập / refresh hỏng.
- */
+// WebSocket không đi qua interceptor 401 nên phải tự refresh token trước khi kết nối
 export async function getFreshAccessToken() {
   const token = await AsyncStorage.getItem('accessToken');
   if (!token) return null;
@@ -122,7 +120,6 @@ export async function getFreshAccessToken() {
 
 export default api;
 
-// ===== Auth =====
 export const login = (email, password) =>
   api.post('/auth/authentication', { email, password }).then((r) => r.data.data);
 
@@ -137,7 +134,6 @@ const appendFile = async (fd, key, file, fallbackName = `${key}.jpg`) => {
   }
 };
 
-// ===== Driver =====
 export const registerDriver = async (form, files) => {
   const fd = new FormData();
   fd.append('fullName', form.fullName);
@@ -161,7 +157,6 @@ export const getDriverProfile = () =>
 export const getDriverStatus = () =>
   api.get('/driver/status').then((r) => r.data.data);
 
-// ===== Locations (public) =====
 export const listProvinces = (keyword) =>
   api.get('/locations/provinces', { params: keyword ? { keyword } : {} }).then((r) => r.data.data);
 
@@ -170,7 +165,6 @@ export const listWards = (provinceId, keyword) =>
     params: { ...(provinceId ? { provinceId } : {}), ...(keyword ? { keyword } : {}) },
   }).then((r) => r.data.data);
 
-// ===== Trip =====
 export const createTrip = (form) =>
   api.post('/trips', form).then((r) => r.data);
 
@@ -183,16 +177,17 @@ export const startTrip = (tripId) =>
 export const completeTrip = (tripId) =>
   api.post(`/trips/${tripId}/complete`).then((r) => r.data);
 
-/** Driver huỷ chuyến — auto-refund tất cả booking STRIPE đang active (HOLDING → PI.cancel, PENDING → VOIDED). */
 export const cancelTrip = (tripId, reason) =>
   api.post(`/trips/${tripId}/cancel`, null, { params: { reason } }).then((r) => r.data);
 
-// ===== Bookings (driver) =====
 export const listDriverBookings = (status) =>
   api.get('/driver/bookings', { params: status ? { status } : {} }).then((r) => r.data.data);
 
-export const listDriverPendingBookings = () =>
-  api.get('/driver/bookings/pending').then((r) => r.data.data);
+export const listMyConversations = () =>
+  api.get('/driver/conversations').then((r) => r.data.data);
+
+export const getConversationMessages = (conversationId) =>
+  api.get(`/messages/${conversationId}`, { params: { page: 0, size: 100 } }).then((r) => r.data.content || []);
 
 export const confirmBooking = (bookingId) =>
   api.post(`/driver/bookings/${bookingId}/confirm`).then((r) => r.data);
@@ -203,17 +198,12 @@ export const rejectBooking = (bookingId, reason) =>
 export const confirmCashReceived = (bookingId) =>
   api.post(`/driver/bookings/${bookingId}/confirm-cash`).then((r) => r.data);
 
-export const pickupBooking = (bookingId) =>
-  api.post(`/driver/bookings/${bookingId}/pickup`).then((r) => r.data);
-
-// ===== Vehicle =====
 export const registerVehicle = (form) =>
   api.post('/driver/vehicles', form).then((r) => r.data);
 
 export const listMyVehicles = () =>
   api.get('/driver/vehicles').then((r) => r.data.data);
 
-// ===== Profile (self) =====
 export const getMyProfile = () =>
   api.get('/users/me').then((r) => r.data.data);
 
@@ -223,7 +213,6 @@ export const updateMyProfile = (body) =>
 export const changePassword = (body) =>
   api.post('/users/me/change-password', body).then((r) => r.data);
 
-/** Upload avatar — file là object do expo-image-picker trả về. */
 export const uploadAvatar = async (file) => {
   const fd = new FormData();
   await appendFile(fd, 'avatar', file, 'avatar.jpg');
@@ -231,7 +220,6 @@ export const uploadAvatar = async (file) => {
     .post('/users/me/avatar', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
     .then((r) => r.data.data);
 };
-// ===== Ví / rút tiền (Stripe Connect) =====
 export const getPayoutSummary = () =>
   api.get('/driver/payout/summary').then((r) => r.data.data);
 

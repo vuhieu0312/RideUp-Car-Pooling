@@ -15,13 +15,11 @@ public class SearchTripsRequest {
     @NotBlank
     String startProvinceId;
 
-    @NotBlank
     String startWardId;
 
     @NotBlank
     String endProvinceId;
 
-    @NotBlank
     String endWardId;
 
     @NotNull

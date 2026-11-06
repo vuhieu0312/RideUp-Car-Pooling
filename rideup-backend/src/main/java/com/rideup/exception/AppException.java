@@ -3,14 +3,10 @@ package com.rideup.exception;
 import lombok.Getter;
 import org.springframework.http.HttpStatus;
 
-/** Exception chuẩn của hệ thống — wrap ErrorCode hoặc (status, code, message) tuỳ trường hợp. */
 @Getter
 public class AppException extends RuntimeException {
     private final ErrorCode errorCode;
 
-    /**
-     * Constructor dùng ErrorCode enum.
-     */
     public AppException(ErrorCode errorCode) {
         super(errorCode.getMessage());
         this.errorCode = errorCode;
@@ -23,7 +19,7 @@ public class AppException extends RuntimeException {
         this.code = code;
     }
 
-    // Chỉ dùng khi errorCode == null
+    // chỉ dùng khi không có errorCode
     private HttpStatus status;
     private int code;
 
@@ -39,7 +35,6 @@ public class AppException extends RuntimeException {
         return errorCode != null ? errorCode.getHttpStatus() : status;
     }
 
-    // Factory methods
     public static AppException badRequest(String message) {
         return new AppException(HttpStatus.BAD_REQUEST, 400, message);
     }

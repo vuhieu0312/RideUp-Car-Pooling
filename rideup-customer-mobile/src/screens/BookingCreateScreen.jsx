@@ -35,7 +35,6 @@ export default function BookingCreateScreen({ route, navigation }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Load wards cho điểm đón (theo startProvinceId) và điểm trả (theo endProvinceId)
   useEffect(() => {
     if (!trip) return;
     let cancelled = false;
@@ -80,14 +79,17 @@ export default function BookingCreateScreen({ route, navigation }) {
   }
 
   const total = trip.priceVnd * Number(seats);
+
+  const stopWardOptions = (type, wards) => {
+    const ids = new Set((trip.stops || []).filter((s) => s.stopType === type).map((s) => s.wardId));
+    return ids.size ? wards.filter((w) => ids.has(w.id)) : wards;
+  };
   const fmtMoney = (v) => `${new Intl.NumberFormat('vi-VN').format(v || 0)} đ`;
   const fmtTime = (iso) => (iso ? iso.replace('T', ' ').substring(0, 16) : '');
 
-  // Hiển thị tên tỉnh: lookup từ list provinces, fallback tên ngắn nếu tìm thấy
   const provinceName = (id) => provinces.find((p) => p.id === id)?.name || '—';
   const startLabel = provinceName(trip.startProvinceId);
   const endLabel = provinceName(trip.endProvinceId);
-  // Lấy lat/lng tâm tỉnh để truyền cho LocationMapPicker (dùng làm bias + filter trong tỉnh)
   const startProvince = provinces.find((p) => p.id === trip.startProvinceId);
   const endProvince = provinces.find((p) => p.id === trip.endProvinceId);
 
@@ -95,8 +97,7 @@ export default function BookingCreateScreen({ route, navigation }) {
     return Number.isFinite(loc?.lat) && Number.isFinite(loc?.lng) && (loc?.addressText || '').trim().length > 0;
   }
 
-  // Sang tab "Chuyến xe" và dọn stack tab Trang chủ về màn Home, để lúc bấm lại
-  // "Trang chủ" không còn thấy form đặt chỗ của booking đã xong.
+  // sang tab Chuyến xe và dọn stack Trang chủ để không còn thấy form đặt chỗ cũ
   function goToMyBookings() {
     navigation.navigate('MyBookingsTab');
     navigation.popToTop();
@@ -128,10 +129,9 @@ export default function BookingCreateScreen({ route, navigation }) {
         dropoffLng: dropoff.lng,
         note: note || null,
       });
-      // Backend trả về `{ code, message, data: BookingResponse }`
       const booking = response?.data || response;
 
-      // Stripe: mở PaymentSheet NGAY sau khi đặt chỗ thành công — không qua bước Alert trung gian.
+      // STRIPE: mở PaymentSheet ngay sau khi đặt xong
       if (paymentMethod === 'STRIPE' && booking?.paymentId) {
         const result = await payWithStripe({ bookingId: booking.id, paymentId: booking.paymentId });
         if (result.success) {
@@ -140,7 +140,7 @@ export default function BookingCreateScreen({ route, navigation }) {
             'Booking của bạn đang chờ tài xế xác nhận.'
           );
         }
-        // Booking đã tạo xong dù thanh toán thành công, lỗi, hay bị huỷ — luôn chuyển sang "Chuyến xe của tôi" để xem trạng thái / trả lại tiền nếu cần (nút...
+        // booking đã tạo dù thanh toán ok/lỗi/huỷ, luôn chuyển sang Chuyến xe của tôi
         goToMyBookings();
         return;
       }
@@ -219,13 +219,13 @@ export default function BookingCreateScreen({ route, navigation }) {
           ) : (
             <LocationMapPicker
               title="Điểm đón"
-              wardOptions={pickupWards}
+              wardOptions={stopWardOptions('PICKUP', pickupWards)}
               wardId={pickupWardId}
               onWardChange={setPickupWardId}
               value={pickup}
               onChange={setPickup}
               accentColor={colors.primaryAccent}
-              wardReadOnly
+              wardReadOnly={!!initPickupWardId}
               wardName={pickupWards.find((w) => w.id === pickupWardId)?.name}
               provinceLat={Number(startProvince?.lat)}
               provinceLng={Number(startProvince?.lng)}
@@ -239,13 +239,13 @@ export default function BookingCreateScreen({ route, navigation }) {
           ) : (
             <LocationMapPicker
               title="Điểm trả"
-              wardOptions={dropoffWards}
+              wardOptions={stopWardOptions('DROPOFF', dropoffWards)}
               wardId={dropoffWardId}
               onWardChange={setDropoffWardId}
               value={dropoff}
               onChange={setDropoff}
               accentColor={colors.primaryAccent}
-              wardReadOnly
+              wardReadOnly={!!initDropoffWardId}
               wardName={dropoffWards.find((w) => w.id === dropoffWardId)?.name}
               provinceLat={Number(endProvince?.lat)}
               provinceLng={Number(endProvince?.lng)}
@@ -295,7 +295,6 @@ const styles = StyleSheet.create({
 
   section: { fontFamily: FONT[700], marginTop: 12, marginBottom: 6, fontSize: 13, fontWeight: '700', color: colors.textDark },
 
-  // Payment method picker
   payMethodRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
   payMethod: {
     flex: 1, paddingVertical: 10, paddingHorizontal: 8,

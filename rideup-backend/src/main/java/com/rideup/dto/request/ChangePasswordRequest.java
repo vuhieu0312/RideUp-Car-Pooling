@@ -6,11 +6,7 @@ import lombok.AccessLevel;
 import lombok.Data;
 import lombok.experimental.FieldDefaults;
 
-/**
- * Body cho POST /users/me/change-password.
- * Mật khẩu cũ dùng để verify, mật khẩu mới phải đủ dài.
- * confirmNewPassword chỉ check phía client (BE không enforce khớp — tránh UX khó chịu khi gõ).
- */
+// confirmNewPassword chỉ check ở client, backend không bắt buộc khớp
 @Data
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class ChangePasswordRequest {

@@ -52,7 +52,6 @@ public class BookingResponse {
     LocalDateTime createdAt;
     LocalDateTime updatedAt;
 
-    // Thông tin chuyến để màn "Chuyến xe của tôi" hiển thị và xem chi tiết
     LocalDateTime tripDeparture;
     TripStatus tripStatus;
     String tripStartProvince;
@@ -60,7 +59,7 @@ public class BookingResponse {
     String pickupWardName;
     String dropoffWardName;
     String driverName;
-    /** Chỉ có khi booking đã được tài xế xác nhận. */
+    // chỉ có khi tài xế đã xác nhận
     String driverPhone;
     String tripPlate;
     String tripVehicle;

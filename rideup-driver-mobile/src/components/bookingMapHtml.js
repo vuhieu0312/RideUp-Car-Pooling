@@ -1,4 +1,3 @@
-/** HTML bản đồ Leaflet + OpenStreetMap (không cần API key). */
 export function buildBookingMapHtml(pickup, dropoff) {
   const points = [];
   if (pickup) points.push({ ...pickup, label: 'Đón', color: '#0caf63' });

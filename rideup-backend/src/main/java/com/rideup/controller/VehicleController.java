@@ -20,7 +20,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-/** Vehicle endpoints — chỉ dành cho tài xế (DRIVER). */
 @RestController
 @RequestMapping("/driver/vehicles")
 @RequiredArgsConstructor

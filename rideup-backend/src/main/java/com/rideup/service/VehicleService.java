@@ -2,7 +2,6 @@ package com.rideup.service;
 
 import com.rideup.exception.AppException;
 import com.rideup.dto.request.RegisterVehicleRequest;
-import com.rideup.dto.response.DriverResponse;
 import com.rideup.dto.response.VehicleResponse;
 import com.rideup.entity.DriverProfile;
 import com.rideup.entity.Vehicle;
@@ -21,7 +20,6 @@ import java.util.List;
 @RequiredArgsConstructor
 @Slf4j
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
-/** Nghiệp vụ phương tiện của tài xế. */
 public class VehicleService {
 
     VehicleRepository vehicleRepository;
@@ -30,7 +28,6 @@ public class VehicleService {
     MailService mailService;
     RealtimeService realtimeService;
 
-    /** Driver đăng ký xe mới. */
     @Transactional
     public VehicleResponse registerVehicle(String userId, RegisterVehicleRequest req) {
         DriverProfile driver = driverService.requireApprovedDriver(userId);
@@ -52,7 +49,6 @@ public class VehicleService {
             .seatCapacity(req.getSeatCapacity())
             .vehicleType(req.getVehicleType())
             .registrationExpiryDate(req.getRegistrationExpiryDate())
-            .insuranceExpiryDate(req.getInsuranceExpiryDate())
             .isVerified(false)
             .isActive(false)
             .build();
@@ -73,12 +69,6 @@ public class VehicleService {
     @Transactional(readOnly = true)
     public List<VehicleResponse> listPendingVehicles() {
         return vehicleRepository.findByIsVerified(false).stream()
-            .map(this::toResponse).toList();
-    }
-
-    @Transactional(readOnly = true)
-    public List<VehicleResponse> listVerifiedVehicles() {
-        return vehicleRepository.findByIsVerifiedAndIsActive(true, true).stream()
             .map(this::toResponse).toList();
     }
 
@@ -126,9 +116,6 @@ public class VehicleService {
         return toResponse(vehicle);
     }
 
-    /**
-     * Helper cho TripService — lấy xe đã duyệt của driver. Throw nếu không có/không duyệt.
-     */
     public Vehicle requireVerifiedVehicle(String driverProfileId) {
         Vehicle v = vehicleRepository.findByDriverProfileId(driverProfileId)
             .orElseThrow(() -> AppException.forbidden("Tài xế chưa đăng ký phương tiện"));
@@ -154,8 +141,6 @@ public class VehicleService {
             .vehicleImage(v.getVehicleImage())
             .registrationImage(v.getRegistrationImage())
             .registrationExpiryDate(v.getRegistrationExpiryDate())
-            .insuranceImage(v.getInsuranceImage())
-            .insuranceExpiryDate(v.getInsuranceExpiryDate())
             .isVerified(v.getIsVerified())
             .isActive(v.getIsActive())
             .approvedAt(v.getApprovedAt())

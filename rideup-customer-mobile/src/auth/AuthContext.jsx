@@ -9,7 +9,6 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Khôi phục session từ AsyncStorage khi app start
   useEffect(() => {
     const subscription = DeviceEventEmitter.addListener('rideup-auth-expired', () => setUser(null));
     (async () => {
@@ -19,7 +18,6 @@ export function AuthProvider({ children }) {
         if (storedUser?.roles?.includes('CUSTOMER')) setUser(storedUser);
         else if (storedUser) await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'user']);
       } catch {
-        // ignore
       } finally {
         setLoading(false);
       }
@@ -42,7 +40,6 @@ export function AuthProvider({ children }) {
     setUser(null);
   }
 
-  /** Merge patch vào user hiện tại + persist xuống AsyncStorage. */
   async function updateUser(patch) {
     setUser((prev) => {
       if (!prev) return prev;

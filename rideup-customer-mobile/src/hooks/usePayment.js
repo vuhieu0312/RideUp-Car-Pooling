@@ -1,4 +1,3 @@
-// usePayment.js — Gom logic thanh toán Stripe PaymentSheet vào 1 hook.
 
 import { useState, useCallback } from 'react';
 import * as Linking from 'expo-linking';
@@ -11,28 +10,27 @@ export function usePayment() {
   const dialog = useDialog();
   const [loading, setLoading] = useState(false);
 
-  /** Mở PaymentSheet cho booking hiện có. */
   const pay = useCallback(async ({ bookingId, paymentId }) => {
     if (!bookingId || !paymentId) {
       dialog.alert('Không thể thanh toán', 'Vui lòng thử lại sau.');
       return { success: false };
     }
     if (loading) {
-      return { success: false };  // tránh bấm nhiều lần
+      return { success: false };
     }
 
     setLoading(true);
     try {
-      // (1) Gọi backend tạo PaymentIntent — backend tự validate ownership + tính amount từ DB
+      // backend tự kiểm tra chủ booking và tính amount
       const { clientSecret } = await createPaymentIntent(bookingId);
       if (!clientSecret) {
         dialog.alert('Không thể thanh toán', 'Vui lòng thử lại sau.');
         return { success: false };
       }
-      // clientSecret luôn có dạng "pi_XXXX_secret_YYYY" — PaymentIntent ID là phần trước "_secret_".
+      // clientSecret dạng pi_XXX_secret_YYY, lấy PI id là phần trước _secret_
       const paymentIntentId = clientSecret.split('_secret_')[0];
 
-      // (2) Init PaymentSheet. returnURL dùng expo-linking để chạy được cả Expo Go lẫn build thật.
+      // returnURL dùng expo-linking để chạy được cả Expo Go lẫn build thật
       const returnURL = Linking.createURL('stripe-redirect');
       const { error: initError } = await initPaymentSheet({
         merchantDisplayName: 'RideUp',
@@ -41,18 +39,16 @@ export function usePayment() {
         defaultBillingDetails: { address: { country: 'VN' } },
       });
       if (initError) {
-        // initError.code === 'Canceled' hiếm khi xảy ra, nhưng handle cho chắc
         if (initError.code !== 'Canceled') {
           dialog.alert('Không thể thanh toán', 'Vui lòng thử lại sau.');
         }
         return { success: false };
       }
 
-      // (3) Present PaymentSheet — user nhập thẻ. CHỈ trả { error }, không có paymentIntent
-      // (xem BUG CŨ #2 ở đầu file) — paymentIntentId đã tự trích từ clientSecret ở bước (1).
+      // present chỉ trả { error }, không có paymentIntent
       const { error: presentError } = await presentPaymentSheet();
       if (presentError) {
-        // User tự huỷ (đóng sheet) → không báo lỗi, im lặng
+        // user tự đóng sheet thì không báo lỗi
         if (presentError.code === 'Canceled') {
           return { success: false, canceled: true };
         }
@@ -60,7 +56,7 @@ export function usePayment() {
         return { success: false };
       }
 
-      // (4) Sheet success — gọi backend authorize để flip Payment + Booking sang HOLDING.
+      // thành công thì gọi authorize để payment sang HOLDING
       try {
         await authorizePayment({
           paymentId,

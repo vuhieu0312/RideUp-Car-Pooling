@@ -7,11 +7,10 @@ import { Text } from './Typography';
 const pad = (n) => String(n).padStart(2, '0');
 const MONTHS = Array.from({ length: 12 }, (_, i) => `Tháng ${i + 1}`);
 const THIS_YEAR = new Date().getFullYear();
-const YEARS = Array.from({ length: 101 }, (_, i) => THIS_YEAR - i); // năm nay → 100 năm trước
+const YEARS = Array.from({ length: 101 }, (_, i) => THIS_YEAR - i);
 const YEAR_ROW_HEIGHT = 44;
 const YEAR_COLS = 4;
 
-/** Chọn ngày sinh: bấm "Tháng" hoặc "Năm" trên tiêu đề để chọn nhanh, không giới hạn quá khứ, không cho chọn ngày trong tương lai. */
 export default function BirthDateField({ value, onChange, placeholder = 'Chọn ngày sinh' }) {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState('day'); // 'day' | 'month' | 'year'
@@ -43,7 +42,7 @@ export default function BirthDateField({ value, onChange, placeholder = 'Chọn 
   }
 
   const days = new Date(year, month + 1, 0).getDate();
-  const firstDay = (new Date(year, month, 1).getDay() + 6) % 7; // Thứ 2 = 0
+  const firstDay = (new Date(year, month, 1).getDay() + 6) % 7;
   const label = value ? `${value.slice(8, 10)}/${value.slice(5, 7)}/${value.slice(0, 4)}` : '';
   const yearIndex = Math.max(0, YEARS.indexOf(year));
 

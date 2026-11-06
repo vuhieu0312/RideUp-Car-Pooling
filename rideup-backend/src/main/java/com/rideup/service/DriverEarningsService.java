@@ -23,10 +23,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 
-/**
- * Thống kê thu nhập tài xế từ các booking đã hoàn thành (tính theo ngày khởi hành).
- * Phí nền tảng chỉ áp dụng cho thanh toán Stripe; tiền mặt tài xế thu trực tiếp nên thực nhận = doanh thu.
- */
+// phí nền tảng chỉ tính cho Stripe, tiền mặt tài xế thu trực tiếp nên thực nhận = doanh thu
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
@@ -50,7 +47,6 @@ public class DriverEarningsService {
                         BigDecimal todayNet, BigDecimal monthNet,
                         List<Bucket> daily, List<Bucket> monthly, int feePercent) {}
 
-    /** Bộ cộng dồn doanh thu / phí của một ngày, một tháng hoặc toàn bộ. */
     private static final class Acc {
         BigDecimal gross = BigDecimal.ZERO;
         BigDecimal fee = BigDecimal.ZERO;
@@ -78,7 +74,7 @@ public class DriverEarningsService {
 
         for (Payment p : paymentRepository.findCompletedForStats(
                 driverUserId, BookingStatus.COMPLETED,
-                List.of(PaymentStatus.VOIDED, PaymentStatus.FAILED, PaymentStatus.REFUNDED),
+                List.of(PaymentStatus.VOIDED, PaymentStatus.VOID_FAILED, PaymentStatus.FAILED, PaymentStatus.REFUNDED),
                 thisMonth.minusMonths(MONTHS - 1).atDay(1).atStartOfDay())) {
             Booking b = p.getBooking();
             BigDecimal gross = p.getAmount() != null ? p.getAmount() : b.getTotalAmount();

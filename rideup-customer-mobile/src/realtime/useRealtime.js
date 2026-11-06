@@ -5,10 +5,7 @@ import { isRealtimeConnected, rtLog, subscribeEvents } from './realtime';
 const FALLBACK_POLL_MS = 30000;
 const DEBOUNCE_MS = 300;
 
-/**
- * Gọi onChange() khi server báo có thay đổi thuộc các `types`.
- * Khi mất kết nối realtime thì tự động quay về polling 30 giây (chỉ lúc app đang mở).
- */
+// mất realtime thì polling 30s (chỉ khi app đang mở)
 export function useRealtimeRefresh(onChange, types) {
   const cbRef = useRef(onChange);
   cbRef.current = onChange;
@@ -25,7 +22,7 @@ export function useRealtimeRefresh(onChange, types) {
     };
 
     const unsubscribe = subscribeEvents((event) => {
-      // Vừa nối lại thì tải bù những gì có thể đã lỡ
+      // vừa nối lại thì tải bù
       if (event.type === 'CONNECTED' || types.includes(event.type)) fire(event.type);
     });
 

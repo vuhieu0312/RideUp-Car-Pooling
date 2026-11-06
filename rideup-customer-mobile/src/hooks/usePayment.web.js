@@ -1,4 +1,3 @@
-// usePayment.web.js — Stub cho web.
 
 import { useCallback, useState } from 'react';
 import { useDialog } from '../components/AppDialog';

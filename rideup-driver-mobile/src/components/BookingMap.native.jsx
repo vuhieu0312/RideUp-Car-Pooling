@@ -3,13 +3,12 @@ import { StyleSheet, View } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import { colors } from '../theme';
 
-/** Bản đồ điểm đón/trả — iOS/Android: react-native-maps (giống app khách hàng). */
 export default function BookingMap({ pickup, dropoff, height = 170 }) {
   const mapRef = useRef(null);
   const points = [pickup, dropoff].filter(Boolean).map((p) => ({ latitude: p.lat, longitude: p.lng }));
   if (points.length === 0) return null;
 
-  // Zoom vừa khung cả điểm đón và điểm trả
+  // zoom vừa cả điểm đón và điểm trả
   function fit() {
     if (points.length === 1) return;
     mapRef.current?.fitToCoordinates(points, {

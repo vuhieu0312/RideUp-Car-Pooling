@@ -4,7 +4,6 @@ import * as Location from 'expo-location';
 import { colors } from '../theme';
 import { Text, TextInput } from './Typography';
 
-/** MapSection — WEB fallback. */
 export default function MapSection({
   region,
   onCoordChange,
@@ -21,7 +20,6 @@ export default function MapSection({
       const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
       onCoordChange(loc.coords.latitude, loc.coords.longitude);
     } catch {
-      // ignore
     }
   }
 

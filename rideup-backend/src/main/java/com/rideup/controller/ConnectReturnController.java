@@ -1,14 +1,10 @@
 package com.rideup.controller;
 
-import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * Trang hiện ra sau khi tài xế thiết lập xong (hoặc link hết hạn) trên Stripe.
- * Công khai (/public/**) vì trình duyệt không mang JWT. Chỉ là trang thông báo, không xử lý dữ liệu.
- */
+// công khai vì trình duyệt không gửi JWT
 @RestController
 @RequestMapping("/public/connect")
 public class ConnectReturnController {

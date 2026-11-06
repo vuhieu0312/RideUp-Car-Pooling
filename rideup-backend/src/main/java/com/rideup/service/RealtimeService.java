@@ -13,11 +13,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/**
- * Đẩy sự kiện realtime tới app qua WebSocket (STOMP) — kênh riêng của từng user: /user/queue/events.
- * Chỉ gửi thông tin nhỏ (loại sự kiện + id + trạng thái); app tự tải lại đúng dữ liệu cần.
- * Sự kiện chỉ được gửi sau khi transaction commit, và lỗi gửi không ảnh hưởng nghiệp vụ.
- */
+// chỉ gửi id nhỏ, app tự tải lại dữ liệu; gửi sau commit, lỗi gửi không ảnh hưởng nghiệp vụ
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -27,7 +23,6 @@ public class RealtimeService {
 
     private final SimpMessagingTemplate messagingTemplate;
 
-    /** Booking đổi trạng thái → báo cho khách đặt và tài xế của chuyến. */
     public void bookingChanged(Booking b) {
         if (b == null || b.getCustomer() == null || b.getTrip() == null) {
             return;
@@ -43,7 +38,6 @@ public class RealtimeService {
         }
     }
 
-    /** Chuyến thay đổi (vd. số ghế trống) → báo cho tài xế của chuyến. */
     public void tripChanged(Trip t) {
         if (t == null || t.getDriver() == null) {
             return;
@@ -54,7 +48,6 @@ public class RealtimeService {
         queue(t.getDriver().getId(), event);
     }
 
-    /** Admin duyệt/từ chối hồ sơ tài xế → báo cho chính tài xế đó. */
     public void driverProfileChanged(DriverProfile p) {
         if (p == null || p.getUser() == null) {
             return;
@@ -64,7 +57,6 @@ public class RealtimeService {
         queue(p.getUser().getId(), event);
     }
 
-    /** Admin duyệt/từ chối phương tiện → báo cho tài xế sở hữu xe. */
     public void vehicleChanged(String driverUserId) {
         queue(driverUserId, event("VEHICLE_UPDATED"));
     }
@@ -75,7 +67,6 @@ public class RealtimeService {
         return m;
     }
 
-    /** Gửi sau khi commit nếu đang trong transaction, ngược lại gửi ngay. */
     private void queue(String userId, Map<String, Object> event) {
         if (userId == null) {
             return;

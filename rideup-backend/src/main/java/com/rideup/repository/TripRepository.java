@@ -20,7 +20,7 @@ public interface TripRepository extends JpaRepository<Trip, String> {
     @EntityGraph(attributePaths = {"driver"})
     List<Trip> findByDriverIdAndStatusIn(String driverId, List<TripStatus> statuses);
 
-    List<Trip> findByStatusAndDepartureTimeBetween(TripStatus status, LocalDateTime from, LocalDateTime to);
+    List<Trip> findByStatusInAndDepartureTimeBefore(List<TripStatus> statuses, LocalDateTime deadline);
 
     @EntityGraph(attributePaths = {"driver"})
     @Query("""
@@ -42,16 +42,20 @@ public interface TripRepository extends JpaRepository<Trip, String> {
 
     @EntityGraph(attributePaths = {"driver"})
     @Query("""
-                SELECT DISTINCT t FROM Trip t
-                JOIN t.stops pickupStop
-                JOIN t.stops dropoffStop
+                SELECT t FROM Trip t
                 WHERE t.status = :status
                   AND t.startProvince.id = :startProvinceId
                   AND t.endProvince.id = :endProvinceId
-                  AND pickupStop.stopType = com.rideup.enums.StopType.PICKUP
-                  AND pickupStop.ward.id = :startWardId
-                  AND dropoffStop.stopType = com.rideup.enums.StopType.DROPOFF
-                  AND dropoffStop.ward.id = :endWardId
+                  AND (:startWardId IS NULL OR EXISTS (
+                        SELECT 1 FROM TripStop ps
+                        WHERE ps.trip = t
+                          AND ps.stopType = com.rideup.enums.StopType.PICKUP
+                          AND ps.ward.id = :startWardId))
+                  AND (:endWardId IS NULL OR EXISTS (
+                        SELECT 1 FROM TripStop ds
+                        WHERE ds.trip = t
+                          AND ds.stopType = com.rideup.enums.StopType.DROPOFF
+                          AND ds.ward.id = :endWardId))
                   AND t.departureTime BETWEEN :from AND :to
                 ORDER BY t.departureTime ASC
             """)

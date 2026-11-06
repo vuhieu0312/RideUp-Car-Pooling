@@ -6,6 +6,7 @@ import {
   confirmBooking,
   confirmCashReceived,
   listDriverBookings,
+  listMyConversations,
   rejectBooking,
 } from '../api/api';
 import { colors, shadow } from '../theme';
@@ -28,7 +29,7 @@ const STATUS_META = {
   EXPIRED: { icon: 'timer-sand', label: 'Hết hạn', bg: colors.dangerBg, fg: colors.dangerText },
 };
 
-// Nhóm booking theo việc tài xế cần làm. Thứ tự = thứ tự ưu tiên khi tự chọn tab.
+// nhóm theo việc tài xế cần làm, thứ tự cũng là ưu tiên khi tự chọn tab
 const FILTERS = [
   { key: 'PENDING', label: 'Chờ duyệt', statuses: ['WAITING_DRIVER_APPROVAL'], empty: 'Không có khách nào đang chờ bạn duyệt.' },
   { key: 'CONFIRMED', label: 'Đã nhận', statuses: ['CONFIRMED'], empty: 'Chưa có khách nào được duyệt.' },
@@ -44,20 +45,26 @@ const FILTERS = [
 
 export default function BookingsScreen({ navigation, route }) {
   const dialog = useDialog();
-  // Mở từ một chuyến: chỉ hiện booking của chuyến đó (vẫn chia theo nhóm như bình thường)
   const tripId = route?.params?.tripId || null;
   const insets = useSafeAreaInsets();
   const [bookings, setBookings] = useState([]);
+  const [conversationByBooking, setConversationByBooking] = useState({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState('PENDING');
   const [actionMsg, setActionMsg] = useState('');
-  const autoPicked = useRef(false); // chỉ tự chọn tab 1 lần sau lần tải đầu
+  const autoPicked = useRef(false);
 
   async function load() {
     try {
-      const all = await listDriverBookings();
+      const [all, conversations] = await Promise.all([
+        listDriverBookings(),
+        listMyConversations().catch(() => []),
+      ]);
       setBookings(all || []);
+      setConversationByBooking(Object.fromEntries(
+        conversations.map((conversation) => [conversation.bookingId, conversation]),
+      ));
     } catch (e) {
       setActionMsg(`${e.response?.data?.message || 'Lỗi tải booking'}`);
     } finally {
@@ -69,17 +76,14 @@ export default function BookingsScreen({ navigation, route }) {
   useEffect(() => { load(); }, []);
   useFocusEffect(useCallback(() => { load(); }, []));
 
-  // Có khách đặt / thanh toán / huỷ → tự tải lại
   useRealtimeRefresh(load, ['BOOKING_UPDATED']);
 
-  // Thông báo tự tắt sau 3 giây
   useEffect(() => {
     if (!actionMsg) return undefined;
     const timer = setTimeout(() => setActionMsg(''), 3000);
     return () => clearTimeout(timer);
   }, [actionMsg]);
 
-  // Phạm vi: toàn bộ booking của tài xế, hoặc chỉ của 1 chuyến
   const scoped = useMemo(
     () => (tripId ? bookings.filter((b) => b.tripId === tripId) : bookings),
     [bookings, tripId],
@@ -90,7 +94,6 @@ export default function BookingsScreen({ navigation, route }) {
   const activeFilter = FILTERS.find((f) => f.key === filter) || FILTERS[0];
   const visible = scoped.filter((b) => activeFilter.statuses.includes(b.status));
 
-  // Lần tải đầu: mở sẵn nhóm đầu tiên có booking (vd. chuyến đang chạy → "Đã nhận")
   useEffect(() => {
     if (loading || autoPicked.current) return;
     autoPicked.current = true;
@@ -195,6 +198,7 @@ export default function BookingsScreen({ navigation, route }) {
         }
         renderItem={({ item: b }) => {
           const meta = STATUS_META[b.status] || { label: b.status, bg: colors.pendingBg, fg: '#92400e' };
+          const conversation = conversationByBooking[b.id];
           const PAY_META = {
             PENDING: { icon: 'clock-outline', label: 'Chờ thanh toán' },
             HOLDING: { icon: 'lock-outline', label: 'Đã đặt cọc' },
@@ -240,6 +244,19 @@ export default function BookingsScreen({ navigation, route }) {
               {!!b.note && <IconText name="note-edit-outline" size={13} textStyle={styles.note}>{b.note}</IconText>}
 
               <View style={styles.actions}>
+                <TouchableOpacity
+                  style={[styles.btn, styles.btnChat, !conversation && styles.btnDisabled]}
+                  disabled={!conversation}
+                  onPress={() => navigation.navigate('Chat', {
+                    conversationId: conversation.conversationId,
+                    bookingId: b.id,
+                    name: b.userName,
+                  })}
+                >
+                  <IconText name="message-text-outline" size={14} center textStyle={styles.btnChatText}>
+                    {conversation ? 'Chat với khách' : 'Chat sau khi duyệt'}
+                  </IconText>
+                </TouchableOpacity>
                 {b.status === 'WAITING_DRIVER_APPROVAL' && (
                   <>
                     <TouchableOpacity style={[styles.btn, styles.btnDanger]} onPress={() => doReject(b)}>
@@ -269,7 +286,6 @@ export default function BookingsScreen({ navigation, route }) {
   );
 }
 
-// Tọa độ khách ghim khi đặt chuyến — hiển thị trên bản đồ ngay trong thẻ booking
 const hasPoint = (lat, lng) => lat != null && lng != null;
 
 const styles = StyleSheet.create({
@@ -313,4 +329,7 @@ const styles = StyleSheet.create({
   btnDangerText: { color: colors.danger, fontSize: 11, fontWeight: '700' },
   btnSecondary: { backgroundColor: '#fef3c7', borderWidth: 1, borderColor: '#fde68a' },
   btnSecondaryText: { color: '#92400e', fontSize: 11, fontWeight: '700' },
+  btnChat: { backgroundColor: colors.primaryLight, borderWidth: 1, borderColor: colors.primaryAccent },
+  btnChatText: { color: colors.primaryAccent, fontSize: 11, fontWeight: '700' },
+  btnDisabled: { opacity: 0.55 },
 });

@@ -64,7 +64,6 @@ export default function VehicleListScreen({ navigation }) {
                 </View>
                 <View style={{ flexDirection: 'row', gap: 16, marginTop: 8 }}>
                   <View><Text variant="bodySmall" style={{ color: '#6b7280' }}>Hạn ĐK</Text><Text style={{ fontWeight: '600' }}>{fmtDate(v.registrationExpiryDate)}</Text></View>
-                  <View><Text variant="bodySmall" style={{ color: '#6b7280' }}>Hạn BH</Text><Text style={{ fontWeight: '600' }}>{fmtDate(v.insuranceExpiryDate)}</Text></View>
                 </View>
                 {!!v.rejectionReason && (
                   <View style={{ backgroundColor: '#fee2e2', padding: 10, borderRadius: 6, marginTop: 8 }}>

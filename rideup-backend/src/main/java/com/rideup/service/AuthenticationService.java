@@ -34,7 +34,6 @@ import java.util.Base64;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -64,8 +63,7 @@ public class AuthenticationService {
             throw AppException.conflict("Phone already in use");
         }
 
-        // Endpoint /auth/register dành cho khách — role CUSTOMER hardcode, không cho phép
-        // đăng ký driver ở đây (driver phải dùng POST /driver/register riêng).
+        // đăng ký ở đây luôn là CUSTOMER, tài xế dùng POST /driver/register
         Role role = Role.CUSTOMER;
 
         User user = User.builder()
@@ -142,7 +140,7 @@ public class AuthenticationService {
         refreshTokenRepository.deleteByExpiryDateBefore(LocalDateTime.now());
     }
 
-    // package-private: DriverService cùng package gọi để cấp token sau khi tạo DriverProfile
+    // package-private, DriverService cùng package gọi để cấp token
     AuthResponse issueTokens(User user) {
         String accessToken = jwtService.generateAccessToken(user);
         String rawRefreshToken = UUID.randomUUID().toString();
@@ -176,10 +174,9 @@ public class AuthenticationService {
                 .gender(user.getGender())
                 .avatarUrl(user.getAvatarUrl())
                 .verified(user.getVerified())
-                .roles(user.getRoles())              // Set<Role> enum, không cần convert String
+                .roles(user.getRoles())
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
-                .lastLoginAt(user.getLastLoginAt())
                 .build())
             .build();
     }
