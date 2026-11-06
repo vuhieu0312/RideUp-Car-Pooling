@@ -4,12 +4,11 @@ import { colors, shadow } from '../theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Text } from './Typography';
 
-/** Date picker giống CustomerHomePage web */
 function pad(n) {
   return String(n).padStart(2, '0');
 }
 
-/** Ngày theo giờ máy (không dùng toISOString vì bị lệch UTC). */
+// ngày theo giờ máy, không dùng toISOString vì lệch UTC
 export function toIso(d) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
@@ -24,7 +23,6 @@ export function tomorrowIso() {
   return toIso(d);
 }
 
-/** minDate (YYYY-MM-DD): ngày sớm nhất được chọn. Không truyền thì không giới hạn (vd: ngày sinh). */
 export default function DateField({ value, onChange, minDate = '' }) {
   const [open, setOpen] = useState(false);
   const current = value ? new Date(`${value}T00:00:00`) : new Date();
@@ -32,10 +30,10 @@ export default function DateField({ value, onChange, minDate = '' }) {
   const [year, setYear] = useState(current.getFullYear());
 
   const days = new Date(year, month + 1, 0).getDate();
-  const firstDay = (new Date(year, month, 1).getDay() + 6) % 7; // Thứ 2 = 0
+  const firstDay = (new Date(year, month, 1).getDay() + 6) % 7;
   const monthLabel = new Intl.DateTimeFormat('vi-VN', { month: 'long', year: 'numeric' }).format(new Date(year, month, 1));
   const monthPrefix = `${year}-${pad(month + 1)}`;
-  const canGoPrev = monthPrefix > minDate.slice(0, 7); // không lùi về tháng đã qua
+  const canGoPrev = monthPrefix > minDate.slice(0, 7);
 
   function moveMonth(offset) {
     const next = new Date(year, month + offset, 1);

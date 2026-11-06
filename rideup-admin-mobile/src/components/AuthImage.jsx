@@ -4,10 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fileUrl } from '../api/api';
 import { Text } from './Typography';
 
-/**
- * Ảnh trong /uploads cần JWT nên phải gửi kèm header Authorization.
- * Bấm vào ảnh để xem phóng to toàn màn hình.
- */
+// ảnh /uploads cần JWT nên gửi kèm header, bấm vào để xem toàn màn hình
 export default function AuthImage({ path, label }) {
   const [token, setToken] = useState(null);
   const [zoom, setZoom] = useState(false);

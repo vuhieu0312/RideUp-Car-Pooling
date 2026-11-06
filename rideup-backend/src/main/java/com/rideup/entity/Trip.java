@@ -43,10 +43,6 @@ public class Trip {
     @JoinColumn(name = "end_province_id", nullable = false)
     Province endProvince;
 
-    /** Tọa độ GPS điểm đón (lấy từ ward đầu tiên của pickupWardIds, hoặc driver nhập). */
-    Double pickupLat;
-    Double pickupLng;
-
     @Column(nullable = false)
     LocalDateTime departureTime;
 
@@ -81,7 +77,6 @@ public class Trip {
     @Builder.Default
     List<TripStop> stops = new ArrayList<>();
 
-    /** Helper: thêm 1 pickup/dropoff stop và set back-reference. */
     public void addStop(TripStop stop) {
         if (stops == null) stops = new ArrayList<>();
         stops.add(stop);

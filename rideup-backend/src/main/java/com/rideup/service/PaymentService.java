@@ -13,15 +13,18 @@ import com.rideup.exception.ErrorCode;
 import com.rideup.repository.BookingRepository;
 import com.rideup.repository.PaymentRepository;
 import com.stripe.Stripe;
+import com.stripe.exception.EventDataObjectDeserializationException;
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.exception.StripeException;
+import com.stripe.model.Charge;
 import com.stripe.model.Event;
+import com.stripe.model.EventDataObjectDeserializer;
 import com.stripe.model.PaymentIntent;
+import com.stripe.model.StripeObject;
 import com.stripe.model.checkout.Session;
 import com.stripe.net.RequestOptions;
 import com.stripe.net.Webhook;
 import com.stripe.param.PaymentIntentCreateParams;
-import com.stripe.param.checkout.SessionCreateParams;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -29,15 +32,17 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.concurrent.CompletableFuture;
 import java.time.LocalDateTime;
 import java.util.Map;
 
-/** Nghiệp vụ thanh toán Stripe cho booking fare (Phase A). */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -49,21 +54,22 @@ public class PaymentService {
     final RedisTemplate<String, Object> redisTemplate;
     final RealtimeService realtimeService;
     final StripeConnectService stripeConnectService;
+    final PlatformTransactionManager transactionManager;
 
     @Value("${stripe.currency-code:vnd}")
     String currencyCode;
 
-    /** Webhook signing secret — set qua env STRIPE_WEBHOOK_SECRET (whsec_...). */
     @Value("${stripe.webhook-secret:}")
     String webhookSecret;
+
+    @Value("${stripe.allow-unsigned-webhook:false}")
+    boolean allowUnsignedWebhook;
 
     public boolean isStripeConfigured() {
         return Stripe.apiKey != null && !Stripe.apiKey.isBlank();
     }
 
-    // Booking payment
 
-    /** Tạo Stripe PaymentIntent (manual capture) cho booking fare. */
     @Transactional
     public void createPaymentIntent(Payment payment, Booking booking) {
         log.info("[DEBUG] createPaymentIntent called for booking={} method={} stripeConfigured={}",
@@ -83,7 +89,7 @@ public class PaymentService {
                 .putMetadata("bookingCode", booking.getBookingCode())
                 .putMetadata("customerId", booking.getCustomer().getId())
                 .build();
-            // Idempotency key dựa trên paymentId — nếu client retry sẽ KHÔNG tạo PI mới
+            // idempotency key theo paymentId, client retry sẽ không tạo PI mới
             RequestOptions options = RequestOptions.builder()
                 .setIdempotencyKey("pi-create-" + payment.getId())
                 .build();
@@ -100,7 +106,7 @@ public class PaymentService {
         }
     }
 
-    /** Payment phải thuộc booking của chính user này, nếu không trả 404 để không lộ thông tin. */
+    // payment phải thuộc booking của user này, không thì trả 404 để không lộ thông tin
     private Payment requireOwnPayment(String paymentId, String userId) {
         Payment payment = paymentRepository.findById(paymentId)
             .orElseThrow(() -> new AppException(ErrorCode.PAYMENT_NOT_FOUND));
@@ -112,21 +118,18 @@ public class PaymentService {
         return payment;
     }
 
-    /** Authorize có kiểm tra quyền sở hữu — dùng cho API mobile gọi. */
     @Transactional
     public Payment authorizePayment(String paymentId, String transactionId, String userId) {
         requireOwnPayment(paymentId, userId);
         return authorizePayment(paymentId, transactionId);
     }
 
-    /** Đánh dấu thất bại có kiểm tra quyền sở hữu — dùng cho API mobile gọi. */
     @Transactional
     public Payment markPaymentFailed(String paymentId, String reason, String userId) {
         requireOwnPayment(paymentId, userId);
         return markPaymentFailed(paymentId, reason);
     }
 
-    /** Mobile-driven authorize — mobile gọi SAU khi presentPaymentSheet() trả paymentIntent success. */
     @Transactional
     public Payment authorizePayment(String paymentId, String transactionId) {
         Payment payment = paymentRepository.findById(paymentId)
@@ -157,7 +160,7 @@ public class PaymentService {
                     paymentId, transactionId, intent.getStatus());
                 throw new AppException(ErrorCode.PAYMENT_STATUS_INVALID);
             }
-            // PaymentIntent phải đúng là cái đã tạo cho payment này và đủ số tiền
+            // PI phải đúng cái đã tạo cho payment này và đủ tiền
             boolean sameIntent = payment.getTransactionId() == null
                 || payment.getTransactionId().equals(transactionId);
             boolean samePayment = paymentId.equals(intent.getMetadata().get("paymentId"));
@@ -178,7 +181,7 @@ public class PaymentService {
         payment.setFailureReason(null);
         payment = paymentRepository.save(payment);
 
-        // Flip Booking NGAY ở đây, giống hệt handleAmountCapturableUpdated() (webhook).
+        // đổi trạng thái booking luôn ở đây, giống webhook handleAmountCapturableUpdated
         Booking booking = payment.getBooking();
         if (booking != null && booking.getStatus() == BookingStatus.PENDING_PAYMENT) {
             booking.setStatus(BookingStatus.WAITING_DRIVER_APPROVAL);
@@ -191,7 +194,6 @@ public class PaymentService {
         return payment;
     }
 
-    /** Mark payment FAILED — gọi từ webhook payment_intent.payment_failed hoặc admin. */
     @Transactional
     public Payment markPaymentFailed(String paymentId, String reason) {
         Payment payment = paymentRepository.findById(paymentId)
@@ -211,8 +213,7 @@ public class PaymentService {
         return paymentRepository.save(payment);
     }
 
-    /** Capture Stripe PaymentIntent (manual → automatic) sau khi trip hoàn thành. */
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void capturePayment(String bookingId) {
         Payment payment = paymentRepository.findByBookingId(bookingId)
             .orElseThrow(() -> new AppException(ErrorCode.PAYMENT_NOT_FOUND));
@@ -230,8 +231,7 @@ public class PaymentService {
             payment.setPaidAt(LocalDateTime.now());
             paymentRepository.save(payment);
             log.info("Payment {} captured → PAID for booking={}", payment.getId(), bookingId);
-            // Chuyển phần của tài xế (sau hoa hồng) sang tài khoản Stripe Connect của họ.
-            // Chưa thiết lập tài khoản hoặc Stripe lỗi thì không sao: sẽ chuyển bù khi tài xế mở màn Ví.
+            // chuyển phần của tài xế sang Stripe Connect, lỗi thì chuyển bù khi tài xế mở màn Ví
             stripeConnectService.transferAfterCapture(payment);
         } catch (StripeException e) {
             log.error("Stripe capture failed for booking {}: {}", bookingId, e.getMessage());
@@ -241,7 +241,6 @@ public class PaymentService {
         }
     }
 
-    /** Cancel Stripe PaymentIntent — gọi khi driver reject / customer cancel / scheduler expire. */
     @Transactional
     public void cancelPayment(String bookingId) {
         Payment payment = paymentRepository.findByBookingId(bookingId).orElse(null);
@@ -260,8 +259,7 @@ public class PaymentService {
             return;
         }
 
-        // Gọi Stripe mất vài giây nên làm SAU khi commit và ở luồng riêng,
-        // để API huỷ trả về nhanh và các sự kiện realtime không bị chậm theo.
+        // gọi Stripe mất vài giây nên chạy sau commit ở luồng riêng cho API trả nhanh
         String tid = payment.getTransactionId();
         if (tid != null && !tid.isBlank()) {
             cancelStripeAfterCommit(tid, bookingId);
@@ -271,7 +269,6 @@ public class PaymentService {
         log.info("Payment {} VOIDED for booking={}", payment.getId(), bookingId);
     }
 
-    /** Huỷ Stripe hold sau khi transaction commit, chạy ở luồng riêng. Lỗi chỉ ghi log (bản ghi local vẫn là VOIDED). */
     private void cancelStripeAfterCommit(String tid, String bookingId) {
         Runnable job = () -> CompletableFuture.runAsync(() -> cancelStripe(tid, bookingId));
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
@@ -295,17 +292,32 @@ public class PaymentService {
                 }
             } else if (tid.startsWith("pi_")) {
                 PaymentIntent intent = PaymentIntent.retrieve(tid);
-                intent.cancel();
+                if (!"canceled".equals(intent.getStatus())) {
+                    intent.cancel();
+                }
             }
         } catch (StripeException e) {
-            log.warn("Stripe cancel failed for booking {} (local payment already VOIDED): {}",
-                bookingId, e.getMessage());
+            log.warn("Stripe cancel failed for booking {}: {}", bookingId, e.getMessage());
+            markVoidFailed(bookingId, e.getMessage());
         }
     }
 
-    /**
-     * Lookup payment theo booking id — dùng cho GET /payments/booking/{bookingId}.
-     */
+    private void markVoidFailed(String bookingId, String stripeError) {
+        try {
+            new TransactionTemplate(transactionManager).executeWithoutResult(tx ->
+                paymentRepository.findByBookingId(bookingId).ifPresent(p -> {
+                    if (p.getStatus() != PaymentStatus.VOIDED) return;
+                    String reason = "Hủy giữ tiền Stripe thất bại: " + stripeError;
+                    p.setStatus(PaymentStatus.VOID_FAILED);
+                    p.setFailureReason(reason.length() > 500 ? reason.substring(0, 500) : reason);
+                    paymentRepository.save(p);
+                    realtimeService.bookingChanged(p.getBooking());
+                }));
+        } catch (RuntimeException ex) {
+            log.error("Could not mark payment VOID_FAILED for booking {}: {}", bookingId, ex.getMessage());
+        }
+    }
+
     @Transactional(readOnly = true)
     public Payment getPaymentByBookingId(String bookingId, String userId) {
         Booking booking = bookingRepository.findById(bookingId)
@@ -320,9 +332,7 @@ public class PaymentService {
             .orElseThrow(() -> new AppException(ErrorCode.PAYMENT_NOT_FOUND));
     }
 
-    // Create PaymentIntent on demand (mobile gọi khi user bấm "Thanh toán ngay")
 
-    /** Tạo Stripe PaymentIntent cho booking đã tồn tại. */
     @Transactional
     public Map<String, String> createPaymentIntentForBooking(String bookingId, String userId) {
         Booking booking = bookingRepository.findById(bookingId)
@@ -330,7 +340,7 @@ public class PaymentService {
 
         User customer = booking.getCustomer();
         if (customer == null || !customer.getId().equals(userId)) {
-            throw new AppException(ErrorCode.BOOKING_NOT_FOUND);  // join return 404 để không lộ thông tin
+            throw new AppException(ErrorCode.BOOKING_NOT_FOUND);  // 404 để không lộ thông tin
         }
 
         Payment payment = paymentRepository.findByBookingId(bookingId)
@@ -340,7 +350,7 @@ public class PaymentService {
             throw new AppException(ErrorCode.PAYMENT_STATUS_INVALID);
         }
         if (payment.getStatus() != PaymentStatus.PENDING) {
-            // Đã thanh toán / huỷ / expire → không cho phép tạo PI mới
+            // đã thanh toán/huỷ/hết hạn thì không tạo PI mới
             throw new AppException(ErrorCode.PAYMENT_STATUS_INVALID);
         }
 
@@ -348,8 +358,7 @@ public class PaymentService {
             throw new AppException(ErrorCode.STRIPE_NOT_CONFIGURED);
         }
 
-        // Payment đã được tạo PaymentIntent sẵn tại thời điểm tạo booking (xem BookingService#createBookingInternal → PaymentService#createPaymentIntent).
-        // Không lưu client_secret trong DB nữa → lấy lại từ Stripe theo PI id.
+        // PI đã tạo lúc đặt chỗ, client_secret không lưu DB nên lấy lại từ Stripe
         if (payment.getTransactionId() != null) {
             try {
                 PaymentIntent existing = PaymentIntent.retrieve(payment.getTransactionId());
@@ -398,14 +407,15 @@ public class PaymentService {
         }
     }
 
-    // Stripe webhook handler
 
-    /** Xử lý Stripe webhook event. */
+    @Transactional
     public void handleWebhookEvent(String payload, String signatureHeader) {
         if (webhookSecret == null || webhookSecret.isBlank()) {
-            log.warn("Webhook secret chưa config (STRIPE_WEBHOOK_SECRET). "
-                + "Bỏ qua verify — chỉ dùng cho local dev.");
-            // Trong production nên throw. Để dev pass-through, ta vẫn parse event nhưng không verify signature.
+            if (!allowUnsignedWebhook) {
+                log.error("Từ chối webhook: chưa cấu hình STRIPE_WEBHOOK_SECRET");
+                throw new AppException(ErrorCode.STRIPE_PAYMENT_FAILED);
+            }
+            log.warn("Webhook không verify chữ ký (STRIPE_ALLOW_UNSIGNED_WEBHOOK=true), chỉ dùng cho local dev.");
         }
 
         Event event;
@@ -413,7 +423,7 @@ public class PaymentService {
             if (webhookSecret != null && !webhookSecret.isBlank()) {
                 event = Webhook.constructEvent(payload, signatureHeader, webhookSecret);
             } else {
-                // Dev fallback: parse không đọc signature (chỉ dùng với stripe listen local)
+                // dev: parse không verify chữ ký (chỉ dùng với stripe listen local)
                 event = Event.GSON.fromJson(payload, Event.class);
             }
         } catch (SignatureVerificationException e) {
@@ -424,7 +434,7 @@ public class PaymentService {
             throw new AppException(ErrorCode.STRIPE_PAYMENT_FAILED);
         }
 
-        // Idempotency: đánh dấu event đã xử lý trong Redis (SET NX + TTL), chạy được cả khi restart/nhiều instance
+        // idempotency: đánh dấu event đã xử lý trong Redis (SET NX + TTL)
         String eventId = event.getId();
         String eventKey = RedisKey.STRIPE_EVENT + eventId;
         if (eventId != null) {
@@ -440,7 +450,7 @@ public class PaymentService {
         try {
             dispatchEvent(event);
         } catch (RuntimeException e) {
-            // Xử lý lỗi thì bỏ đánh dấu để Stripe gửi lại còn xử lý được
+            // lỗi thì bỏ đánh dấu để Stripe gửi lại
             if (eventId != null) {
                 redisTemplate.delete(eventKey);
             }
@@ -460,6 +470,12 @@ public class PaymentService {
             case "payment_intent.payment_failed":
                 handlePaymentIntentFailed(event);
                 break;
+            case "payment_intent.canceled":
+                handlePaymentIntentCanceled(event);
+                break;
+            case "charge.expired":
+                handleChargeExpired(event);
+                break;
             default:
                 log.debug("Unhandled webhook event type: {}", type);
         }
@@ -467,7 +483,7 @@ public class PaymentService {
 
     @Transactional
     protected void handleAmountCapturableUpdated(Event event) {
-        PaymentIntent intent = (PaymentIntent) event.getData().getObject();
+        PaymentIntent intent = (PaymentIntent) eventObject(event);
         String paymentId = intent.getMetadata().get("paymentId");
         if (paymentId == null) {
             log.warn("Webhook amount_capturable_updated missing paymentId metadata");
@@ -482,7 +498,6 @@ public class PaymentService {
         payment.setStatus(PaymentStatus.HOLDING);
         paymentRepository.save(payment);
 
-        // Booking flip sang WAITING_DRIVER_APPROVAL
         Booking booking = payment.getBooking();
         if (booking != null && booking.getStatus() == BookingStatus.PENDING_PAYMENT) {
             booking.setStatus(BookingStatus.WAITING_DRIVER_APPROVAL);
@@ -495,7 +510,7 @@ public class PaymentService {
 
     @Transactional
     protected void handlePaymentIntentSucceeded(Event event) {
-        PaymentIntent intent = (PaymentIntent) event.getData().getObject();
+        PaymentIntent intent = (PaymentIntent) eventObject(event);
         String paymentId = intent.getMetadata().get("paymentId");
         if (paymentId == null) {
             log.warn("Webhook succeeded missing paymentId metadata");
@@ -511,7 +526,6 @@ public class PaymentService {
         payment.setPaidAt(LocalDateTime.now());
         paymentRepository.save(payment);
 
-        // Booking flip sang COMPLETED
         Booking booking = payment.getBooking();
         if (booking != null) {
             if (booking.getStatus() == BookingStatus.CONFIRMED) {
@@ -525,7 +539,7 @@ public class PaymentService {
 
     @Transactional
     protected void handlePaymentIntentFailed(Event event) {
-        PaymentIntent intent = (PaymentIntent) event.getData().getObject();
+        PaymentIntent intent = (PaymentIntent) eventObject(event);
         String paymentId = intent.getMetadata().get("paymentId");
         if (paymentId == null) {
             log.warn("Webhook payment_failed missing paymentId metadata");
@@ -546,13 +560,61 @@ public class PaymentService {
 
         Booking booking = payment.getBooking();
         if (booking != null) {
-            // Booking giữ nguyên status — admin xử lý refund/retry; chỉ báo app tải lại trạng thái thanh toán
+            // giữ nguyên status booking, admin xử lý; chỉ báo app tải lại trạng thái thanh toán
             realtimeService.bookingChanged(booking);
         }
         log.info("Webhook: payment {} → FAILED ({})", paymentId, reason);
     }
 
-    // Wallet/Deposit — Phase B shell (cần DriverProfile.systemDebt)
+    protected void handlePaymentIntentCanceled(Event event) {
+        PaymentIntent intent = (PaymentIntent) eventObject(event);
+        String paymentId = intent.getMetadata() != null ? intent.getMetadata().get("paymentId") : null;
+        Payment payment = paymentId != null
+            ? paymentRepository.findById(paymentId).orElse(null)
+            : paymentRepository.findByTransactionId(intent.getId()).orElse(null);
+        markVoidedByStripe(payment, "payment_intent.canceled");
+    }
+
+    protected void handleChargeExpired(Event event) {
+        if (!(eventObject(event) instanceof Charge charge) || charge.getPaymentIntent() == null) {
+            log.warn("Webhook charge.expired missing payment_intent");
+            return;
+        }
+        Payment payment = paymentRepository.findByTransactionId(charge.getPaymentIntent()).orElse(null);
+        markVoidedByStripe(payment, "charge.expired");
+    }
+
+    private StripeObject eventObject(Event event) {
+        EventDataObjectDeserializer deserializer = event.getDataObjectDeserializer();
+        return deserializer.getObject().orElseGet(() -> {
+            try {
+                return deserializer.deserializeUnsafe();
+            } catch (EventDataObjectDeserializationException e) {
+                throw new IllegalStateException("Cannot deserialize Stripe event " + event.getId(), e);
+            }
+        });
+    }
+
+    private void markVoidedByStripe(Payment payment, String source) {
+        if (payment == null) return;
+        PaymentStatus current = payment.getStatus();
+        if (current != PaymentStatus.HOLDING
+            && current != PaymentStatus.PENDING
+            && current != PaymentStatus.VOID_FAILED) {
+            log.debug("Payment {} status={}, skip {}", payment.getId(), current, source);
+            return;
+        }
+        payment.setStatus(PaymentStatus.VOIDED);
+        paymentRepository.save(payment);
+
+        Booking booking = payment.getBooking();
+        if (booking != null) {
+            realtimeService.bookingChanged(booking);
+        }
+        log.info("Webhook {}: payment {} {} → {}", source, payment.getId(), current, PaymentStatus.VOIDED);
+    }
+
+    // Phase B, chưa làm
 
     public Payment depositWallet() {
         throw new AppException(ErrorCode.DEPOSIT_NOT_ALLOWED);

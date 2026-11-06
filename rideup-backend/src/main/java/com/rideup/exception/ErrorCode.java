@@ -3,7 +3,6 @@ package com.rideup.exception;
 import lombok.Getter;
 import org.springframework.http.HttpStatus;
 
-/** Mã lỗi chuẩn của hệ thống. */
 @Getter
 public enum ErrorCode {
     UNCATEGORIZED_EXCEPTION        (9999, "Lỗi không xác định",                HttpStatus.INTERNAL_SERVER_ERROR),

@@ -6,16 +6,13 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Avatar, Button, IconButton, Snackbar } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../auth/AuthContext';
-import { getMyProfile, uploadAvatar } from '../api/api';
+import { getMyProfile, resolveMediaUrl, uploadAvatar } from '../api/api';
 import { colors } from '../theme';
 import { Text } from '../components/Typography';
 import { useDialog } from '../components/AppDialog';
 
 const GENDER_LABEL = { MALE: 'Nam', FEMALE: 'Nữ', OTHER: 'Khác' };
 
-/**
- * Trang tài khoản — xem thông tin, đổi avatar, vào màn sửa / đổi mật khẩu, đăng xuất.
- */
 export default function AccountScreen({ navigation }) {
   const dialog = useDialog();
   const { user, doLogout, updateUser } = useAuth();
@@ -25,8 +22,7 @@ export default function AccountScreen({ navigation }) {
   const [uploading, setUploading] = useState(false);
   const [snack, setSnack] = useState('');
 
-  // Tải lại mỗi lần màn hình được mở lại (vd. quay về từ màn sửa thông tin) để không hiện dữ liệu cũ.
-  // Chỉ set state local — KHÔNG gọi updateUser ở đây vì sẽ trigger re-render toàn bộ AuthProvider → React Navigation reset tab state → giật về Home.
+  // chỉ set state local, không gọi updateUser vì sẽ re-render AuthProvider làm navigation reset về Home
   useFocusEffect(
     useCallback(() => {
       getMyProfile()
@@ -71,9 +67,7 @@ export default function AccountScreen({ navigation }) {
     .toUpperCase();
 
   const avatarUrl = profile?.avatarUrl
-    ? (profile.avatarUrl.startsWith('http')
-        ? profile.avatarUrl
-        : `http://localhost:8080${profile.avatarUrl}`)
+    ? resolveMediaUrl(profile.avatarUrl)
     : null;
 
   return (

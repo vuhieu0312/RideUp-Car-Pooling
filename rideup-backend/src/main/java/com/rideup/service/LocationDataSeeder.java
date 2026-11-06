@@ -25,13 +25,8 @@ import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 
 @Service
@@ -276,7 +271,7 @@ public class LocationDataSeeder {
         List<Ward> wards = elements.stream()
                 .filter(el -> el.get("tags") != null && el.get("center") != null)
                 .filter(el -> {
-                    // Bỏ qua ward đã tồn tại (idempotent)
+                    // bỏ qua ward đã có
                     Long osmId = toLong(el.get("id"));
                     return osmId == null || !wardRepository.existsByOsmId(osmId);
                 })
@@ -289,11 +284,9 @@ public class LocationDataSeeder {
                     String name = tags.containsKey("name:vi")
                             ? (String) tags.get("name:vi")
                             : (String) tags.get("name");
-                    String displayName = (String) tags.getOrDefault("name", name);
 
                     return Ward.builder()
                             .name(name)
-                            .displayName(displayName)
                             .osmId(toLong(el.get("id")))
                             .lat(toBigDecimal(center.get("lat")))
                             .lng(toBigDecimal(center.get("lon")))

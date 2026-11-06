@@ -4,7 +4,6 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors, typography } from '../theme';
 import { Text, TextInput } from './Typography';
 
-/** Dropdown chọn nhiều xã/phường với search. */
 export default function WardMultiPicker({
   label,
   wards,
@@ -17,7 +16,6 @@ export default function WardMultiPicker({
   const [open, setOpen] = useState(false);
   const [keyword, setKeyword] = useState('');
 
-  // Reset keyword khi đóng modal
   useEffect(() => {
     if (!open) setKeyword('');
   }, [open]);
@@ -25,7 +23,7 @@ export default function WardMultiPicker({
   const filtered = useMemo(() => {
     const k = keyword.trim().toLowerCase();
     const matched = k ? wards.filter((w) => w.name.toLowerCase().includes(k)) : wards;
-    // Đã chọn lên đầu, giữ nguyên thứ tự tương đối của từng nhóm
+    // ward đã chọn lên đầu
     return [
       ...matched.filter((w) => selectedIds.includes(w.id)),
       ...matched.filter((w) => !selectedIds.includes(w.id)),

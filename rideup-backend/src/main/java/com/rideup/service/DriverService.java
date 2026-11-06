@@ -22,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.Collections;
 
 @Service
@@ -42,18 +41,16 @@ public class DriverService {
             MultipartFile cccdImageBack,
             MultipartFile gplxImage) {
 
-        // 1. Validate trùng trước khi upload file (tránh tốn disk nếu invalid)
+        // kiểm tra trùng trước khi upload file để đỡ tốn disk
         ensureEmailAvailable(data.getEmail());
         ensurePhoneAvailable(data.getPhone());
         ensureCccdAvailable(data.getCccd());
         ensureGplxAvailable(data.getGplx());
 
-        // 2. Upload 3 file
         String cccdFrontUrl = fileService.upload(cccdImageFront, "cccd-front");
         String cccdBackUrl = fileService.upload(cccdImageBack, "cccd-back");
         String gplxUrl = fileService.upload(gplxImage, "gplx");
 
-        // 3. Tạo User + DriverProfile
         return persistAndIssue(data, cccdFrontUrl, cccdBackUrl, gplxUrl);
     }
 
@@ -90,7 +87,6 @@ public class DriverService {
         log.info("Driver registered userId={}, driverProfileId={}, cccd={}",
                 user.getId(), profile.getId(), profile.getCccd());
 
-        // Cấp token + gắn driver summary để frontend route đúng
         AuthResponse resp = authenticationService.issueTokens(user);
         resp.getUser().setDriver(DriverSummary.builder()
                 .id(profile.getId())
@@ -126,7 +122,6 @@ public class DriverService {
         }
     }
 
-    /** Trả về toàn bộ DriverProfile của user hiện tại (kèm status duyệt). */
     @Transactional(readOnly = true)
     public DriverResponse getMyProfile(String userId) {
         DriverProfile profile = requireDriverProfile(userId);
@@ -156,7 +151,6 @@ public class DriverService {
                 .build();
     }
 
-    /** Endpoint nhẹ cho driver app poll trạng thái duyệt. */
     public DriverStatusResponse getMyStatus(String userId) {
         DriverProfile profile = requireDriverProfile(userId);
 
@@ -176,7 +170,6 @@ public class DriverService {
                 .build();
     }
 
-    /** Helper cho mọi endpoint driver-only (POST /trips, POST /vehicles, accept booking). */
     public DriverProfile requireApprovedDriver(String userId) {
         DriverProfile profile = driverProfileRepository.findByUserId(userId)
                 .orElseThrow(() -> AppException.forbidden("Tài khoản chưa đăng ký hồ sơ tài xế"));

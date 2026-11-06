@@ -2,7 +2,6 @@ import { StyleSheet, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Text } from './Typography';
 
-/** Icon + chữ trên một dòng (thay emoji). */
 const MARGIN_KEYS = ['margin', 'marginTop', 'marginBottom', 'marginLeft', 'marginRight', 'marginVertical', 'marginHorizontal'];
 
 export default function IconText({

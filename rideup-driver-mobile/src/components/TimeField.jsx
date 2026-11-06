@@ -4,7 +4,6 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors, shadow } from '../theme';
 import { Text } from './Typography';
 
-/** Time picker — 2 cột cuộn: Giờ (00-23) và Phút (00-59). */
 const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
 const MINUTES = Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0')); // bước 5 phút
 
@@ -15,7 +14,6 @@ export default function TimeField({ value, onChange, placeholder = 'Chọn giờ
   const [tempM, setTempM] = useState(m || '00');
 
   function openModal() {
-    // Reset temp về giá trị hiện tại (hoặc mặc định) mỗi lần mở
     setTempH(h || '08');
     setTempM(m || '00');
     setOpen(true);

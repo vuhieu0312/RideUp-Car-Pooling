@@ -3,7 +3,6 @@ package com.rideup.service;
 import com.rideup.exception.AppException;
 import com.rideup.dto.request.CreateReviewRequest;
 import com.rideup.dto.response.ReviewResponse;
-import com.rideup.entity.Booking;
 import com.rideup.entity.DriverProfile;
 import com.rideup.entity.Review;
 import com.rideup.entity.Trip;
@@ -26,7 +25,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
 
-/** Đánh giá tài xế sau chuyến đi. */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -76,8 +74,7 @@ public class ReviewService {
             .build();
         review = reviewRepository.saveAndFlush(review);
 
-        // Cập nhật driver rating: newAvg = (oldAvg * count + newRating) / (count + 1)
-        // Điểm trung bình tính lại từ toàn bộ review của tài xế (đã gồm review vừa lưu)
+        // tính lại điểm trung bình từ toàn bộ review của tài xế (đã gồm review vừa lưu)
         Double avg = reviewRepository.avgRatingByDriverId(driver.getId());
         BigDecimal newAvg = BigDecimal.valueOf(avg == null ? req.getRating() : avg)
             .setScale(2, RoundingMode.HALF_UP);
@@ -89,13 +86,6 @@ public class ReviewService {
             review.getId(), tripId, driver.getId(), req.getRating(), newAvg);
 
         return toResponse(review);
-    }
-
-    @Transactional(readOnly = true)
-    public List<ReviewResponse> listDriverReviews(String driverId) {
-        return reviewRepository.findByDriverIdOrderByCreatedAtDesc(driverId).stream()
-            .map(this::toResponse)
-            .toList();
     }
 
     private ReviewResponse toResponse(Review r) {

@@ -13,12 +13,11 @@ import { paperTheme } from './src/theme';
 import AppNavigator from './src/navigation/AppNavigator';
 import GlobalStyles from './GlobalStyles';
 
-// Set document.title mặc định trên web — tránh tab "undefined" ở frame đầu.
+// tránh tab web hiện "undefined" ở frame đầu
 if (Platform.OS === 'web' && typeof document !== 'undefined') {
   document.title = 'RideUp Admin';
 }
 
-/** Root component. */
 export default function App() {
   const [fontsLoaded] = useFonts({
     Inter_400Regular,

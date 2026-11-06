@@ -10,11 +10,7 @@ import lombok.experimental.FieldDefaults;
 
 import java.time.LocalDate;
 
-/**
- * Body cho PATCH /users/me — user tự sửa thông tin cá nhân.
- * Email không có ở đây vì là login key, không cho đổi qua endpoint này.
- * Field nào null sẽ được giữ nguyên (partial update).
- */
+// không cho đổi email ở đây, field null thì giữ nguyên
 @Data
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class UpdateProfileRequest {

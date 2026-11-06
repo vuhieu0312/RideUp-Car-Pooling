@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Button, HelperText, IconButton, SegmentedButtons, TextInput } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../auth/AuthContext';
@@ -15,7 +14,6 @@ const GENDERS = [
   { value: 'OTHER', label: 'Khác', icon: 'account-question-outline' },
 ];
 
-/** Màn sửa thông tin cá nhân — cho phép đổi họ tên, SĐT, ngày sinh, giới tính. */
 export default function EditProfileScreen({ navigation }) {
   const { user, updateUser } = useAuth();
   const insets = useSafeAreaInsets();

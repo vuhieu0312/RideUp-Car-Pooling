@@ -12,7 +12,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Refund skeleton cho Phase B. */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -21,7 +20,6 @@ public class RefundService {
 
     PaymentRepository paymentRepository;
 
-    /** Hoàn tiền cho booking đã thanh toán (status PAID). */
     @Transactional
     public Payment refundPayment(String bookingId, String reason) {
         Payment payment = paymentRepository.findByBookingId(bookingId)
@@ -31,8 +29,7 @@ public class RefundService {
             throw new AppException(ErrorCode.PAYMENT_STATUS_INVALID);
         }
 
-        // TODO Phase B: gọi Stripe Refund.create() với payment.transactionId
-        // và insert record vào com.rideup.entity.Refund (đã có sẵn).
+        // TODO: gọi Stripe Refund.create() rồi lưu vào Refund
 
         payment.setStatus(PaymentStatus.REFUNDED);
         payment.setFailureReason(reason);

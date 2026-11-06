@@ -41,20 +41,13 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 
-/**
- * Stripe Connect cho tài xế (môi trường test):
- *  - Tài xế thiết lập tài khoản nhận tiền (Express) và thêm thẻ / ngân hàng trên trang của Stripe.
- *  - Khi chuyến hoàn thành và tiền khách đã thu (capture), chuyển phần của tài xế (sau hoa hồng) sang tài khoản đó.
- *  - Tài xế xem số dư và rút về thẻ / ngân hàng.
- * Số tiền luôn tính ở server từ giao dịch thật của Stripe, không nhận từ client.
- */
+// số tiền luôn tính ở server từ giao dịch thật của Stripe, không nhận từ client
 @Service
 @RequiredArgsConstructor
 @Slf4j
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class StripeConnectService {
 
-    /** Tiền tệ Stripe tính không có phần lẻ. */
     private static final Set<String> ZERO_DECIMAL = Set.of(
         "bif", "clp", "djf", "gnf", "jpy", "kmf", "krw", "mga", "pyg", "rwf", "ugx", "vnd", "vuv", "xaf", "xof", "xpf");
 
@@ -71,7 +64,6 @@ public class StripeConnectService {
     @Value("${stripe.connect.return-base-url:}")
     String returnBaseUrl;
 
-    // ===== DTO trả về app (amount tính theo đơn vị nhỏ nhất của Stripe, exponent = số chữ số thập phân) =====
 
     public record Money(long amount, String currency, int exponent) {}
 
@@ -88,9 +80,7 @@ public class StripeConnectService {
 
     public record OnboardingLink(String url) {}
 
-    // ===== Thiết lập tài khoản nhận tiền =====
 
-    /** Tạo (nếu chưa có) tài khoản Express của tài xế và trả link thiết lập của Stripe. */
     @Transactional
     public OnboardingLink createOnboardingLink(String userId, String apiBaseUrl) {
         requireConfigured();
@@ -116,7 +106,7 @@ public class StripeConnectService {
     }
 
     private String createExpressAccount(DriverProfile profile) throws StripeException {
-        // Key theo phút: chống bấm đúp, nhưng Stripe không phát lại lỗi cũ trong 24h
+        // key theo phút để chống bấm đúp, Stripe không phát lại lỗi cũ trong 24h
         Account account = Account.create(AccountCreateParams.builder()
                 .setType(AccountCreateParams.Type.EXPRESS)
                 .setCountry(country)
@@ -132,7 +122,7 @@ public class StripeConnectService {
                 .setIdempotencyKey("connect-acct-" + profile.getId() + "-" + System.currentTimeMillis() / 60000)
                 .build());
 
-        // Tắt chi trả tự động hằng ngày để tài xế tự bấm "Rút tiền" trong app
+        // tắt chi trả tự động để tài xế tự bấm "Rút tiền"
         try {
             account.update(AccountUpdateParams.builder()
                 .setSettings(AccountUpdateParams.Settings.builder()
@@ -150,9 +140,8 @@ public class StripeConnectService {
         return account.getId();
     }
 
-    // ===== Chuyển phần của tài xế =====
 
-    /** Gọi ngay sau khi capture; tài xế chưa có tài khoản Connect thì khoản này được chuyển bù khi họ mở ví. */
+    // gọi sau khi capture, chưa có tài khoản thì chuyển bù khi tài xế mở ví
     public void transferAfterCapture(Payment payment) {
         try {
             driverProfileRepository.findByUserId(payment.getBooking().getTrip().getDriver().getId())
@@ -162,11 +151,7 @@ public class StripeConnectService {
         }
     }
 
-    /**
-     * Chuyển (giá vé - hoa hồng) từ khoản thu này sang tài khoản Connect của tài xế.
-     * Không @Transactional và tự bắt mọi lỗi: lỗi Stripe không được làm hỏng việc kết thúc chuyến.
-     * @return true nếu khoản này đã được chuyển (hoặc đã chuyển từ trước)
-     */
+    // không @Transactional và tự bắt mọi lỗi để lỗi Stripe không làm hỏng việc kết thúc chuyến
     public boolean transferToDriver(Payment payment, DriverProfile profile) {
         if (payment.getTransferId() != null) return true;
         String accountId = accountOf(profile);
@@ -177,7 +162,7 @@ public class StripeConnectService {
         try {
             String chargeId = PaymentIntent.retrieve(payment.getTransactionId()).getLatestCharge();
             if (chargeId == null) return false;
-            // Transfer có source_transaction phải cùng tiền tệ với khoản thu -> tính trên balance transaction
+            // transfer có source_transaction phải cùng tiền tệ với khoản thu nên tính trên balance transaction
             BalanceTransaction bt = BalanceTransaction.retrieve(Charge.retrieve(chargeId).getBalanceTransaction());
             long driverShare = bt.getAmount() * (100 - feePercent) / 100;
             if (driverShare <= 0) return false;
@@ -205,9 +190,7 @@ public class StripeConnectService {
         }
     }
 
-    // ===== Xem ví =====
 
-    /** Trạng thái tài khoản, số dư, lịch sử rút, các khoản đã nhận. Tự chuyển bù các khoản còn chờ. */
     @Transactional
     public Summary getSummary(String userId) {
         DriverProfile profile = driverService.requireApprovedDriver(userId);
@@ -243,9 +226,7 @@ public class StripeConnectService {
         }
     }
 
-    // ===== Rút tiền =====
 
-    /** Rút toàn bộ số dư khả dụng về thẻ / tài khoản ngân hàng tài xế đã thêm trên Stripe. */
     @Transactional
     public PayoutItem withdraw(String userId) {
         requireConfigured();
@@ -275,9 +256,7 @@ public class StripeConnectService {
         }
     }
 
-    // ===== Tiện ích =====
 
-    /** Phí nền tảng trên số tiền (VND), làm tròn xuống. */
     public static BigDecimal feeOf(BigDecimal amount, int percent) {
         return amount.multiply(BigDecimal.valueOf(percent)).divide(BigDecimal.valueOf(100), 2, RoundingMode.DOWN);
     }
@@ -290,7 +269,6 @@ public class StripeConnectService {
         if (!isConfigured()) throw new AppException(ErrorCode.STRIPE_NOT_CONFIGURED);
     }
 
-    /** Mã tài khoản Connect của tài xế, null nếu chưa có. */
     private static String accountOf(DriverProfile profile) {
         return StringUtils.hasText(profile.getStripeAccountId()) ? profile.getStripeAccountId() : null;
     }

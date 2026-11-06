@@ -7,7 +7,6 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
-import java.util.Optional;
 
 @Repository
 public interface ReviewRepository extends JpaRepository<Review, String> {
@@ -18,12 +17,8 @@ public interface ReviewRepository extends JpaRepository<Review, String> {
 
     List<Review> findByCustomerIdOrderByCreatedAtDesc(String customerId);
 
-    Optional<Review> findByTripIdAndCustomerId(String tripId, String customerId);
-
     boolean existsByTripIdAndCustomerId(String tripId, String customerId);
 
     @Query("SELECT AVG(r.rating) FROM Review r WHERE r.driver.id = :driverId")
     Double avgRatingByDriverId(@Param("driverId") String driverId);
-
-    long countByDriverId(String driverId);
 }

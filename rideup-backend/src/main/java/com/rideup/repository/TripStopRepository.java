@@ -10,6 +10,4 @@ import java.util.List;
 public interface TripStopRepository extends JpaRepository<TripStop, String> {
 
     List<TripStop> findByTripId(String tripId);
-
-    void deleteByTripId(String tripId);
 }

@@ -14,7 +14,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.List;
 
-/** Sinh và verify JWT token cho access + refresh. */
 @Service
 @RequiredArgsConstructor
 public class JwtService {
@@ -31,23 +30,15 @@ public class JwtService {
         this.key = Keys.hmacShaKeyFor(bytes);
     }
 
-    /**
-     * Sinh access token có TTL theo JwtProperties.accessTokenExpirationMs.
-     */
     public String generateAccessToken(User user) {
         return buildToken(user, props.getAccessTokenExpirationMs(), JwtClaim.ACCESS);
     }
 
-    /**
-     * Sinh refresh token có TTL theo JwtProperties.refreshTokenExpirationMs.
-     */
     public String generateRefreshToken(User user) {
         return buildToken(user, props.getRefreshTokenExpirationMs(), JwtClaim.REFRESH);
     }
 
-    /**
-     * Parse + verify JWT. Throw JwtException nếu token invalid/expired/signature sai.
-     */
+    // ném JwtException nếu token sai hoặc hết hạn
     public Claims parse(String token) {
         return Jwts.parser()
             .verifyWith(key)

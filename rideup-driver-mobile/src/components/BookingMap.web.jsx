@@ -2,7 +2,6 @@ import { createElement } from 'react';
 import { View } from 'react-native';
 import { buildBookingMapHtml } from './bookingMapHtml';
 
-/** Bản đồ điểm đón/trả — web: nhúng bằng iframe. */
 export default function BookingMap({ pickup, dropoff, height = 170 }) {
   if (!pickup && !dropoff) return null;
   return (

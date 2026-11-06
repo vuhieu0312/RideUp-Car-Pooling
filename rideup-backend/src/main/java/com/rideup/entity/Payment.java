@@ -56,12 +56,12 @@ public class Payment {
     @Column(length = 500)
     String failureReason;
 
-    /** Hoa hồng RideUp trên booking này (VND) — chỉ có khi đã chuyển phần của tài xế. */
+    // hoa hồng RideUp (VND), có khi đã chuyển phần cho tài xế
     @JsonIgnore
     @Column(precision = 15, scale = 2)
     BigDecimal platformFee;
 
-    /** Mã Stripe Transfer (tr_xxx) chuyển phần của tài xế sang tài khoản Connect. Null = chưa chuyển. */
+    // mã Stripe Transfer (tr_xxx), null là chưa chuyển
     @JsonIgnore
     @Column(length = 100)
     String transferId;

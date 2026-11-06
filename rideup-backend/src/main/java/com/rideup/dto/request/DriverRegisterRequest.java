@@ -13,16 +13,11 @@ import org.springframework.format.annotation.DateTimeFormat;
 
 import java.time.LocalDate;
 
-/**
- * Form fields cho POST /driver/register (multipart/form-data).
- * Đi cùng 3 MultipartFile: cccdImageFront, cccdImageBack, gplxImage.
- * Role DRIVER được hardcode server-side, không nhận từ request.
- */
+// role DRIVER do server tự gán, không nhận từ request
 @Data
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class DriverRegisterRequest {
 
-    // ===== User fields =====
     @NotBlank
     @Size(min = 2, max = 150)
     String fullName;
@@ -39,7 +34,6 @@ public class DriverRegisterRequest {
     @Pattern(regexp = "^(0\\d{9}|\\+84\\d{9,10})$", message = "Số điện thoại không hợp lệ")
     String phone;
 
-    // ===== Driver-specific fields =====
     @NotBlank
     @Pattern(regexp = "^\\d{12}$", message = "CCCD phải đúng 12 số")
     String cccd;

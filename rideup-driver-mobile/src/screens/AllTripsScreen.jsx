@@ -34,9 +34,8 @@ export default function AllTripsScreen({ navigation }) {
   const [filter, setFilter] = useState('ALL');
   const [loading, setLoading] = useState(true);
   const [actionMsg, setActionMsg] = useState('');
-  const [wardNames, setWardNames] = useState({}); // wardId -> tên phường/xã
+  const [wardNames, setWardNames] = useState({});
 
-  // Tải tên phường/xã của các tỉnh có trong danh sách chuyến (dùng API sẵn có listWards)
   async function loadWardNames(list) {
     const provinceIds = [...new Set(list.flatMap((t) => [t.startProvinceId, t.endProvinceId]).filter(Boolean))];
     const results = await Promise.all(provinceIds.map((id) => listWards(id).catch(() => [])));
@@ -55,7 +54,6 @@ export default function AllTripsScreen({ navigation }) {
   async function doStartTrip(t) {
     try {
       const res = await startTrip(t.id);
-      // Cập nhật ngay trạng thái trên màn hình, rồi tải lại để đồng bộ với server
       const updated = res?.data;
       setTrips((prev) => prev.map((x) => (x.id === t.id ? { ...x, ...(updated || {}), status: updated?.status || 'STARTED' } : x)));
       setActionMsg(`Đã bắt đầu chuyến ${t.id.slice(0, 6)}…`);
@@ -104,14 +102,11 @@ export default function AllTripsScreen({ navigation }) {
     }
   }
 
-  // Lần đầu hiện spinner; mỗi lần quay lại tab (vd. vừa tạo chuyến xong) thì tải lại ngầm
   useEffect(() => { load(); }, []);
   useFocusEffect(useCallback(() => { load(true); }, []));
 
-  // Số ghế / trạng thái chuyến đổi → tự tải lại
   useRealtimeRefresh(() => load(true), ['TRIP_UPDATED', 'BOOKING_UPDATED']);
 
-  // Thông báo tự tắt sau 3 giây
   useEffect(() => {
     if (!actionMsg) return undefined;
     const timer = setTimeout(() => setActionMsg(''), 3000);
@@ -136,7 +131,6 @@ export default function AllTripsScreen({ navigation }) {
   const fmtMoney = (v) => `${new Intl.NumberFormat('vi-VN').format(v || 0)} đ`;
   const fmtTime = (iso) => (iso ? iso.replace('T', ' ').substring(0, 16) : '');
 
-  // Danh sách khu vực đón/trả của chuyến, ví dụ "Ân Thi, Văn Giang"
   function stopNames(t, type) {
     const names = (t.stops || [])
       .filter((s) => s.stopType === type)

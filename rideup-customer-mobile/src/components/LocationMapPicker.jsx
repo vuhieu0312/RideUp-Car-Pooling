@@ -7,15 +7,12 @@ import MapSection from './MapSection';
 import { colors } from '../theme';
 import { Text, TextInput } from './Typography';
 
-// ── Constants ──────────────────────────────────────────────────────────────
 const DEFAULT_COORD = { latitude: 16.047079, longitude: 108.20623 };
 
-/** Ngưỡng phân loại kết quả */
 const WARD_RADIUS_KM = 40;
 const PROVINCE_RADIUS_KM = 80;
 const FETCH_TIMEOUT_MS = 5000;
 
-// ── Helpers ────────────────────────────────────────────────────────────────
 function haversine(lat1, lng1, lat2, lng2) {
   const R = 6371000;
   const toRad = (v) => (v * Math.PI) / 180;
@@ -35,7 +32,6 @@ function isValid(lat, lng) {
   );
 }
 
-// Icon theo loại OSM (để suggestion list dễ scan bằng mắt)
 function iconForOsm(osmValue, type) {
   switch (osmValue) {
     case 'school':
@@ -60,9 +56,9 @@ function iconForOsm(osmValue, type) {
   }
 }
 
-// fetch với timeout riêng — fetch() trần không có timeout mặc định, nếu server (đặc biệt photon.komoot.io, server demo công cộng free, không SLA) bị...
+// fetch trần không có timeout, server public như photon.komoot.io có thể treo nên mỗi call có timeout riêng
 async function fetchWithTimeout(url, ms = FETCH_TIMEOUT_MS, extraOptions = {}) {
-  // `signal` trong extraOptions (nếu có) là AbortSignal của CALLER (vd: huỷ khi user gõ tiếp) — không gán thẳng vào fetch() vì sẽ bị ctrl.signal của...
+  // signal của caller (huỷ khi user gõ tiếp) được nối vào ctrl.signal chứ không gán thẳng
   const { signal: callerSignal, ...restOptions } = extraOptions;
   const ctrl = new AbortController();
   const timeoutId = setTimeout(() => ctrl.abort(), ms);
@@ -76,16 +72,13 @@ async function fetchWithTimeout(url, ms = FETCH_TIMEOUT_MS, extraOptions = {}) {
   }
 }
 
-// Timeout riêng cho reverse geocode — ngắn hơn forward (5s) vì đây là lúc user đang
-// chờ trực tiếp sau khi bấm ghim map, cần phản hồi nhanh hơn lúc gõ-tìm-kiếm.
+// reverse geocode timeout ngắn hơn vì user đang đợi sau khi ghim
 const REVERSE_TIMEOUT_MS = 4000;
 
-// Header bắt buộc theo usage policy của Nominatim (OSM chính chủ) — không có User-Agent
-// nhận diện app thì request có thể bị họ chặn khi traffic tăng.
+// Nominatim bắt buộc có User-Agent, không thì có thể bị chặn
 const NOMINATIM_HEADERS = { 'User-Agent': 'RideUpApp/1.0 (student project)' };
 
-// Nominatim chỉ cho tối đa 1 request/giây. Bấm map + gõ tìm kiếm liên tục sẽ vượt mức → bị trả 429
-// → lúc có kết quả lúc không. Xếp hàng các request Nominatim cách nhau ≥ 1.1s.
+// Nominatim chỉ cho 1 request/giây, vượt thì 429 nên xếp hàng cách nhau ≥ 1.1s
 let nominatimNextSlot = 0;
 async function nominatimGate(signal) {
   const now = Date.now();
@@ -95,7 +88,7 @@ async function nominatimGate(signal) {
   if (signal?.aborted) throw new Error('aborted');
 }
 
-// Cache kết quả THÀNH CÔNG (không cache lỗi/rỗng) → cùng toạ độ / cùng chuỗi tìm kiếm trả về ngay và luôn giống nhau.
+// chỉ cache kết quả thành công
 const reverseCache = new Map();
 const forwardCache = new Map();
 function cacheSet(map, key, value, max = 100) {
@@ -103,13 +96,12 @@ function cacheSet(map, key, value, max = 100) {
   map.set(key, value);
 }
 
-/** Mỗi nguồn trả về string "Số nhà + tên đường, phường/quận, thành phố" khi có đủ dữ liệu, throw nếu không có gì dùng được (để không làm "thắng" một... */
+// mỗi nguồn trả chuỗi địa chỉ, không có gì dùng được thì throw
 async function reverseGeocodePhoton(lat, lng) {
   const res = await fetchWithTimeout(`https://photon.komoot.io/reverse?lon=${lng}&lat=${lat}`, REVERSE_TIMEOUT_MS);
   if (!res.ok) throw new Error('photon not ok');
   const data = await res.json();
   const props = data.features?.[0]?.properties;
-  // housenumber + street ghép lại ("73 Phùng Khoang") thay vì chỉ street suông
   const streetLine = [props?.housenumber, props?.street].filter(Boolean).join(' ');
   const parts = [streetLine || props?.name, props?.district, props?.city, props?.country].filter(Boolean);
   if (parts.length === 0) throw new Error('photon empty');
@@ -127,7 +119,6 @@ async function reverseGeocodeNominatim(lat, lng) {
   const data = await res.json();
   const a = data.address;
   if (!a) throw new Error('nominatim empty');
-  // Nominatim trả address chi tiết nhất trong 3 nguồn: house_number, road riêng biệt
   const road = a.road || a.pedestrian || a.footway || a.residential;
   const streetLine = [a.house_number, road].filter(Boolean).join(' ');
   const parts = [
@@ -153,12 +144,10 @@ async function reverseGeocodeBigDataCloud(lat, lng) {
 }
 
 async function reverseGeocode(lat, lng) {
-  const key = `${lat.toFixed(4)},${lng.toFixed(4)}`; // ~11m
+  const key = `${lat.toFixed(4)},${lng.toFixed(4)}`;
   if (reverseCache.has(key)) return reverseCache.get(key);
 
-  // Gọi song song 3 nguồn nhưng KHÔNG chờ nguồn chậm nhất (trước đây allSettled luôn chờ tới 4s):
-  //  - Nominatim (chi tiết nhất, có số nhà/ngõ) về là dùng ngay.
-  //  - Sau 1.5s mà đã có kết quả từ nguồn khác thì dùng luôn; chưa có thì lấy kết quả đầu tiên về sau đó.
+  // gọi song song 3 nguồn, Nominatim về là dùng ngay, không đợi nguồn chậm nhất
   const address = await new Promise((resolve) => {
     let best = '';
     let pending = 3;
@@ -184,10 +173,8 @@ async function reverseGeocode(lat, lng) {
   return address;
 }
 
-// (giữ lại bản cũ để tham khảo cách chọn chuỗi chi tiết nhất)
 // eslint-disable-next-line no-unused-vars
 async function reverseGeocodeAllSettled(lat, lng) {
-  // Gọi SONG SONG cả 3 nguồn (Nominatim chi tiết nhất — có số nhà/tên đường riêng; Photon khá hơn BigDataCloud nhưng không phải lúc nào cũng có...
   const results = await Promise.allSettled([
     reverseGeocodeNominatim(lat, lng),
     reverseGeocodePhoton(lat, lng),
@@ -197,13 +184,11 @@ async function reverseGeocodeAllSettled(lat, lng) {
     .filter((r) => r.status === 'fulfilled' && r.value)
     .map((r) => r.value);
   if (candidates.length === 0) return '';
-  // Ưu tiên chuỗi có nhiều phần (dấu phẩy) hơn = chi tiết hơn (có số nhà/tên đường
-  // riêng thay vì chỉ "Đại Mỗ, Hà Nội, Việt Nam")
+  // chọn chuỗi nhiều phần (dấu phẩy) hơn vì chi tiết hơn
   candidates.sort((a, b) => b.split(',').length - a.split(',').length);
   return candidates[0];
 }
 
-/** Forward geocoding: search địa chỉ → danh sách kết quả. */
 async function forwardGeocodePhoton(q, biasLat, biasLng, signal) {
   const params = new URLSearchParams({ q, limit: '12' });
   if (Number.isFinite(biasLat) && Number.isFinite(biasLng)) {
@@ -232,14 +217,12 @@ async function forwardGeocodePhoton(q, biasLat, biasLng, signal) {
   return results;
 }
 
-/** Nominatim search — nguồn thứ 2 cho forward search, chạy song song với Photon. */
 async function forwardGeocodeNominatim(q, biasLat, biasLng, signal) {
   const params = new URLSearchParams({
     q, format: 'jsonv2', addressdetails: '1', limit: '10',
     countrycodes: 'vn', 'accept-language': 'vi',
   });
   if (Number.isFinite(biasLat) && Number.isFinite(biasLng)) {
-    // viewbox quanh điểm bias ~2 độ (~220km) để ưu tiên kết quả gần, không filter cứng
     params.set('viewbox', `${biasLng - 2},${biasLat + 2},${biasLng + 2},${biasLat - 2}`);
   }
   const url = `https://nominatim.openstreetmap.org/search?${params.toString()}`;
@@ -276,29 +259,26 @@ async function forwardGeocode(query, provinceLat, provinceLng, wardLat, wardLng,
   const cacheKey = [q.toLowerCase(), provinceLat, provinceLng, wardLat, wardLng]
     .map((v) => (typeof v === 'number' && Number.isFinite(v) ? v.toFixed(3) : v)).join('|');
   if (forwardCache.has(cacheKey)) return { results: forwardCache.get(cacheKey), failed: false };
-  // Bias = tâm tỉnh (nếu có), fallback về tâm xã
   const biasLat = Number.isFinite(provinceLat) ? provinceLat : wardLat;
   const biasLng = Number.isFinite(provinceLng) ? provinceLng : wardLng;
 
-  // Gọi song song 2 nguồn độc lập — nguồn nào lỗi/rỗng/timeout thì bỏ qua, không chặn
-  // nguồn còn lại (allSettled, không throw ra ngoài).
+  // gọi song song 2 nguồn, nguồn nào lỗi thì bỏ qua
   const settled = await Promise.allSettled([
     forwardGeocodePhoton(q, biasLat, biasLng, signal),
     forwardGeocodeNominatim(q, biasLat, biasLng, signal),
   ]);
   const raw = settled.flatMap((r) => (r.status === 'fulfilled' ? r.value : []));
   if (signal?.aborted) return { results: [], failed: false };
-  // Cả 2 nguồn đều lỗi (timeout / 429 / mất mạng) → báo "lỗi kết nối", KHÔNG báo "không tìm thấy"
+  // cả 2 nguồn lỗi thì báo lỗi kết nối, không báo "không tìm thấy"
   const failed = settled.every((r) => r.status === 'rejected');
 
-  // Dedupe theo toạ độ làm tròn ~11m (4 chữ số thập phân) — 2 nguồn có thể trả cùng
-  // 1 điểm, giữ bản ghi đầu tiên gặp (Photon ưu tiên trước vì để ở đầu mảng settled)
+  // bỏ trùng theo toạ độ làm tròn 4 chữ số
   const seen = new Set();
   const results = [];
   for (const r of raw) {
     const { lat, lng } = r;
     if (!isValid(lat, lng)) continue;
-    // Filter cứng: chỉ giữ trong tỉnh
+    // chỉ giữ kết quả trong tỉnh
     if (Number.isFinite(provinceLat) && Number.isFinite(provinceLng)) {
       const distToProv = haversine(provinceLat, provinceLng, lat, lng) / 1000;
       if (distToProv > PROVINCE_RADIUS_KM) continue;
@@ -312,7 +292,7 @@ async function forwardGeocode(query, provinceLat, provinceLng, wardLat, wardLng,
     const inWard = distanceToWardKm !== null && distanceToWardKm <= WARD_RADIUS_KM;
     results.push({ ...r, distanceToWardKm, inWard });
   }
-  // Sort: trong ward trước (theo distance tới ward), ngoài ward sau
+  // trong ward trước, ngoài ward sau
   results.sort((a, b) => {
     if (a.inWard && !b.inWard) return -1;
     if (!a.inWard && b.inWard) return 1;
@@ -322,7 +302,6 @@ async function forwardGeocode(query, provinceLat, provinceLng, wardLat, wardLng,
   return { results, failed };
 }
 
-/** LocationMapPicker */
 export default function LocationMapPicker({
   title,
   wardOptions = [],
@@ -345,7 +324,7 @@ export default function LocationMapPicker({
   const [suggestions, setSuggestions] = useState([]);
   const searchTimerRef = useRef(null);
   const abortCtrlRef = useRef(null);
-  const reverseSeqRef = useRef(0); // chỉ nhận kết quả của lần bấm map MỚI NHẤT
+  const reverseSeqRef = useRef(0);
 
   const lat = Number(value?.lat);
   const lng = Number(value?.lng);
@@ -353,7 +332,6 @@ export default function LocationMapPicker({
 
   const selectedWardName = wardName || wardOptions.find((w) => w.id === wardId)?.name || '';
 
-  // Load tâm phường/xã khi wardId thay đổi
   useEffect(() => {
     if (!wardId) { setWardCenter(null); return; }
     let cancelled = false;
@@ -379,7 +357,7 @@ export default function LocationMapPicker({
       return;
     }
     onChange?.({ lat: nextLat, lng: nextLng, addressText: value?.addressText || '' });
-    // Huỷ tìm kiếm đang chạy để không bị kết quả cũ đè lên vị trí vừa bấm
+    // huỷ tìm kiếm đang chạy để kết quả cũ không đè lên vị trí vừa ghim
     if (abortCtrlRef.current) abortCtrlRef.current.abort();
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
     setAddressSearch('idle');
@@ -387,7 +365,7 @@ export default function LocationMapPicker({
     try {
       setResolvingAddress(true);
       const address = await reverseGeocode(nextLat, nextLng);
-      if (seq !== reverseSeqRef.current) return; // user đã bấm điểm khác → bỏ kết quả cũ
+      if (seq !== reverseSeqRef.current) return;
       if (address) onChange?.({ lat: nextLat, lng: nextLng, addressText: address });
       else setLocalError('Không lấy được địa chỉ tự động. Bạn có thể tự nhập bên dưới.');
     } catch {
@@ -412,7 +390,6 @@ export default function LocationMapPicker({
     }
   };
 
-  // Forward geocoding: gõ địa chỉ → debounce → search → sort theo in-ward
   const runSearch = useCallback(async (trimmed) => {
     if (abortCtrlRef.current) abortCtrlRef.current.abort();
     const ctrl = new AbortController();
@@ -441,22 +418,18 @@ export default function LocationMapPicker({
     if (abortCtrlRef.current) abortCtrlRef.current.abort();
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
     const trimmed = (text || '').trim();
-    // Trước đây: gõ lại đúng chuỗi đã tìm thì bỏ qua (lastSearchedText) → cùng input lúc ra lúc không.
-    // Giờ luôn tìm; chuỗi đã tìm thành công lấy từ cache nên vẫn nhanh.
     if (trimmed.length < 5) return;
     searchTimerRef.current = setTimeout(() => runSearch(trimmed), 600);
   }, [lat, lng, onChange, runSearch]);
 
-  // User chọn 1 suggestion → ghim map + set addressText = suggestion primary
   const pickSuggestion = useCallback((s) => {
     if (abortCtrlRef.current) abortCtrlRef.current.abort();
-    reverseSeqRef.current += 1; // bỏ kết quả reverse geocode còn đang chờ
+    reverseSeqRef.current += 1;
     onChange?.({ lat: s.lat, lng: s.lng, addressText: s.primary });
     setSuggestions([]);
     setAddressSearch('idle');
   }, [onChange]);
 
-  // Cleanup timer on unmount
   useEffect(() => () => {
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
     if (abortCtrlRef.current) abortCtrlRef.current.abort();
@@ -482,7 +455,6 @@ export default function LocationMapPicker({
       </View>
 
       {wardReadOnly ? (
-        // Read-only: hiển thị ward đã chọn từ bước trước (vd: search trip)
         <View style={[styles.wardInfo, { borderColor: accentColor }]}>
           <MaterialCommunityIcons name="map-marker" size={18} color={accentColor} />
           <Text style={styles.wardInfoText} numberOfLines={1}>{selectedWardName || '—'}</Text>
@@ -513,7 +485,6 @@ export default function LocationMapPicker({
                     style={[styles.wardItem, w.id === wardId && { backgroundColor: `${accentColor}20`, borderColor: accentColor }]}
                     onPress={() => {
                       onWardChange?.(w.id);
-                      // Reset tọa độ khi đổi phường
                       onChange?.({ lat: NaN, lng: NaN, addressText: '' });
                       setLocalError('');
                       setShowWardList(false);
@@ -668,14 +639,12 @@ const styles = StyleSheet.create({
   stepText: { color: colors.textOnPrimary, fontSize: 12, fontWeight: 'bold' },
   sectionTitle: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', flex: 1, letterSpacing: 0.5 },
 
-  // Ward selector
   wardBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     backgroundColor: colors.surfaceMuted, borderWidth: 1, borderColor: colors.borderLight,
     borderRadius: 10, paddingHorizontal: 14, height: 48,
   },
   wardBtnText: { flex: 1, color: colors.textSecondary, fontSize: 14 },
-  // Ward info (read-only, khi parent đã chọn sẵn)
   wardInfo: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
     backgroundColor: colors.surfaceMuted, borderWidth: 1,
@@ -693,7 +662,6 @@ const styles = StyleSheet.create({
   wardItemText: { color: colors.textDark, fontSize: 14, flex: 1 },
   emptyText: { padding: 14, color: colors.textMuted, fontSize: 12, textAlign: 'center' },
 
-  // GPS button
   gpsBtn: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceMuted,
     borderWidth: 1, borderColor: colors.borderLight, paddingHorizontal: 10, paddingVertical: 5,
@@ -702,7 +670,6 @@ const styles = StyleSheet.create({
   gpsBtnText: { color: colors.textDark, fontSize: 11, fontWeight: '600' },
   hint: { color: colors.textSecondary, fontSize: 11, marginBottom: 8 },
 
-  // Map placeholder (khi chưa chọn ward)
   mapPlaceholder: {
     height: 80, backgroundColor: colors.surfaceMuted, borderRadius: 12,
     borderWidth: 1, borderColor: colors.borderLight, borderStyle: 'dashed',
@@ -710,10 +677,8 @@ const styles = StyleSheet.create({
   },
   mapPlaceholderText: { color: colors.textSecondary, fontSize: 13 },
 
-  // Coords
   distText: { color: colors.textSecondary, fontSize: 11, marginBottom: 8, fontStyle: 'italic' },
 
-  // Address input
   addressInput: {
     backgroundColor: colors.surfaceMuted, borderWidth: 1, borderColor: colors.borderLight,
     borderRadius: 10, paddingHorizontal: 14, height: 48, color: colors.textDark, fontSize: 14,
@@ -724,7 +689,6 @@ const styles = StyleSheet.create({
   },
   searchStatusText: { fontSize: 11, fontStyle: 'italic' },
 
-  // Suggestion list (autocomplete)
   suggestionList: {
     marginTop: 6, backgroundColor: colors.surface, borderWidth: 1,
     borderColor: colors.borderLight, borderRadius: 10, overflow: 'hidden',
@@ -744,7 +708,6 @@ const styles = StyleSheet.create({
   },
   outBadgeText: { color: 'white', fontSize: 9, fontWeight: '700' },
 
-  // Not found box
   notFoundBox: {
     marginTop: 8, padding: 12, backgroundColor: '#fef3c7',
     borderRadius: 10, borderWidth: 1, borderColor: '#fde68a',

@@ -15,7 +15,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
-/** Ví và rút tiền của tài xế (Stripe Connect, môi trường test). */
 @RestController
 @RequestMapping("/driver/payout")
 @PreAuthorize("hasRole('DRIVER')")
@@ -26,27 +25,23 @@ public class DriverPayoutController {
     StripeConnectService stripeConnectService;
     DriverEarningsService driverEarningsService;
 
-    /** Trạng thái tài khoản nhận tiền, số dư, lịch sử rút và các khoản đã nhận. */
     @GetMapping("/summary")
     public ApiResponse<StripeConnectService.Summary> summary(Authentication auth) {
         return ApiResponse.success(stripeConnectService.getSummary(currentUserId(auth)));
     }
 
-    /** Thống kê thu nhập: tổng, theo ngày (30 ngày), theo tháng (6 tháng). */
     @GetMapping("/stats")
     public ApiResponse<DriverEarningsService.Stats> stats(Authentication auth) {
         return ApiResponse.success(driverEarningsService.getStats(currentUserId(auth)));
     }
 
-    /** Trả link của Stripe để tài xế thiết lập tài khoản và thêm thẻ / ngân hàng. */
     @PostMapping("/onboarding")
     public ApiResponse<StripeConnectService.OnboardingLink> onboarding(Authentication auth) {
-        // Địa chỉ backend như điện thoại đang gọi (vd. http://192.168.1.10:8080/api) để trang quay lại mở được
+        // địa chỉ backend như điện thoại đang gọi, để trang quay lại mở được
         String apiBase = ServletUriComponentsBuilder.fromCurrentContextPath().toUriString();
         return ApiResponse.success(stripeConnectService.createOnboardingLink(currentUserId(auth), apiBase));
     }
 
-    /** Rút toàn bộ số dư khả dụng. */
     @PostMapping("/withdraw")
     public ApiResponse<StripeConnectService.PayoutItem> withdraw(Authentication auth) {
         return ApiResponse.success("Đã gửi yêu cầu rút tiền", stripeConnectService.withdraw(currentUserId(auth)));

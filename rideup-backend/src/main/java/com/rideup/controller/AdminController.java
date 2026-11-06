@@ -24,7 +24,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-/** Admin endpoints — yêu cầu role=ADMIN (class-level @PreAuthorize). */
 @RestController
 @RequestMapping("/admin")
 @RequiredArgsConstructor
@@ -42,7 +41,6 @@ public class AdminController {
         return ApiResponse.success(adminService.listDrivers(status));
     }
 
-    // ===== Vehicle management =====
 
     @GetMapping("/vehicles/pending")
     public ApiResponse<List<VehicleResponse>> listPendingVehicles() {

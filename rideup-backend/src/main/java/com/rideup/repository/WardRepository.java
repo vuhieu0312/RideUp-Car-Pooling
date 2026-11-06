@@ -15,8 +15,6 @@ public interface WardRepository extends JpaRepository<Ward, String> {
     @Query("SELECT w FROM Ward w WHERE w.province.id = :provinceId ORDER BY w.name")
     List<Ward> findByProvinceId(@Param("provinceId") String provinceId);
 
-    Optional<Ward> findByCode(String code);
-
     Optional<Ward> findByOsmId(Long osmId);
 
     boolean existsByOsmId(Long osmId);

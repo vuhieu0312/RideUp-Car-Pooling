@@ -26,38 +26,23 @@ public class CreateTripRequest {
     @NotBlank
     String endProvinceId;
 
-    /**
-     * Danh sách điểm dừng của chuyến (pickup / dropoff).
-     * Mỗi item có stopType (PICKUP|DROPOFF), wardId (bắt buộc), addressText (optional).
-     * Backend tạo 1 TripStop record cho mỗi item.
-     */
+    // mỗi điểm dừng có stopType (PICKUP/DROPOFF) và wardId
     @Valid
     List<TripStopRequest> stops;
 
-    /** Deprecated - dùng stops[] thay. */
     @Deprecated
     String startWardId;
 
-    /** Deprecated - dùng stops[] thay. */
     @Deprecated
     String endWardId;
 
-    @Size(max = 500)
-    String startAddressText;
-
     Double pickupLat;
     Double pickupLng;
-
-    @Size(max = 500)
-    String endAddressText;
 
     @NotNull
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     @Future
     LocalDateTime departureTime;
-
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
-    LocalDateTime estimatedArrivalTime;
 
     @NotNull
     @Min(1)

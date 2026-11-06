@@ -3,7 +3,6 @@ import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import { colors } from '../theme';
 
-/** MapSection — NATIVE (iOS/Android). */
 export default function MapSection({
   region,
   onCoordChange,
@@ -13,9 +12,7 @@ export default function MapSection({
   lng,
   loadingWard,
 }) {
-  // Trước đây truyền `region` (controlled): mỗi lần component render lại (đang tải địa chỉ, gõ chữ…)
-  // map bị ép nhảy về region → kéo/zoom bị giật, bấm tiếp khó. Giờ chỉ đặt vị trí ban đầu và
-  // tự animate khi toạ độ đích thật sự thay đổi (bấm điểm mới, chọn gợi ý, đổi phường).
+  // không truyền region (controlled) vì map sẽ nhảy mỗi lần render, chỉ đặt initialRegion rồi animateToRegion
   const mapRef = useRef(null);
   const regionKey = `${region.latitude.toFixed(5)},${region.longitude.toFixed(5)},${region.latitudeDelta}`;
   useEffect(() => {

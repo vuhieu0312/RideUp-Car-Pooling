@@ -14,7 +14,6 @@ import org.springframework.web.socket.server.HandshakeInterceptor;
 import java.util.List;
 import java.util.Map;
 
-/** Validate JWT trong WebSocket handshake. */
 @Component
 @RequiredArgsConstructor
 @Slf4j
@@ -69,11 +68,10 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
                                ServerHttpResponse response,
                                WebSocketHandler wsHandler,
                                Exception exception) {
-        // no-op
     }
 
     private String extractToken(ServerHttpRequest request) {
-        // 1. Query param: ws://host/ws?token=xxx
+        // token trong query: ?token=xxx
         String query = request.getURI().getQuery();
         if (query != null) {
             for (String param : query.split("&")) {
@@ -83,7 +81,7 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
             }
         }
 
-        // 2. Authorization header (cho client gửi được custom header)
+        // hoặc trong header Authorization
         List<String> headers = request.getHeaders().get("Authorization");
         if (headers != null && !headers.isEmpty()) {
             String auth = headers.get(0);

@@ -19,7 +19,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-/** Booking endpoints dành cho DRIVER (đã APPROVED). */
 @RestController
 @RequestMapping("/driver/bookings")
 @RequiredArgsConstructor
@@ -66,7 +65,6 @@ public class BookingDriverController {
         );
     }
 
-    /** Driver xác nhận đã nhận tiền mặt từ customer (per spec 6.1 step 24). */
     @PostMapping("/{id}/confirm-cash")
     public ApiResponse<BookingResponse> confirmCash(
         @PathVariable("id") String bookingId,
@@ -78,8 +76,6 @@ public class BookingDriverController {
         );
     }
 
-    /** Endpoint "pickup" đã bị xoá — flow mới không có PICKED_UP. */
-    // @PostMapping("/{id}/pickup") — removed
 
     private String currentUserId(Authentication auth) {
         return ((UserDetails) auth.getPrincipal()).getUsername();

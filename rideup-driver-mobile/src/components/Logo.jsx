@@ -3,7 +3,6 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Text } from './Typography';
 import { FONT } from '../theme';
 
-/** Logo RideUp dùng chung 3 app: ô bo góc chứa icon xe + wordmark "RIDEUP". */
 const SIZES = {
   md: { box: 26, icon: 16, font: 11, gap: 8 },
   sm: { box: 22, icon: 14, font: 10, gap: 7 },

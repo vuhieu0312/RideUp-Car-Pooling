@@ -10,7 +10,6 @@ import java.time.Duration;
 @Configuration
 public class RestTemplateConfig {
 
-    /** Bean RestTemplate dùng cho HTTP ngoài (Overpass API, payment gateway sau này). */
     @Bean
     public RestTemplate restTemplate(RestTemplateBuilder builder) {
         return builder
