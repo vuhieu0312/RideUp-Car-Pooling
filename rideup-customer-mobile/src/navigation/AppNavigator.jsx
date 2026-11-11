@@ -16,6 +16,7 @@ import AccountScreen from '../screens/AccountScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
 import ChangePasswordScreen from '../screens/ChangePasswordScreen';
 import ChatScreen from '../screens/ChatScreen';
+import ConversationsScreen from '../screens/ConversationsScreen';
 import { colors } from '../theme';
 
 const RootStack = createNativeStackNavigator();
@@ -24,6 +25,7 @@ const Tab = createBottomTabNavigator();
 const HomeStack = createNativeStackNavigator();
 const MyBookingsStack = createNativeStackNavigator();
 const PlaceholderStack = createNativeStackNavigator();
+const MessagesStack = createNativeStackNavigator();
 const AccountStack = createNativeStackNavigator();
 
 const TAB_ICON_SIZE = 22;
@@ -60,6 +62,14 @@ function makePlaceholderTab(title, icon, subtitle) {
   };
 }
 
+function MessagesTab() {
+  return (
+    <MessagesStack.Navigator screenOptions={{ headerShown: false }}>
+      <MessagesStack.Screen name="Conversations" component={ConversationsScreen} />
+      <MessagesStack.Screen name="Chat" component={ChatScreen} />
+    </MessagesStack.Navigator>
+  );
+}
 const NotificationsTab = NotificationsScreen;
 
 function AccountTab() {
@@ -119,6 +129,20 @@ function MainTabs() {
           tabBarIcon: ({ color, focused }) => (
             <MaterialCommunityIcons
               name={focused ? 'car-multiple' : 'car-outline'}
+              size={TAB_ICON_SIZE}
+              color={color}
+            />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="MessagesTab"
+        component={MessagesTab}
+        options={{
+          tabBarLabel: 'Tin nhắn',
+          tabBarIcon: ({ color, focused }) => (
+            <MaterialCommunityIcons
+              name={focused ? 'message-text' : 'message-text-outline'}
               size={TAB_ICON_SIZE}
               color={color}
             />
