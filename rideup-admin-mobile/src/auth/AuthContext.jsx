@@ -29,12 +29,13 @@ export function AuthProvider({ children }) {
     }
     await AsyncStorage.setItem('adminToken', data.accessToken);
     await AsyncStorage.setItem('adminUser', JSON.stringify(data));
+    if (data.refreshToken) await AsyncStorage.setItem('adminRefreshToken', data.refreshToken);
     setUser(data);
     return data;
   }
 
   async function doLogout() {
-    await AsyncStorage.multiRemove(['adminToken', 'adminUser']);
+    await AsyncStorage.multiRemove(['adminToken', 'adminUser', 'adminRefreshToken']);
     setUser(null);
   }
 

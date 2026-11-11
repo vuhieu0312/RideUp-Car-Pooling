@@ -66,7 +66,10 @@ public class SecurityConfig {
         // dev: cho các port localhost, production nên đặt domain cụ thể
         cfg.setAllowedOriginPatterns(List.of(
             "http://localhost:*",
-            "http://127.0.0.1:*"
+            "http://127.0.0.1:*",
+            "http://192.168.*:*",
+            "http://10.*:*",
+            "http://172.*:*"
         ));
         cfg.setAllowedOrigins(List.of(
             "http://localhost:5173",  // Customer app

@@ -1,7 +1,9 @@
 package com.rideup.config;
 
+import com.rideup.security.DocumentAccessInterceptor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -12,6 +14,17 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     @Value("${app.upload.dir}")
     private String uploadDir;
+
+    private final DocumentAccessInterceptor documentAccessInterceptor;
+
+    public WebMvcConfig(DocumentAccessInterceptor documentAccessInterceptor) {
+        this.documentAccessInterceptor = documentAccessInterceptor;
+    }
+
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        registry.addInterceptor(documentAccessInterceptor).addPathPatterns("/uploads/**");
+    }
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {

@@ -8,7 +8,7 @@ const DEV_PORT = 8080;
 
 function resolveBaseUrl() {
   if (typeof window !== 'undefined' && typeof window.document !== 'undefined') {
-    return `http://localhost:${DEV_PORT}/api`;
+    return `http://${window.location.hostname || 'localhost'}:${DEV_PORT}/api`;
   }
   const hostUri = Constants.expoConfig?.hostUri;
   if (hostUri) {
@@ -134,21 +134,25 @@ const appendFile = async (fd, key, file, fallbackName = `${key}.jpg`) => {
   }
 };
 
+const appendFields = (fd, form) => {
+  Object.entries(form).forEach(([k, v]) => {
+    if (v !== null && v !== undefined && v !== '') fd.append(k, String(v));
+  });
+};
+
+const appendFiles = async (fd, files) => {
+  for (const [k, f] of Object.entries(files)) {
+    if (f?.uri) await appendFile(fd, k, f);
+  }
+};
+
+const multipart = { headers: { 'Content-Type': 'multipart/form-data' } };
+
 export const registerDriver = async (form, files) => {
   const fd = new FormData();
-  fd.append('fullName', form.fullName);
-  fd.append('email', form.email);
-  fd.append('password', form.password);
-  fd.append('phone', form.phone);
-  fd.append('cccd', form.cccd);
-  fd.append('gplx', form.gplx);
-  fd.append('gplxExpiryDate', form.gplxExpiryDate);
-  await appendFile(fd, 'cccdImageFront', files.cccdImageFront);
-  await appendFile(fd, 'cccdImageBack', files.cccdImageBack);
-  await appendFile(fd, 'gplxImage', files.gplxImage);
-  return api.post('/driver/register', fd, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  }).then((r) => r.data.data);
+  appendFields(fd, form);
+  await appendFiles(fd, files);
+  return api.post('/driver/register', fd, multipart).then((r) => r.data.data);
 };
 
 export const getDriverProfile = () =>
@@ -198,8 +202,32 @@ export const rejectBooking = (bookingId, reason) =>
 export const confirmCashReceived = (bookingId) =>
   api.post(`/driver/bookings/${bookingId}/confirm-cash`).then((r) => r.data);
 
-export const registerVehicle = (form) =>
-  api.post('/driver/vehicles', form).then((r) => r.data);
+export const registerVehicle = async (form, files) => {
+  const fd = new FormData();
+  appendFields(fd, form);
+  await appendFiles(fd, files);
+  return api.post('/driver/vehicles', fd, multipart).then((r) => r.data);
+};
+
+export const resubmitVehicle = async (vehicleId, form, files) => {
+  const fd = new FormData();
+  appendFields(fd, form);
+  await appendFiles(fd, files);
+  return api.put(`/driver/vehicles/${vehicleId}`, fd, multipart).then((r) => r.data);
+};
+
+export const resubmitDriverProfile = async (form, files) => {
+  const fd = new FormData();
+  appendFields(fd, form);
+  await appendFiles(fd, files);
+  return api.put('/driver/profile', fd, multipart).then((r) => r.data);
+};
+
+export const deactivateVehicle = (vehicleId) =>
+  api.put(`/driver/vehicles/${vehicleId}/deactivate`).then((r) => r.data);
+
+export const reuseVehicle = (vehicleId) =>
+  api.put(`/driver/vehicles/${vehicleId}/reuse`).then((r) => r.data);
 
 export const listMyVehicles = () =>
   api.get('/driver/vehicles').then((r) => r.data.data);
@@ -231,3 +259,16 @@ export const withdrawPayout = () =>
 
 export const getEarningsStats = () =>
   api.get('/driver/payout/stats').then((r) => r.data.data);
+
+
+export const listNotifications = (page = 0, size = 30) =>
+  api.get('/notifications', { params: { page, size } }).then((r) => r.data.data);
+
+export const getUnreadNotificationCount = () =>
+  api.get('/notifications/unread-count').then((r) => r.data.data);
+
+export const markNotificationRead = (id) =>
+  api.post(`/notifications/${id}/read`).then((r) => r.data);
+
+export const markAllNotificationsRead = () =>
+  api.post('/notifications/read-all').then((r) => r.data);
