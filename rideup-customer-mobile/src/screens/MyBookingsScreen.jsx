@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { FlatList, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { DeviceEventEmitter, FlatList, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,6 +8,8 @@ import { cancelBooking, listMyBookings, listMyConversations } from '../api/api';
 import { usePayment } from '../hooks/usePayment';
 import { useDialog } from '../components/AppDialog';
 import { useRealtimeRefresh } from '../realtime/useRealtime';
+import { NOTIFICATIONS_CHANGED } from '../hooks/useUnreadNotifications';
+import { loadUnreadChatBookingIds } from '../utils/chatUnread';
 import { colors, shadow } from '../theme';
 import { Text } from '../components/Typography';
 
@@ -49,12 +51,14 @@ export default function MyBookingsScreen({ navigation }) {
   const [filter, setFilter] = useState('ALL');
   const [actionMsg, setActionMsg] = useState('');
   const [conversationByBooking, setConversationByBooking] = useState({});
+  const [chatUnread, setChatUnread] = useState(new Set());
 
   function load(silent = false) {
     if (!silent) setLoading(true);
-    Promise.all([listMyBookings(), listMyConversations().catch(() => [])])
-      .then(([myBookings, conversations]) => {
+    Promise.all([listMyBookings(), listMyConversations().catch(() => []), loadUnreadChatBookingIds()])
+      .then(([myBookings, conversations, unreadChats]) => {
         setBookings(myBookings);
+        setChatUnread(unreadChats);
         setConversationByBooking(Object.fromEntries(
           conversations.map((conversation) => [conversation.bookingId, conversation]),
         ));
@@ -69,7 +73,11 @@ export default function MyBookingsScreen({ navigation }) {
     return () => setActionMsg('');
   }, []));
 
-  useRealtimeRefresh(() => load(true), ['BOOKING_UPDATED']);
+  useRealtimeRefresh(() => load(true), ['BOOKING_UPDATED', 'NOTIFICATION_CREATED']);
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener(NOTIFICATIONS_CHANGED, () => load(true));
+    return () => sub.remove();
+  }, []);
 
   useEffect(() => {
     if (!actionMsg) return undefined;
@@ -304,6 +312,7 @@ export default function MyBookingsScreen({ navigation }) {
                     })}>
                     <MaterialCommunityIcons name="message-text-outline" size={14} color={colors.primaryAccent} />
                     <Text style={styles.chatBtnText}>{conversation ? 'Chat tài xế' : 'Chat sau khi xác nhận'}</Text>
+                    {chatUnread.has(b.id) && <View style={styles.unreadDot} />}
                   </TouchableOpacity>
                   {canPay && (
                     <TouchableOpacity
@@ -387,6 +396,7 @@ const styles = StyleSheet.create({
   chatBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6, backgroundColor: colors.primaryLight, borderWidth: 1, borderColor: colors.primaryAccent },
   chatBtnDisabled: { opacity: 0.55 },
   chatBtnText: { color: colors.primaryAccent, fontSize: 11, fontWeight: '700' },
+  unreadDot: { position: 'absolute', top: -4, right: -4, width: 11, height: 11, borderRadius: 6, backgroundColor: '#dc2626', borderWidth: 2, borderColor: 'white' },
   dangerBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 6, backgroundColor: colors.dangerBg, borderWidth: 1, borderColor: '#fecaca' },
   dangerBtnText: { color: colors.danger, fontSize: 11, fontWeight: '700' },
   payBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 6, backgroundColor: colors.primary },
