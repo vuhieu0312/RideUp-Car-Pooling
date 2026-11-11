@@ -8,6 +8,7 @@ import { colors } from '../theme';
 import IconText from '../components/IconText';
 import { Text } from '../components/Typography';
 import { useRealtimeRefresh } from '../realtime/useRealtime';
+import DriverResubmitScreen from './DriverResubmitScreen';
 
 export default function DriverStatusScreen() {
   const insets = useSafeAreaInsets();
@@ -15,6 +16,7 @@ export default function DriverStatusScreen() {
   const [status, setStatus] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState(false);
 
   const aliveRef = useRef(true);
 
@@ -50,9 +52,22 @@ export default function DriverStatusScreen() {
     );
   }
 
+  if (editing) {
+    return (
+      <DriverResubmitScreen
+        profile={profile}
+        rejectionReason={status?.rejectionReason}
+        onCancel={() => setEditing(false)}
+        onDone={() => { setEditing(false); check(); }}
+      />
+    );
+  }
+
   return (
     <ScrollView contentContainerStyle={[styles.container, { paddingTop: insets.top + 16 }]}>
-      <Text variant="headlineSmall" style={{ fontWeight: '700' }}>Hồ sơ tài xế đang được xét duyệt</Text>
+      <Text variant="headlineSmall" style={{ fontWeight: '700' }}>
+        {status?.status === 'REJECTED' ? 'Hồ sơ tài xế bị từ chối' : 'Hồ sơ tài xế đang được xét duyệt'}
+      </Text>
 
       {status?.status === 'PENDING' && (
         <View style={[styles.alert, { backgroundColor: '#fef3c7' }]}>
@@ -63,6 +78,9 @@ export default function DriverStatusScreen() {
       {status?.status === 'REJECTED' && (
         <View style={[styles.alert, { backgroundColor: '#fee2e2' }]}>
           <IconText name="close-circle-outline" size={18} color="#991b1b">Hồ sơ bị từ chối. Lý do: <Text style={{ fontWeight: '700' }}>{status.rejectionReason || 'Không có'}</Text></IconText>
+          <Button mode="contained" icon="pencil-outline" style={{ marginTop: 10 }} onPress={() => setEditing(true)} disabled={!profile}>
+            Sửa và gửi lại hồ sơ
+          </Button>
         </View>
       )}
 
@@ -75,6 +93,9 @@ export default function DriverStatusScreen() {
           <Field label="GPLX" value={profile.gplx} />
           <Field label="Hết hạn GPLX" value={profile.gplxExpiryDate} />
           <Field label="SĐT" value={profile.phone} />
+          {!!profile.vehicle && (
+            <Field label="Xe" value={`${profile.vehicle.plateNumber} · ${profile.vehicle.seatCapacity} chỗ`} />
+          )}
         </View>
       )}
 

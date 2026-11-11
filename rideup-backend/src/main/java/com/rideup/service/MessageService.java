@@ -9,6 +9,7 @@ import com.rideup.exception.ErrorCode;
 import com.rideup.repository.BookingRepository;
 import com.rideup.repository.ConversationRepository;
 import com.rideup.repository.MessageRepository;
+import com.rideup.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -29,6 +30,12 @@ public class MessageService {
         private final ConversationRepository conversationRepository;
 
         private final BookingRepository bookingRepository;
+
+        private final UserRepository userRepository;
+
+        private final NotificationService notificationService;
+
+        private final RealtimeService realtimeService;
 
         public Message saveMessage(String conversationId, String rawContent, String senderId) {
                 if (conversationId == null || conversationId.isBlank()) {
@@ -68,7 +75,30 @@ public class MessageService {
                                 .build();
                 Message saved = messageRepository.save(message);
                 updateConversationLastMessage(saved);
+                notifyRecipient(conversation, saved);
                 return saved;
+        }
+
+        private void notifyRecipient(Conversation conversation, Message message) {
+                try {
+                        String senderId = message.getSenderId();
+                        String senderName = userRepository.findById(senderId)
+                                        .map(u -> u.getFullName()).orElse("người dùng");
+                        for (String participant : conversation.getParticipants().split(",")) {
+                                String recipientId = participant.trim();
+                                if (recipientId.isEmpty() || recipientId.equals(senderId)) {
+                                        continue;
+                                }
+                                if (notificationService.notifyChatMessage(recipientId, senderName,
+                                                message.getContent(), conversation.getBookingId(),
+                                                conversation.getId())) {
+                                        realtimeService.notificationCreated(recipientId);
+                                }
+                        }
+                } catch (Exception e) {
+                        org.slf4j.LoggerFactory.getLogger(MessageService.class)
+                                        .warn("Không tạo được thông báo tin nhắn: {}", e.getMessage());
+                }
         }
 
         private void updateConversationLastMessage(

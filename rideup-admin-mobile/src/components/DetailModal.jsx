@@ -2,11 +2,16 @@ import { Modal, ScrollView, StyleSheet, View } from 'react-native';
 import { Button, IconButton } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AuthImage from './AuthImage';
+import IconText from './IconText';
 import { Text } from './Typography';
 
-// rows: [[nhãn, giá trị]], images: [{ label, path }]
-export default function DetailModal({ visible, title, rows, images, onClose, onApprove, onReject }) {
+// sections: [{ title, rows: [[nhãn, giá trị]] }], imageGroups: [{ title, images: [{ label, path }] }]
+export default function DetailModal({
+  visible, title, rows, sections, images, imageGroups, warnings, onClose, onApprove, onReject,
+}) {
   const insets = useSafeAreaInsets();
+  const allSections = sections || [{ title: null, rows: rows || [] }];
+  const allImageGroups = imageGroups || [{ title: 'Ảnh giấy tờ', images: images || [] }];
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
@@ -17,29 +22,50 @@ export default function DetailModal({ visible, title, rows, images, onClose, onA
         </View>
 
         <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 24 }}>
-          <View style={styles.card}>
-            {(rows || []).map(([label, value]) => (
-              <View key={label} style={styles.row}>
-                <Text variant="bodySmall" style={styles.rowLabel}>{label}</Text>
-                <Text variant="bodyMedium" style={styles.rowValue}>
-                  {value === null || value === undefined || value === '' ? '—' : String(value)}
-                </Text>
-              </View>
-            ))}
-          </View>
+          {!!warnings?.length && (
+            <View style={styles.warnBox}>
+              {warnings.map((w) => (
+                <IconText key={w} name="alert-outline" size={16} color="#92400e" textStyle={{ color: '#92400e' }} style={{ marginBottom: 4 }}>
+                  {w}
+                </IconText>
+              ))}
+            </View>
+          )}
 
-          <Text variant="titleSmall" style={styles.section}>Ảnh giấy tờ</Text>
-          <View style={styles.card}>
-            {(images || []).map((im) => (
-              <AuthImage key={im.label} label={im.label} path={im.path} />
-            ))}
-          </View>
+          {allSections.map((sec, i) => (
+            <View key={sec.title || i}>
+              {!!sec.title && <Text variant="titleSmall" style={styles.section}>{sec.title}</Text>}
+              <View style={styles.card}>
+                {sec.rows.map(([label, value]) => (
+                  <View key={label} style={styles.row}>
+                    <Text variant="bodySmall" style={styles.rowLabel}>{label}</Text>
+                    <Text variant="bodyMedium" style={styles.rowValue}>
+                      {value === null || value === undefined || value === '' ? '—' : String(value)}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          ))}
+
+          {allImageGroups.map((g) => (
+            <View key={g.title}>
+              <Text variant="titleSmall" style={styles.section}>{g.title}</Text>
+              <View style={styles.card}>
+                {g.images.map((im) => (
+                  <AuthImage key={im.label} label={im.label} path={im.path} />
+                ))}
+              </View>
+            </View>
+          ))}
         </ScrollView>
 
-        <View style={[styles.actions, { paddingBottom: insets.bottom + 12 }]}>
-          <Button mode="outlined" textColor="#dc2626" style={{ flex: 1 }} onPress={onReject}>Từ chối</Button>
-          <Button mode="contained" buttonColor="#10b981" style={{ flex: 1 }} onPress={onApprove}>Duyệt</Button>
-        </View>
+        {(onApprove || onReject) && (
+          <View style={[styles.actions, { paddingBottom: insets.bottom + 12 }]}>
+            {onReject && <Button mode="outlined" textColor="#dc2626" style={{ flex: 1 }} onPress={onReject}>Từ chối</Button>}
+            {onApprove && <Button mode="contained" buttonColor="#10b981" style={{ flex: 1 }} onPress={onApprove}>Duyệt</Button>}
+          </View>
+        )}
       </View>
     </Modal>
   );
@@ -53,5 +79,6 @@ const styles = StyleSheet.create({
   rowLabel: { width: 120, color: '#64748b' },
   rowValue: { flex: 1, color: '#0f172a' },
   section: { fontWeight: '700', marginBottom: 8, marginTop: 4, color: '#334155' },
+  warnBox: { backgroundColor: '#fef3c7', borderRadius: 12, padding: 12, marginBottom: 12 },
   actions: { flexDirection: 'row', gap: 12, paddingHorizontal: 16, paddingTop: 12, backgroundColor: '#fff' },
 });

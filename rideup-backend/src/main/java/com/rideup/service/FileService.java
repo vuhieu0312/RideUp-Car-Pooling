@@ -17,7 +17,7 @@ import java.util.UUID;
 @Slf4j
 public class FileService {
 
-    private static final long MAX_FILE_SIZE = 5L * 1024 * 1024; // 5MB
+    private static final long MAX_FILE_SIZE = 10L * 1024 * 1024; // 10MB
     private static final Set<String> ALLOWED_TYPES = Set.of(
         "image/jpeg", "image/png", "image/webp"
     );
@@ -26,6 +26,10 @@ public class FileService {
 
     public FileService(@Value("${app.upload.dir}") String uploadDir) {
         this.uploadDir = uploadDir;
+    }
+
+    public static boolean hasFile(MultipartFile file) {
+        return file != null && !file.isEmpty();
     }
 
     public String upload(MultipartFile file, String prefix) {
@@ -49,7 +53,7 @@ public class FileService {
             throw AppException.badRequest("File ảnh không được trống");
         }
         if (file.getSize() > MAX_FILE_SIZE) {
-            throw AppException.badRequest("File ảnh vượt quá 5MB");
+            throw AppException.badRequest("File ảnh vượt quá 10MB");
         }
         String contentType = file.getContentType();
         if (contentType == null || !ALLOWED_TYPES.contains(contentType.toLowerCase())) {
