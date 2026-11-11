@@ -10,11 +10,13 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
+import org.springframework.format.annotation.DateTimeFormat;
+
 import java.time.LocalDate;
 
 @Data
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class RegisterVehicleRequest {
+public class RegisterVehicleRequest implements VehicleFields {
 
     @NotBlank
     @Size(min = 7, max = 20)
@@ -38,5 +40,6 @@ public class RegisterVehicleRequest {
     @NotNull
     VehicleType vehicleType;
 
+    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
     LocalDate registrationExpiryDate;
 }

@@ -19,6 +19,12 @@ public interface NotificationRepository extends JpaRepository<Notification, Stri
 
     long countByUserIdAndStatus(String userId, ReadStatus status);
 
+    boolean existsByUserIdAndDedupKey(String userId, String dedupKey);
+
+    java.util.List<Notification> findByUserIdAndDedupKeyAndStatus(String userId, String dedupKey, ReadStatus status);
+
+    java.util.Optional<Notification> findByIdAndUserId(String id, String userId);
+
     @Modifying
     @Query("UPDATE Notification n SET n.status = :read, n.readAt = :now WHERE n.user.id = :userId AND n.status = :unread")
     void markAllAsRead(@Param("userId") String userId,
