@@ -11,6 +11,7 @@ import {
 import { AuthProvider } from './src/auth/AuthContext';
 import { paperTheme } from './src/theme';
 import AppNavigator from './src/navigation/AppNavigator';
+import RealtimeGate from './src/realtime/RealtimeGate';
 import GlobalStyles from './GlobalStyles';
 
 // tránh tab web hiện "undefined" ở frame đầu
@@ -35,6 +36,7 @@ export default function App() {
       <SafeAreaProvider>
         <PaperProvider theme={paperTheme}>
           <AuthProvider>
+            <RealtimeGate />
             <NavigationContainer>
               <AppNavigator />
             </NavigationContainer>

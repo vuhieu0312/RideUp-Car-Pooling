@@ -9,13 +9,16 @@ import WardMultiPicker from '../components/WardMultiPicker';
 import DateField from '../components/DateField';
 import TimeField from '../components/TimeField';
 import { Text, TextInput } from '../components/Typography';
+import { vehicleTypeLabel } from '../utils/driverForm';
+import { useRealtimeRefresh } from '../realtime/useRealtime';
 
 export default function TripCreateScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const [provinces, setProvinces] = useState([]);
   const [pickupWards, setPickupWards] = useState([]);
   const [dropoffWards, setDropoffWards] = useState([]);
-  const [vehicles, setVehicles] = useState([]);
+  const [activeVehicle, setActiveVehicle] = useState(null);
+  const [vehiclesLoaded, setVehiclesLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [openPicker, setOpenPicker] = useState(null);
@@ -24,19 +27,21 @@ export default function TripCreateScreen({ navigation }) {
     startProvinceId: '', endProvinceId: '',
     pickupWardIds: [], dropoffWardIds: [],
     departureDate: '', departureTime: '',
-    seatTotal: 4, priceVnd: 120000, note: '',
-    vehicleId: '',
+    seatTotal: '', priceVnd: 120000, note: '',
   });
 
   useEffect(() => {
     listProvinces().then(setProvinces).catch(() => {});
-    listMyVehicles()
-      .then((list) => {
-        setVehicles(list);
-        if (list.length === 1) setForm((f) => ({ ...f, vehicleId: list[0].id }));
-      })
-      .catch(() => {});
+    loadVehicles();
   }, []);
+
+  function loadVehicles() {
+    listMyVehicles()
+      .then((list) => setActiveVehicle(list.find((v) => v.status === 'ACTIVE') || null))
+      .catch(() => {})
+      .finally(() => setVehiclesLoaded(true));
+  }
+  useRealtimeRefresh(loadVehicles, ['VEHICLE_UPDATED']);
 
   useEffect(() => {
     if (form.startProvinceId) {
@@ -73,7 +78,11 @@ export default function TripCreateScreen({ navigation }) {
     if (form.startProvinceId === form.endProvinceId) { setError('Tỉnh đón và tỉnh trả phải khác'); return; }
     if (form.pickupWardIds.length === 0 || form.dropoffWardIds.length === 0) { setError('Chọn ít nhất 1 điểm đón và 1 điểm trả'); return; }
     if (!form.departureDate || !form.departureTime) { setError('Chọn ngày giờ khởi hành'); return; }
-    if (!form.vehicleId) { setError('Chọn xe'); return; }
+    if (!activeVehicle) { setError('Bạn chưa có xe đang dùng đã được duyệt'); return; }
+    if (!form.seatTotal || Number(form.seatTotal) < 1) { setError('Nhập số ghế (tối thiểu 1)'); return; }
+    if (Number(form.seatTotal) > activeVehicle.seatCapacity) {
+      setError(`Số ghế không được vượt quá sức chứa của xe (${activeVehicle.seatCapacity} chỗ)`); return;
+    }
 
     setLoading(true);
     try {
@@ -170,8 +179,8 @@ export default function TripCreateScreen({ navigation }) {
             style={styles.input}
             placeholder="Số ghế *"
             placeholderTextColor={colors.textSubtle}
-            value={String(form.seatTotal)}
-            onChangeText={(v) => set('seatTotal')(Number(v) || 1)}
+            value={form.seatTotal}
+            onChangeText={(v) => set('seatTotal')(v.replace(/\D/g, ''))}
             keyboardType="numeric"
           />
         </Section>
@@ -204,21 +213,23 @@ export default function TripCreateScreen({ navigation }) {
 
         {/* Section 6 — Thông tin xe */}
         <Section title="5. Thông tin xe">
-          {vehicles.length === 0 ? (
-            <HelperText type="info" visible>Bạn chưa có xe. Vào "Phương tiện của tôi" để đăng ký.</HelperText>
+          {!vehiclesLoaded ? (
+            <HelperText type="info" visible>Đang tải thông tin xe...</HelperText>
+          ) : activeVehicle ? (
+            <View>
+              <Text style={styles.vehiclePlate}>{activeVehicle.plateNumber}</Text>
+              <Text style={styles.vehicleMeta}>
+                {[activeVehicle.vehicleBrand, activeVehicle.vehicleModel].filter(Boolean).join(' ') || vehicleTypeLabel(activeVehicle.vehicleType)}
+                {' · '}{activeVehicle.seatCapacity} chỗ
+              </Text>
+            </View>
           ) : (
-            <PickerField
-              label="Xe *"
-              value={form.vehicleId}
-              options={vehicles.map((v) => ({
-                id: v.id,
-                name: `${v.plateNumber} · ${v.vehicleType} · ${v.seatCapacity} chỗ`,
-              }))}
-              isOpen={openPicker === 'vehicle'}
-              onOpen={() => setOpenPicker('vehicle')}
-              onClose={() => setOpenPicker(null)}
-              onSelect={(id) => { set('vehicleId')(id); setOpenPicker(null); }}
-            />
+            <View>
+              <HelperText type="error" visible>Bạn chưa có xe đang dùng đã được admin duyệt nên chưa tạo được chuyến.</HelperText>
+              <Button mode="outlined" icon="car-outline" onPress={() => navigation.navigate('VehicleList')} style={{ alignSelf: 'flex-start' }}>
+                Phương tiện của tôi
+              </Button>
+            </View>
           )}
         </Section>
 
@@ -324,6 +335,8 @@ function PickerField({ label, value, options, isOpen, onOpen, onClose, onSelect 
 }
 
 const styles = StyleSheet.create({
+  vehiclePlate: { fontFamily: FONT[700], fontSize: 15, fontWeight: '700', color: colors.text },
+  vehicleMeta: { fontSize: 12, color: colors.textSubtle, marginTop: 2 },
   container: { flex: 1, backgroundColor: colors.bg },
 
   topBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 4, paddingVertical: 2, backgroundColor: colors.bg },

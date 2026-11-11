@@ -20,6 +20,8 @@ import VehicleListScreen from '../screens/VehicleListScreen';
 import PayoutScreen from '../screens/PayoutScreen';
 import EarningsScreen from '../screens/EarningsScreen';
 import PlaceholderScreen from '../screens/PlaceholderScreen';
+import NotificationsScreen from '../screens/NotificationsScreen';
+import useUnreadNotifications from '../hooks/useUnreadNotifications';
 import AccountScreen from '../screens/AccountScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
 import ChangePasswordScreen from '../screens/ChangePasswordScreen';
@@ -85,7 +87,7 @@ function MessagesTab() {
     </MessagesStack.Navigator>
   );
 }
-const NotificationsTab = makePlaceholderTab('Thông báo', 'bell-outline', 'Cập nhật về booking và chuyến xe');
+const NotificationsTab = NotificationsScreen;
 
 function AccountTab() {
   return (
@@ -98,6 +100,7 @@ function AccountTab() {
 }
 
 function MainTabs() {
+  const unread = useUnreadNotifications();
   const insets = useSafeAreaInsets();
   const bottomInset = Math.max(insets.bottom, 6);
   return (
@@ -165,6 +168,8 @@ function MainTabs() {
         component={NotificationsTab}
         options={{
           tabBarLabel: 'Thông báo',
+          tabBarBadge: unread > 0 ? (unread > 99 ? '99+' : unread) : undefined,
+          tabBarBadgeStyle: { backgroundColor: '#dc2626', fontSize: 10 },
           tabBarIcon: ({ color, focused }) => (
             <MaterialCommunityIcons
               name={focused ? 'bell' : 'bell-outline'}
