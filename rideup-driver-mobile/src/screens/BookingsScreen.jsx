@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FlatList, RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { DeviceEventEmitter, FlatList, RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -16,6 +16,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Text } from '../components/Typography';
 import { useDialog } from '../components/AppDialog';
 import { useRealtimeRefresh } from '../realtime/useRealtime';
+import { NOTIFICATIONS_CHANGED } from '../hooks/useUnreadNotifications';
+import { loadUnreadChatBookingIds } from '../utils/chatUnread';
 
 const STATUS_META = {
   PENDING_PAYMENT: { icon: 'credit-card-outline', label: 'Chờ thanh toán', bg: colors.pendingBg, fg: '#92400e' },
@@ -49,6 +51,7 @@ export default function BookingsScreen({ navigation, route }) {
   const insets = useSafeAreaInsets();
   const [bookings, setBookings] = useState([]);
   const [conversationByBooking, setConversationByBooking] = useState({});
+  const [chatUnread, setChatUnread] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState('PENDING');
@@ -57,10 +60,12 @@ export default function BookingsScreen({ navigation, route }) {
 
   async function load() {
     try {
-      const [all, conversations] = await Promise.all([
+      const [all, conversations, unreadChats] = await Promise.all([
         listDriverBookings(),
         listMyConversations().catch(() => []),
+        loadUnreadChatBookingIds(),
       ]);
+      setChatUnread(unreadChats);
       setBookings(all || []);
       setConversationByBooking(Object.fromEntries(
         conversations.map((conversation) => [conversation.bookingId, conversation]),
@@ -76,7 +81,11 @@ export default function BookingsScreen({ navigation, route }) {
   useEffect(() => { load(); }, []);
   useFocusEffect(useCallback(() => { load(); }, []));
 
-  useRealtimeRefresh(load, ['BOOKING_UPDATED']);
+  useRealtimeRefresh(load, ['BOOKING_UPDATED', 'NOTIFICATION_CREATED']);
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener(NOTIFICATIONS_CHANGED, load);
+    return () => sub.remove();
+  }, []);
 
   useEffect(() => {
     if (!actionMsg) return undefined;
@@ -256,6 +265,7 @@ export default function BookingsScreen({ navigation, route }) {
                   <IconText name="message-text-outline" size={14} center textStyle={styles.btnChatText}>
                     {conversation ? 'Chat với khách' : 'Chat sau khi duyệt'}
                   </IconText>
+                  {chatUnread.has(b.id) && <View style={styles.unreadDot} />}
                 </TouchableOpacity>
                 {b.status === 'WAITING_DRIVER_APPROVAL' && (
                   <>
@@ -332,4 +342,5 @@ const styles = StyleSheet.create({
   btnChat: { backgroundColor: colors.primaryLight, borderWidth: 1, borderColor: colors.primaryAccent },
   btnChatText: { color: colors.primaryAccent, fontSize: 11, fontWeight: '700' },
   btnDisabled: { opacity: 0.55 },
+  unreadDot: { position: 'absolute', top: -4, right: -4, width: 11, height: 11, borderRadius: 6, backgroundColor: '#dc2626', borderWidth: 2, borderColor: 'white' },
 });

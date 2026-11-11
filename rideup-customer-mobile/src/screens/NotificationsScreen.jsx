@@ -3,7 +3,7 @@ import { DeviceEventEmitter, FlatList, RefreshControl, StyleSheet, TouchableOpac
 import { useFocusEffect } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { listNotifications, markAllNotificationsRead, markNotificationRead } from '../api/api';
+import { listMyConversations, listNotifications, markAllNotificationsRead, markNotificationRead } from '../api/api';
 import { NOTIFICATIONS_CHANGED } from '../hooks/useUnreadNotifications';
 import { useRealtimeRefresh } from '../realtime/useRealtime';
 import { Text } from '../components/Typography';
@@ -47,9 +47,24 @@ function timeAgo(iso) {
   return `${pad(d.getHours())}:${pad(d.getMinutes())} ${pad(d.getDate())}/${pad(d.getMonth() + 1)}`;
 }
 
+async function openChat(navigation, item) {
+  try {
+    const conversations = await listMyConversations();
+    const conv = (conversations || []).find((c) => c.bookingId === item.bookingId);
+    if (conv) {
+      navigation.navigate('MyBookingsTab', {
+        screen: 'Chat',
+        params: { conversationId: conv.conversationId, bookingId: conv.bookingId, name: conv.driverName },
+      });
+      return;
+    }
+  } catch { /* rơi về danh sách chuyến */ }
+  navigation.navigate('MyBookingsTab', { screen: 'MyBookings' });
+}
+
 function goToTarget(navigation, item) {
   if (item.type === 'CHAT_MESSAGE') {
-    navigation.navigate('MessagesTab');
+    openChat(navigation, item);
     return;
   }
   if (item.type.startsWith('BOOKING_') || item.type.startsWith('TRIP_') || item.type === 'PAYMENT_FAILED') {
