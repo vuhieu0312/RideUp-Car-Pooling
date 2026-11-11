@@ -15,6 +15,7 @@ import { Text } from '../components/Typography';
 import { useAuth } from '../auth/AuthContext';
 import { subscribeEvents } from '../realtime/realtime';
 import { getConversationMessages } from '../api/api';
+import { markChatRead } from '../utils/chatUnread';
 import {
     sendChatMessage,
     subscribeChat,
@@ -53,8 +54,11 @@ export default function ChatScreen({ route, navigation }) {
     useEffect(() => {
         let active = true;
         subscribeConversation(conversationId);
+        markChatRead(bookingId);
         const unsubscribeEvents = subscribeEvents((event) => {
-          if (event.type === 'CHAT_ERROR') {
+          if (event.type === 'NOTIFICATION_CREATED') {
+            markChatRead(bookingId);
+          } else if (event.type === 'CHAT_ERROR') {
             setError(event.message || 'Không gửi được tin nhắn.');
           } else if (event.type === 'BOOKING_UPDATED' && event.bookingId === bookingId && event.status !== 'CONFIRMED') {
             setClosed(true);
