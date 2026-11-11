@@ -1,6 +1,7 @@
 package com.rideup.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.rideup.enums.VehicleStatus;
 import com.rideup.enums.VehicleType;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -19,6 +20,8 @@ import java.time.LocalDateTime;
 public class VehicleResponse {
     String id;
     String driverId;
+    String driverName;
+    String driverPhone;
     String plateNumber;
     String vehicleBrand;
     String vehicleModel;
@@ -26,6 +29,7 @@ public class VehicleResponse {
     String vehicleColor;
     Integer seatCapacity;
     VehicleType vehicleType;
+    VehicleStatus status;
     String vehicleImage;
     String registrationImage;
     LocalDate registrationExpiryDate;

@@ -10,6 +10,8 @@ import { getDriverProfile, getMyProfile, listMyVehicles, resolveMediaUrl, upload
 import { colors, FONT } from '../theme';
 import { Text } from '../components/Typography';
 import { useDialog } from '../components/AppDialog';
+import { useRealtimeRefresh } from '../realtime/useRealtime';
+import { VEHICLE_STATUS, vehicleTypeLabel } from '../utils/driverForm';
 
 const GENDER_LABEL = { MALE: 'Nam', FEMALE: 'Nữ', OTHER: 'Khác' };
 
@@ -25,21 +27,22 @@ export default function AccountScreen({ navigation }) {
   const [snack, setSnack] = useState('');
 
   // chỉ set state local, không gọi updateUser vì sẽ re-render AuthProvider làm navigation reset về Home
-  useFocusEffect(
-    useCallback(() => {
-      Promise.all([
-        getMyProfile().catch(() => null),
-        getDriverProfile().catch(() => null),
-        listMyVehicles().catch(() => []),
-      ])
-        .then(([p, d, vs]) => {
-          if (p) setProfile(p);
-          setDriver(d);
-          setVehicle((vs || []).find((v) => v.isActive) || (vs && vs[0]) || null);
-        })
-        .finally(() => setLoading(false));
-    }, [])
-  );
+  const reload = useCallback(() => {
+    Promise.all([
+      getMyProfile().catch(() => null),
+      getDriverProfile().catch(() => null),
+      listMyVehicles().catch(() => []),
+    ])
+      .then(([p, d, vs]) => {
+        if (p) setProfile(p);
+        setDriver(d);
+        setVehicle((vs || []).find((v) => v.status === 'ACTIVE') || (vs && vs[0]) || null);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  useFocusEffect(reload);
+  useRealtimeRefresh(reload, ['VEHICLE_UPDATED', 'DRIVER_PROFILE_UPDATED']);
 
   async function pickAndUpload() {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -48,7 +51,7 @@ export default function AccountScreen({ navigation }) {
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
@@ -78,6 +81,8 @@ export default function AccountScreen({ navigation }) {
   const avatarUrl = profile?.avatarUrl
     ? resolveMediaUrl(profile.avatarUrl)
     : null;
+
+  const vehicleStatus = VEHICLE_STATUS[vehicle?.status] || VEHICLE_STATUS.PENDING;
 
   return (
     <View style={styles.container}>
@@ -154,19 +159,12 @@ export default function AccountScreen({ navigation }) {
               <View style={{ flex: 1, marginLeft: 12 }}>
                 <Text style={styles.vehiclePlate}>{vehicle.plateNumber}</Text>
                 <Text style={styles.vehicleMeta}>
-                  {vehicle.vehicleBrand} {vehicle.vehicleModel} · {vehicle.vehicleType} · {vehicle.seatCapacity} chỗ
+                  {[vehicle.vehicleBrand, vehicle.vehicleModel].filter(Boolean).join(' ') || vehicleTypeLabel(vehicle.vehicleType)} · {vehicle.seatCapacity} chỗ
                 </Text>
-                {vehicle.isVerified ? (
-                  <View style={styles.verifiedBadge}>
-                    <MaterialCommunityIcons name="check-decagram" size={11} color={colors.success} />
-                    <Text style={styles.verifiedText}>Đã duyệt</Text>
-                  </View>
-                ) : (
-                  <View style={[styles.verifiedBadge, { backgroundColor: colors.warningBg }]}>
-                    <MaterialCommunityIcons name="clock-outline" size={11} color={colors.warning} />
-                    <Text style={[styles.verifiedText, { color: colors.warning }]}>Đang chờ duyệt</Text>
-                  </View>
-                )}
+                <View style={[styles.verifiedBadge, { backgroundColor: vehicleStatus.color + '20' }]}>
+                  <MaterialCommunityIcons name={vehicleStatus.icon} size={11} color={vehicleStatus.color} />
+                  <Text style={[styles.verifiedText, { color: vehicleStatus.color }]}>{vehicleStatus.label}</Text>
+                </View>
               </View>
             </View>
           ) : (
@@ -182,6 +180,17 @@ export default function AccountScreen({ navigation }) {
                 Đăng ký xe
               </Button>
             </View>
+          )}
+          {!!vehicle && (
+            <Button
+              mode="outlined"
+              icon="swap-horizontal"
+              onPress={() => navigation.navigate('VehicleList')}
+              textColor={colors.primaryAccent}
+              style={{ marginTop: 12, alignSelf: 'flex-start' }}
+            >
+              Quản lý / Đổi xe
+            </Button>
           )}
         </View>
 

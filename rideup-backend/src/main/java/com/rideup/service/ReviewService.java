@@ -8,6 +8,7 @@ import com.rideup.entity.Review;
 import com.rideup.entity.Trip;
 import com.rideup.entity.User;
 import com.rideup.enums.BookingStatus;
+import com.rideup.enums.NotificationType;
 import com.rideup.enums.TripStatus;
 import com.rideup.repository.BookingRepository;
 import com.rideup.repository.DriverProfileRepository;
@@ -36,6 +37,7 @@ public class ReviewService {
     BookingRepository bookingRepository;
     UserRepository userRepository;
     DriverProfileRepository driverProfileRepository;
+    RealtimeService realtimeService;
 
     @Transactional
     public ReviewResponse createReview(String userId, String tripId, CreateReviewRequest req) {
@@ -84,6 +86,11 @@ public class ReviewService {
 
         log.info("Review created id={} trip={} driver={} rating={} newAvg={}",
             review.getId(), tripId, driver.getId(), req.getRating(), newAvg);
+
+        realtimeService.notifyUser(driver, NotificationType.REVIEW_RECEIVED,
+            "Bạn nhận được đánh giá mới",
+            customer.getFullName() + " đánh giá " + req.getRating() + "/5 sao · " + NotificationService.routeOf(trip),
+            null, tripId, "review:" + review.getId());
 
         return toResponse(review);
     }

@@ -2,6 +2,7 @@ package com.rideup.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.rideup.enums.DriverStatus;
+import com.rideup.enums.Gender;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -23,6 +24,9 @@ public class DriverResponse {
     String fullName;
     String email;
     String phone;
+    String avatarUrl;
+    LocalDate dateOfBirth;
+    Gender gender;
 
     String cccd;
     String cccdImageFront;
@@ -39,6 +43,7 @@ public class DriverResponse {
     String approvedBy;
     LocalDateTime rejectedAt;
     String rejectionReason;
+    VehicleResponse vehicle;
 
     LocalDateTime createdAt;
     LocalDateTime updatedAt;
