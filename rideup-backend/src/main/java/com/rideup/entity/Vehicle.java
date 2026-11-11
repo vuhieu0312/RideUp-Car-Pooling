@@ -25,9 +25,9 @@ public class Vehicle {
     @Column(length = 36)
     String id;
 
-    // 1 tài xế chỉ có tối đa 1 xe, cột vẫn tên driver_id
-    @OneToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "driver_id", nullable = false, unique = true)
+    // 1 tài xế có thể có nhiều xe, chỉ 1 xe isActive tại một thời điểm
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "driver_id", nullable = false)
     DriverProfile driverProfile;
 
     @Column(nullable = false, length = 20)

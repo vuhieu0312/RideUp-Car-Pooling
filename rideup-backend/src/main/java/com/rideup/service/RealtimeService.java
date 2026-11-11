@@ -3,6 +3,10 @@ package com.rideup.service;
 import com.rideup.entity.Booking;
 import com.rideup.entity.DriverProfile;
 import com.rideup.entity.Trip;
+import com.rideup.entity.User;
+import com.rideup.enums.NotificationType;
+import com.rideup.enums.Role;
+import com.rideup.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -22,6 +26,8 @@ public class RealtimeService {
     public static final String DESTINATION = "/queue/events";
 
     private final SimpMessagingTemplate messagingTemplate;
+    private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     public void bookingChanged(Booking b) {
         if (b == null || b.getCustomer() == null || b.getTrip() == null) {
@@ -36,6 +42,29 @@ public class RealtimeService {
         if (b.getTrip().getDriver() != null) {
             queue(b.getTrip().getDriver().getId(), event);
         }
+
+        try {
+            for (String userId : notificationService.onBookingChanged(b)) {
+                notificationCreated(userId);
+            }
+        } catch (Exception e) {
+            log.warn("Tạo thông báo cho booking {} thất bại: {}", b.getId(), e.getMessage());
+        }
+    }
+
+    public void notifyUser(User user, NotificationType type, String title, String message,
+                           String bookingId, String tripId, String dedupKey) {
+        try {
+            if (notificationService.create(user, type, title, message, bookingId, tripId, dedupKey)) {
+                notificationCreated(user.getId());
+            }
+        } catch (Exception e) {
+            log.warn("Tạo thông báo {} cho user {} thất bại: {}", type, user == null ? null : user.getId(), e.getMessage());
+        }
+    }
+
+    public void notificationCreated(String userId) {
+        queue(userId, event("NOTIFICATION_CREATED"));
     }
 
     public void tripChanged(Trip t) {
@@ -59,6 +88,13 @@ public class RealtimeService {
 
     public void vehicleChanged(String driverUserId) {
         queue(driverUserId, event("VEHICLE_UPDATED"));
+    }
+
+    public void adminQueueChanged() {
+        Map<String, Object> event = event("ADMIN_QUEUE_UPDATED");
+        for (String adminId : userRepository.findIdsByRole(Role.ADMIN)) {
+            queue(adminId, event);
+        }
     }
 
     private Map<String, Object> event(String type) {
