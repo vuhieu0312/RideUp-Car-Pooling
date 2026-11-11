@@ -4,20 +4,41 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fileUrl } from '../api/api';
 import { Text } from './Typography';
 
-// ảnh /uploads cần JWT nên gửi kèm header, bấm vào để xem toàn màn hình
+// ảnh /uploads cần JWT: tải bằng fetch kèm header rồi đổi sang data URI (Image trên web bỏ qua headers)
 export default function AuthImage({ path, label }) {
-  const [token, setToken] = useState(null);
+  const [dataUri, setDataUri] = useState(null);
   const [zoom, setZoom] = useState(false);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
-    AsyncStorage.getItem('adminToken').then((t) => setToken(t || '')).catch(() => setToken(''));
-  }, []);
+    if (!path) return undefined;
+    let alive = true;
+    setDataUri(null);
+    setFailed(false);
+    (async () => {
+      try {
+        const token = await AsyncStorage.getItem('adminToken');
+        const res = await fetch(fileUrl(path), {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const blob = await res.blob();
+        const uri = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+        if (alive) setDataUri(uri);
+      } catch (e) {
+        console.log('[AuthImage] tải ảnh lỗi', fileUrl(path), e?.message);
+        if (alive) setFailed(true);
+      }
+    })();
+    return () => { alive = false; };
+  }, [path]);
 
-  const source = {
-    uri: fileUrl(path),
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-  };
+  const source = { uri: dataUri };
 
   return (
     <View style={styles.wrap}>
@@ -25,10 +46,10 @@ export default function AuthImage({ path, label }) {
 
       {!path ? (
         <View style={styles.empty}><Text variant="bodySmall" style={{ color: '#94a3b8' }}>Chưa có ảnh</Text></View>
-      ) : token === null ? (
-        <View style={styles.empty}><ActivityIndicator /></View>
       ) : failed ? (
         <View style={styles.empty}><Text variant="bodySmall" style={{ color: '#dc2626' }}>Không tải được ảnh</Text></View>
+      ) : !dataUri ? (
+        <View style={styles.empty}><ActivityIndicator /></View>
       ) : (
         <Pressable onPress={() => setZoom(true)}>
           <Image source={source} style={styles.thumb} resizeMode="contain" onError={() => setFailed(true)} />

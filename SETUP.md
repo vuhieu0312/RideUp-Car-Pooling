@@ -23,7 +23,7 @@ RideUp/
 | MySQL | **8.x** | Kèm MySQL Workbench cho dễ chạy script |
 | Redis | 6+ | **Bắt buộc** – thiếu Redis thì không đăng nhập được. Cách dễ nhất trên Windows: Docker (xem Bước 2) |
 | Node.js | 20 LTS trở lên | Kiểm tra: `node -v` |
-| Expo Go | bản mới nhất (hỗ trợ **Expo SDK 57**) | Cài trên điện thoại từ CH Play / App Store |
+| Expo Go | bản mới nhất (hỗ trợ **Expo SDK 58**) | Cài trên điện thoại từ CH Play / App Store |
 | Stripe CLI | tuỳ chọn | Chỉ cần nếu test thanh toán thẻ (Bước 7) |
 
 Máy tính và điện thoại phải **dùng chung một mạng Wi-Fi**.
@@ -156,13 +156,18 @@ Demo:
 1. `migrate-booking-status.sql`
 2. `fix-enum-columns.sql`
 3. `drop-booking-active-constraint.sql`
-4. `fix-ward-code.sql`, `insert-missing-wards.sql`
+4. `insert-missing-wards.sql`
 5. `add-indexes.sql`
 6. `drop-dead-columns.sql`
 7. `drop-redundant-columns.sql`
 8. `fix-cash-pending-bookings.sql`
 9. `add-vehicle-fk.sql`
 10. `drop-trip-pickup-coords.sql`
+11. `drop-vehicle-insurance.sql`
+12. `drop-ward-display-name.sql`
+13. `drop-ward-code.sql`
+14. `drop-vehicle-driver-unique.sql` (cho phép 1 tài xế có nhiều xe và dùng lại biển số của xe đã ngừng dùng; chạy trước khi chạy backend mới)
+15. `fix-notification-columns.sql` (chức năng thông báo: đổi cột type/status của bảng notification sang VARCHAR, thêm dedup_key; chỉ cần chạy nếu bảng notification đã tồn tại từ trước)
 
 Sau đó chạy lại backend. Muốn làm sạch hoàn toàn: `DROP DATABASE rideup;` rồi làm lại từ Bước 1.
 

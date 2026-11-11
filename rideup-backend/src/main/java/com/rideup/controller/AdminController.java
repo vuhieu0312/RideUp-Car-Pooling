@@ -2,6 +2,7 @@ package com.rideup.controller;
 
 import com.rideup.exception.ApiResponse;
 import com.rideup.dto.request.DriverRejectRequest;
+import com.rideup.dto.response.DriverDetailResponse;
 import com.rideup.dto.response.DriverResponse;
 import com.rideup.dto.response.VehicleResponse;
 import com.rideup.enums.DriverStatus;
@@ -41,6 +42,11 @@ public class AdminController {
         return ApiResponse.success(adminService.listDrivers(status));
     }
 
+
+    @GetMapping("/drivers/{id}")
+    public ApiResponse<DriverDetailResponse> getDriverDetail(@PathVariable("id") String driverProfileId) {
+        return ApiResponse.success(adminService.getDriverDetail(driverProfileId));
+    }
 
     @GetMapping("/vehicles/pending")
     public ApiResponse<List<VehicleResponse>> listPendingVehicles() {

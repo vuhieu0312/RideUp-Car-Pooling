@@ -8,7 +8,7 @@ const DEV_PORT = 8080;
 
 function resolveBaseUrl() {
   if (typeof window !== 'undefined' && typeof window.document !== 'undefined') {
-    return `http://localhost:${DEV_PORT}/api`;
+    return `http://${window.location.hostname || 'localhost'}:${DEV_PORT}/api`;
   }
   const hostUri = Constants.expoConfig?.hostUri;
   if (hostUri) {
@@ -53,6 +53,49 @@ api.interceptors.response.use(
   }
 );
 
+export const getWsUrl = () => `${baseURL.replace(/^http/, 'ws')}/ws`;
+
+function isTokenExpiring(token) {
+  try {
+    const part = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const padded = part + '='.repeat((4 - (part.length % 4)) % 4);
+    const { exp } = JSON.parse(atob(padded));
+    return !exp || exp * 1000 - Date.now() < 30000;
+  } catch {
+    return false;
+  }
+}
+
+let refreshing = null;
+
+async function refreshAccessToken() {
+  let refreshToken = await AsyncStorage.getItem('adminRefreshToken');
+  if (!refreshToken) {
+    const raw = await AsyncStorage.getItem('adminUser');
+    refreshToken = raw ? JSON.parse(raw).refreshToken : null;
+  }
+  if (!refreshToken) throw new Error('Không có refresh token');
+  const res = await axios.post(`${baseURL}/auth/refresh-token`, { refreshToken }, { timeout: 30000 });
+  const data = res.data.data;
+  await AsyncStorage.multiSet([
+    ['adminToken', data.accessToken],
+    ['adminRefreshToken', data.refreshToken],
+  ]);
+  return data.accessToken;
+}
+
+export async function getFreshAccessToken() {
+  const token = await AsyncStorage.getItem('adminToken');
+  if (!token) return null;
+  if (!isTokenExpiring(token)) return token;
+  try {
+    refreshing = refreshing || refreshAccessToken().finally(() => { refreshing = null; });
+    return await refreshing;
+  } catch {
+    return null;
+  }
+}
+
 export default api;
 
 export const login = (email, password) =>
@@ -60,6 +103,9 @@ export const login = (email, password) =>
 
 export const listDrivers = (status) =>
   api.get(`/admin/drivers${status ? `?status=${status}` : ''}`).then((r) => r.data.data);
+
+export const getDriverDetail = (id) =>
+  api.get(`/admin/drivers/${id}`).then((r) => r.data.data);
 
 export const approveDriver = (id) =>
   api.post(`/admin/drivers/${id}/approve`).then((r) => r.data);
