@@ -10,6 +10,7 @@ import com.rideup.entity.TripStop;
 import com.rideup.entity.Vehicle;
 import com.rideup.entity.Ward;
 import com.rideup.enums.BookingStatus;
+import com.rideup.enums.NotificationType;
 import com.rideup.enums.PaymentMethod;
 import com.rideup.enums.PaymentStatus;
 import com.rideup.enums.StopType;
@@ -300,6 +301,14 @@ public class TripService {
                 log.warn("cancelPayment failed for booking {} when starting trip: {}", b.getId(), ex.getMessage());
             }
         }
+        List<Booking> riding = bookingRepository.findByTripIdAndStatusIn(
+                tripId, List.of(BookingStatus.CONFIRMED));
+        for (Booking b : riding) {
+            realtimeService.notifyUser(b.getCustomer(), NotificationType.TRIP_STARTED,
+                "Tài xế đã bắt đầu chuyến đi",
+                NotificationService.routeOf(trip) + " · mã " + b.getBookingCode(),
+                b.getId(), tripId, "booking:" + b.getId() + ":TRIP_STARTED");
+        }
         realtimeService.tripChanged(trip);
         return toResponse(trip);
     }
@@ -375,6 +384,11 @@ public class TripService {
         }
         cancelTripAndBookings(trip, "Hệ thống tự huỷ: tài xế không bắt đầu chuyến sau "
                 + graceMinutes + " phút kể từ giờ khởi hành");
+        realtimeService.notifyUser(trip.getDriver(), NotificationType.TRIP_CANCELED,
+                "Chuyến đi đã bị tự động huỷ",
+                NotificationService.routeOf(trip) + " · " + NotificationService.timeOf(trip)
+                + "\nBạn chưa bắt đầu chuyến sau " + graceMinutes + " phút kể từ giờ khởi hành.",
+                null, tripId, "trip:" + tripId + ":AUTO_CANCELED");
         return true;
     }
 

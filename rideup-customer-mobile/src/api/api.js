@@ -176,3 +176,16 @@ export const uploadAvatar = (file) => {
     .post('/users/me/avatar', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
     .then((r) => r.data.data);
 };
+
+
+export const listNotifications = (page = 0, size = 30) =>
+  api.get('/notifications', { params: { page, size } }).then((r) => r.data.data);
+
+export const getUnreadNotificationCount = () =>
+  api.get('/notifications/unread-count').then((r) => r.data.data);
+
+export const markNotificationRead = (id) =>
+  api.post(`/notifications/${id}/read`).then((r) => r.data);
+
+export const markAllNotificationsRead = () =>
+  api.post('/notifications/read-all').then((r) => r.data);
