@@ -2,6 +2,7 @@ package com.rideup.entity;
 
 import com.rideup.enums.Gender;
 import com.rideup.enums.Role;
+import com.rideup.enums.AccountStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -43,6 +44,15 @@ public class User {
 
     @Enumerated(EnumType.STRING)
     Gender gender;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "account_status", nullable = false, length = 20)
+    @Builder.Default
+    AccountStatus accountStatus = AccountStatus.ACTIVE;
+
+    @Column(name = "violation_count", nullable = false)
+    @Builder.Default
+    Integer violationCount = 0;
 
     @Column(length = 500)
     String avatarUrl;

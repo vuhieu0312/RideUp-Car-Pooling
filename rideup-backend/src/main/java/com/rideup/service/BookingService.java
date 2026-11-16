@@ -7,6 +7,7 @@ import com.rideup.dto.response.BookingResponse;
 import com.rideup.entity.Booking;
 import com.rideup.entity.DriverProfile;
 import com.rideup.entity.Payment;
+import com.rideup.entity.Review;
 import com.rideup.entity.Trip;
 import com.rideup.entity.User;
 import com.rideup.entity.Ward;
@@ -17,6 +18,7 @@ import com.rideup.enums.TripStatus;
 import com.rideup.repository.BookingRepository;
 import com.rideup.repository.DriverProfileRepository;
 import com.rideup.repository.PaymentRepository;
+import com.rideup.repository.ReviewRepository;
 import com.rideup.repository.TripRepository;
 import com.rideup.repository.UserRepository;
 import com.rideup.repository.WardRepository;
@@ -55,6 +57,7 @@ public class BookingService {
     final DriverProfileRepository driverProfileRepository;
     final WardRepository wardRepository;
     final PaymentRepository paymentRepository;
+    final ReviewRepository reviewRepository;
     final PaymentService paymentService;
     final RealtimeService realtimeService;
 
@@ -76,6 +79,7 @@ public class BookingService {
                           DriverProfileRepository driverProfileRepository,
                           WardRepository wardRepository,
                           PaymentRepository paymentRepository,
+                          ReviewRepository reviewRepository,
                           PaymentService paymentService,
                           RealtimeService realtimeService,
                           PlatformTransactionManager transactionManager) {
@@ -87,6 +91,7 @@ public class BookingService {
         this.driverProfileRepository = driverProfileRepository;
         this.wardRepository = wardRepository;
         this.paymentRepository = paymentRepository;
+        this.reviewRepository = reviewRepository;
         this.paymentService = paymentService;
         this.realtimeService = realtimeService;
         this.requiresNewTx = new TransactionTemplate(transactionManager);
@@ -487,6 +492,7 @@ public class BookingService {
         Ward pickupWard = b.getPickupWard();
         Ward dropoffWard = b.getDropoffWard();
         Payment payment = b.getPayment();
+        var review = reviewRepository.findByTripIdAndCustomerId(trip.getId(), customer.getId());
         return BookingResponse.builder()
             .id(b.getId())
             .bookingCode(b.getBookingCode())
@@ -523,10 +529,15 @@ public class BookingService {
             .pickupWardName(pickupWard != null ? pickupWard.getName() : null)
             .dropoffWardName(dropoffWard != null ? dropoffWard.getName() : null)
             .driverName(trip.getDriver() != null ? trip.getDriver().getFullName() : null)
+            .driverId(trip.getDriver() != null ? trip.getDriver().getId() : null)
             .driverPhone(b.getStatus() == BookingStatus.CONFIRMED && trip.getDriver() != null
                 ? trip.getDriver().getPhone() : null)
             .tripPlate(trip.getVehicle() != null ? trip.getVehicle().getPlateNumber() : null)
             .tripVehicle(vehicleLabel(trip))
+            .canReviewDriver(b.getStatus() == BookingStatus.COMPLETED
+                && trip.getStatus() == TripStatus.COMPLETED
+                && review.isEmpty())
+            .driverReviewRating(review.map(Review::getRating).orElse(null))
             .build();
     }
 

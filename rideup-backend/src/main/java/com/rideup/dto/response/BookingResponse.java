@@ -59,8 +59,11 @@ public class BookingResponse {
     String pickupWardName;
     String dropoffWardName;
     String driverName;
+    String driverId;
     // chỉ có khi tài xế đã xác nhận
     String driverPhone;
     String tripPlate;
     String tripVehicle;
+    Boolean canReviewDriver;
+    Integer driverReviewRating;
 }

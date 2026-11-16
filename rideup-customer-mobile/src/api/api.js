@@ -143,6 +143,18 @@ export const createBooking = (form) =>
 export const listMyBookings = () =>
   api.get('/customer/bookings/mine').then((r) => r.data.data);
 
+export const createDriverReview = (tripId, rating) =>
+  api.post(`/customer/reviews/${tripId}`, { rating }).then((r) => r.data.data);
+
+export const createReport = (form) =>
+  api.post('/reports', form).then((r) => r.data);
+
+export const listSubmittedComplaints = () =>
+  api.get('/reports/mine/submitted').then((r) => r.data.data);
+
+export const listReceivedComplaints = () =>
+  api.get('/reports/mine/received').then((r) => r.data.data);
+
 export const listMyConversations = () =>
   api.get('/customer/conversations').then((r) => r.data.data);
 
