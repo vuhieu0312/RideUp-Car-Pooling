@@ -183,6 +183,15 @@ export const cancelTrip = (tripId, reason) =>
 export const listDriverBookings = (status) =>
   api.get('/driver/bookings', { params: status ? { status } : {} }).then((r) => r.data.data);
 
+export const createReport = (form) =>
+  api.post('/reports', form).then((r) => r.data);
+
+export const listSubmittedComplaints = () =>
+  api.get('/reports/mine/submitted').then((r) => r.data.data);
+
+export const listReceivedComplaints = () =>
+  api.get('/reports/mine/received').then((r) => r.data.data);
+
 export const listMyConversations = () =>
   api.get('/driver/conversations').then((r) => r.data.data);
 

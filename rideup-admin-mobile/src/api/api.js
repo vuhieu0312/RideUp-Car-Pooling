@@ -70,6 +70,12 @@ export const rejectDriver = (id, reason) =>
 export const listPendingVehicles = () =>
   api.get('/admin/vehicles/pending').then((r) => r.data.data);
 
+export const listReports = (status) =>
+  api.get('/admin/reports', { params: status ? { status } : {} }).then((r) => r.data.data);
+
+export const reviewReport = (id, status) =>
+  api.patch(`/admin/reports/${id}/status`, { status }).then((r) => r.data);
+
 export const approveVehicle = (id) =>
   api.post(`/admin/vehicles/${id}/approve`).then((r) => r.data);
 

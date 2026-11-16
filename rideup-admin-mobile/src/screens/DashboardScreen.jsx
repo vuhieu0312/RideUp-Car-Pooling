@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Linking, ScrollView, StyleSheet, View } from 'react-native';
 import { Button, Card, Dialog, HelperText, IconButton, Portal, SegmentedButtons, TextInput } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   approveDriver, approveVehicle, getLocationStats,
-  listDrivers, listPendingVehicles, rejectDriver, rejectVehicle,
+  listDrivers, listPendingVehicles, listReports, rejectDriver, rejectVehicle, reviewReport,
 } from '../api/api';
 import { useAuth } from '../auth/AuthContext';
 import DetailModal from '../components/DetailModal';
@@ -18,6 +18,7 @@ export default function DashboardScreen() {
   const [tab, setTab] = useState('drivers');
   const [drivers, setDrivers] = useState([]);
   const [vehicles, setVehicles] = useState([]);
+  const [reports, setReports] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState('');
@@ -46,11 +47,41 @@ export default function DashboardScreen() {
     finally { setLoading(false); }
   }
 
+  async function loadReports() {
+    setLoading(true);
+    try { setReports(await listReports('PENDING')); }
+    catch (e) { setMsg('Lỗi: ' + (e.response?.data?.message || e.message)); }
+    finally { setLoading(false); }
+  }
+
   useEffect(() => {
     if (tab === 'drivers') loadDrivers();
     else if (tab === 'vehicles') loadVehicles();
+    else if (tab === 'reports') loadReports();
     else loadStats();
   }, [tab]);
+
+  async function handleReport(id, status) {
+    try {
+      const result = await reviewReport(id, status);
+      setMsg(
+        status === 'APPROVED' && result.data?.accountStatus === 'LOCKED'
+          ? 'Khiếu nại đã được duyệt; tài khoản người dùng đã bị khóa'
+          : result.message
+      );
+      loadReports();
+    } catch (e) {
+      setMsg('Lỗi: ' + (e.response?.data?.message || e.message));
+    }
+  }
+
+  async function openEvidence(url) {
+    try {
+      await Linking.openURL(url);
+    } catch (e) {
+      setMsg('Không thể mở bằng chứng: ' + e.message);
+    }
+  }
 
   async function approveD(id) {
     try { const x = await approveDriver(id); setMsg(x.message); loadDrivers(); }
@@ -151,6 +182,7 @@ export default function DashboardScreen() {
           buttons={[
             { value: 'drivers', label: `Tài xế (${drivers.length})` },
             { value: 'vehicles', label: `Xe (${vehicles.length})` },
+            { value: 'reports', label: `Khiếu nại (${reports.length})` },
             { value: 'locations', label: 'Thống kê' },
           ]}
           style={{ marginBottom: 12 }}
@@ -215,6 +247,40 @@ export default function DashboardScreen() {
               </>
             ) : <Text>Đang tải...</Text>}
           </Card.Content></Card>
+        )}
+
+        {tab === 'reports' && (loading ? <Text>Đang tải...</Text> :
+          reports.length === 0 ? (
+            <Card><Card.Content><Text style={{ textAlign: 'center', color: '#6b7280' }}>Không có khiếu nại chờ xử lý.</Text></Card.Content></Card>
+          ) : (
+            reports.map((report) => (
+              <Card key={report.id} style={{ marginBottom: 8 }}>
+                <Card.Content>
+                  <Text style={{ fontWeight: '700' }}>{report.title}</Text>
+                  <Text variant="bodySmall">Loại: {report.category} · Booking: {report.bookingCode}</Text>
+                  <Text variant="bodySmall">Người gửi: {report.reporterName}</Text>
+                  <Text variant="bodySmall">
+                    Bị khiếu nại: {report.reportedUserName} · Vi phạm đã xác nhận: {report.violationCount}/5
+                  </Text>
+                  <Text variant="bodySmall" style={{ marginTop: 6 }}>{report.description}</Text>
+                  {!!report.evidenceUrl && (
+                    <Button compact onPress={() => openEvidence(report.evidenceUrl)}>Mở bằng chứng</Button>
+                  )}
+                  <Text variant="bodySmall" style={{ color: '#6b7280' }}>
+                    Gửi lúc: {report.createdAt?.replace('T', ' ').substring(0, 16)}
+                  </Text>
+                </Card.Content>
+                <Card.Actions>
+                  <Button mode="outlined" textColor="#dc2626" onPress={() => handleReport(report.id, 'REJECTED')}>
+                    Từ chối
+                  </Button>
+                  <Button mode="contained" buttonColor="#10b981" onPress={() => handleReport(report.id, 'APPROVED')}>
+                    Duyệt
+                  </Button>
+                </Card.Actions>
+              </Card>
+            ))
+          )
         )}
       </ScrollView>
 
