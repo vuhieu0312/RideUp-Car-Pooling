@@ -3,6 +3,7 @@ package com.rideup.service;
 import com.rideup.exception.AppException;
 import com.rideup.dto.request.CreateReviewRequest;
 import com.rideup.dto.response.ReviewResponse;
+import com.rideup.entity.Booking;
 import com.rideup.entity.DriverProfile;
 import com.rideup.entity.Review;
 import com.rideup.entity.Trip;
@@ -69,7 +70,7 @@ public class ReviewService {
 
         Review review = Review.builder()
             .trip(trip)
-            .driver(driver)
+            .driver(profile)
             .customer(customer)
             .rating(req.getRating())
             .comment(req.getComment())
@@ -77,7 +78,7 @@ public class ReviewService {
         review = reviewRepository.saveAndFlush(review);
 
         // tính lại điểm trung bình từ toàn bộ review của tài xế (đã gồm review vừa lưu)
-        Double avg = reviewRepository.avgRatingByDriverId(driver.getId());
+        Double avg = reviewRepository.avgRatingByDriverId(profile.getId());
         BigDecimal newAvg = BigDecimal.valueOf(avg == null ? req.getRating() : avg)
             .setScale(2, RoundingMode.HALF_UP);
 
@@ -95,12 +96,28 @@ public class ReviewService {
         return toResponse(review);
     }
 
+    @Transactional
+    public ReviewResponse createBookingReview(String userId, String bookingId, CreateReviewRequest req) {
+        Booking booking = bookingRepository.findById(bookingId)
+            .orElseThrow(() -> AppException.notFound("Không tìm thấy booking"));
+
+        if (!booking.getCustomer().getId().equals(userId)) {
+            throw AppException.forbidden("Bạn không có booking này");
+        }
+        if (booking.getStatus() != BookingStatus.COMPLETED
+            || booking.getTrip().getStatus() != TripStatus.COMPLETED) {
+            throw AppException.badRequest("Chỉ đánh giá được booking đã hoàn thành");
+        }
+
+        return createReview(userId, booking.getTrip().getId(), req);
+    }
+
     private ReviewResponse toResponse(Review r) {
         return ReviewResponse.builder()
             .id(r.getId())
             .tripId(r.getTrip().getId())
-            .driverId(r.getDriver().getId())
-            .driverName(r.getDriver().getFullName())
+            .driverId(r.getDriver().getUser().getId())
+            .driverName(r.getDriver().getUser().getFullName())
             .customerId(r.getCustomer().getId())
             .customerName(r.getCustomer().getFullName())
             .rating(r.getRating())

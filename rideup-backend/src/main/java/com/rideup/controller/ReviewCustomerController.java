@@ -26,6 +26,19 @@ public class ReviewCustomerController {
 
     ReviewService reviewService;
 
+    @PostMapping("/bookings/{bookingId}")
+    public ApiResponse<ReviewResponse> createForBooking(
+        @PathVariable("bookingId") String bookingId,
+        @Valid @RequestBody CreateReviewRequest req,
+        Authentication auth
+    ) {
+        String userId = ((UserDetails) auth.getPrincipal()).getUsername();
+        return ApiResponse.success(
+            "Đánh giá thành công",
+            reviewService.createBookingReview(userId, bookingId, req)
+        );
+    }
+
     @PostMapping("/{tripId}")
     public ApiResponse<ReviewResponse> create(
         @PathVariable("tripId") String tripId,

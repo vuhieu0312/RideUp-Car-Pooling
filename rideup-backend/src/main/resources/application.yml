@@ -67,6 +67,8 @@ server:
     context-path: /api
 
 app:
+  report:
+    violation-threshold: ${REPORT_VIOLATION_THRESHOLD:5}
   mail:
     # Tắt thì chỉ ghi log, không gửi mail thật
     enabled: ${MAIL_ENABLED:false}
