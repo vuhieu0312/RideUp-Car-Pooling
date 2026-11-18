@@ -7,11 +7,14 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface ReviewRepository extends JpaRepository<Review, String> {
 
     List<Review> findByTripId(String tripId);
+
+    Optional<Review> findByTripIdAndCustomerId(String tripId, String customerId);
 
     List<Review> findByDriverIdOrderByCreatedAtDesc(String driverId);
 

@@ -50,7 +50,7 @@ public class JwtService {
     private String buildToken(User user, long ttlMs, JwtClaim type) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + ttlMs);
-        List<String> roles = user.getRoles().stream().map(Role::name).toList();
+        List<String> roles = List.of(user.getRole().name());
 
         return Jwts.builder()
             .subject(user.getId())

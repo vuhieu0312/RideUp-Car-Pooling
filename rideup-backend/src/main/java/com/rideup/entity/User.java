@@ -2,6 +2,7 @@ package com.rideup.entity;
 
 import com.rideup.enums.Gender;
 import com.rideup.enums.Role;
+import com.rideup.enums.AccountStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -44,21 +45,24 @@ public class User {
     @Enumerated(EnumType.STRING)
     Gender gender;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "account_status", nullable = false, length = 20)
+    @Builder.Default
+    AccountStatus accountStatus = AccountStatus.ACTIVE;
+
+    @Column(name = "violation_count", nullable = false)
+    @Builder.Default
+    Integer violationCount = 0;
+
     @Column(length = 500)
     String avatarUrl;
 
     @Column(nullable = false, unique = true, length = 150)
     String email;
 
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(
-            name = "user_roles",
-            joinColumns = @JoinColumn(name = "user_id")
-    )
-    @Column(name = "role", nullable = false, length = 20)
     @Enumerated(EnumType.STRING)
-    @Builder.Default
-    Set<Role> roles = new HashSet<>();
+    @Column(name = "role", nullable = false, length = 20)
+    Role role;
 
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     DriverProfile driverProfile;

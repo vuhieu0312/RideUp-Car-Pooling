@@ -1,8 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { FlatList, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { FlatList, RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { cancelTrip, completeTrip, listMyTrips, listProvinces, listWards, startTrip } from '../api/api';
+import {
+  cancelTrip,
+  completeTrip,
+  listMyTrips,
+  listProvinces,
+  listReceivedComplaints,
+  listSubmittedComplaints,
+  listWards,
+  startTrip,
+} from '../api/api';
 import { colors, FONT, shadow } from '../theme';
 import IconText from '../components/IconText';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -35,6 +44,11 @@ export default function AllTripsScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [actionMsg, setActionMsg] = useState('');
   const [wardNames, setWardNames] = useState({});
+  const [section, setSection] = useState('TRIPS');
+  const [complaintView, setComplaintView] = useState('SUBMITTED');
+  const [submittedComplaints, setSubmittedComplaints] = useState([]);
+  const [receivedComplaints, setReceivedComplaints] = useState([]);
+  const [reportsLoaded, setReportsLoaded] = useState(false);
 
   async function loadWardNames(list) {
     const provinceIds = [...new Set(list.flatMap((t) => [t.startProvinceId, t.endProvinceId]).filter(Boolean))];
@@ -46,8 +60,22 @@ export default function AllTripsScreen({ navigation }) {
 
   function load(silent = false) {
     if (!silent) setLoading(true);
-    Promise.all([listMyTrips(), listProvinces()])
-      .then(([t, p]) => { setTrips(t); setProvinces(p); loadWardNames(t); })
+    setReportsLoaded(false);
+    Promise.all([
+      listMyTrips(),
+      listProvinces(),
+      listSubmittedComplaints().catch(() => []),
+      listReceivedComplaints().catch(() => []),
+    ])
+      .then(([t, p, submitted, received]) => {
+        setTrips(t);
+        setProvinces(p);
+        setSubmittedComplaints(submitted || []);
+        setReceivedComplaints(received || []);
+        setReportsLoaded(true);
+        loadWardNames(t);
+      })
+      .catch((e) => setActionMsg(e.response?.data?.message || 'Lỗi tải chuyến xe và khiếu nại'))
       .finally(() => setLoading(false));
   }
 
@@ -151,8 +179,86 @@ export default function AllTripsScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
+      <View style={styles.sectionTabs}>
+        {[
+          ['TRIPS', 'Chuyến xe'],
+          ['COMPLAINTS', 'Khiếu nại'],
+        ].map(([key, label]) => (
+          <TouchableOpacity
+            key={key}
+            style={[styles.sectionTab, section === key && styles.sectionTabActive]}
+            onPress={() => setSection(key)}
+          >
+            <Text style={[styles.sectionTabText, section === key && styles.sectionTabTextActive]}>{label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
       {!!actionMsg && <Text style={styles.actionMsg}>{actionMsg}</Text>}
 
+      {section === 'COMPLAINTS' ? (
+        <>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.filters}
+            contentContainerStyle={styles.filtersContent}
+          >
+            {[
+              ['SUBMITTED', 'Khiếu nại đã gửi', submittedComplaints.length],
+              ['RECEIVED', 'Bị khiếu nại', receivedComplaints.length],
+            ].map(([key, label, count]) => (
+              <TouchableOpacity
+                key={key}
+                style={[styles.filter, complaintView === key && styles.filterActive]}
+                onPress={() => setComplaintView(key)}
+              >
+                <Text
+                  numberOfLines={1}
+                  ellipsizeMode="clip"
+                  style={[styles.filterText, complaintView === key && styles.filterTextActive]}
+                >
+                  {label}<Text style={styles.filterCount}> {count}</Text>
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+          <FlatList
+            data={complaintView === 'SUBMITTED' ? submittedComplaints : receivedComplaints}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.listContent}
+            refreshControl={<RefreshControl refreshing={loading} onRefresh={() => load()} />}
+            ListEmptyComponent={
+              <View style={styles.emptyBox}>
+                <Text style={styles.muted}>
+                  {reportsLoaded ? 'Chưa có khiếu nại nào trong mục này.' : 'Đang tải...'}
+                </Text>
+              </View>
+            }
+            renderItem={({ item }) => (
+              <View style={styles.complaintCard}>
+                <View style={styles.complaintCardHead}>
+                  <Text style={styles.complaintTitle}>{item.title}</Text>
+                  <Text style={styles.complaintStatus}>
+                    {item.status === 'PENDING' ? 'Đang xử lý' : item.status === 'APPROVED' ? 'Đã duyệt' : 'Đã từ chối'}
+                  </Text>
+                </View>
+                <Text style={styles.complaintMeta}>Booking: {item.bookingCode || item.bookingId}</Text>
+                <Text style={styles.complaintMeta}>
+                  {complaintView === 'SUBMITTED'
+                    ? `Người bị khiếu nại: ${item.reportedUserName}`
+                    : `Người khiếu nại: ${item.reporterName}`}
+                </Text>
+                <Text style={styles.complaintMeta}>Loại: {categoryLabel(item.category)}</Text>
+                <Text style={styles.complaintDescription}>{item.description}</Text>
+                <Text style={styles.complaintMeta}>Gửi lúc: {fmtTime(item.createdAt)}</Text>
+                {!!item.evidenceUrl && <Text style={styles.evidenceText}>Đã đính kèm ảnh bằng chứng</Text>}
+              </View>
+            )}
+          />
+        </>
+      ) : (
+        <>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -207,7 +313,7 @@ export default function AllTripsScreen({ navigation }) {
           return (
             <View style={styles.card}>
               <View style={styles.cardHead}>
-                <View style={{ flex: 1 }}>
+                <View style={styles.tripSummary}>
                   <Text style={styles.tripRoute}>
                     {provinceName(t.startProvinceId)} → {provinceName(t.endProvinceId)}
                   </Text>
@@ -217,7 +323,7 @@ export default function AllTripsScreen({ navigation }) {
                   {!!t.note && <Text style={styles.stopLine} numberOfLines={2}>Ghi chú: {t.note}</Text>}
                 </View>
                 <View style={[styles.badge, { backgroundColor: meta.bg }]}>
-                  <Text style={[styles.badgeText, { color: meta.fg }]}>{meta.label}</Text>
+                  <Text numberOfLines={1} style={[styles.badgeText, { color: meta.fg }]}>{meta.label}</Text>
                 </View>
               </View>
 
@@ -296,8 +402,20 @@ export default function AllTripsScreen({ navigation }) {
           );
         }}
       />
+        </>
+      )}
     </View>
   );
+}
+
+function categoryLabel(category) {
+  return {
+    SAFETY: 'An toàn',
+    HARASSMENT: 'Quấy rối',
+    FRAUD: 'Gian lận',
+    PROPERTY_DAMAGE: 'Hư hỏng tài sản',
+    OTHER: 'Khác',
+  }[category] || category;
 }
 
 const styles = StyleSheet.create({
@@ -308,7 +426,11 @@ const styles = StyleSheet.create({
   title: { fontFamily: FONT[700], marginTop: 3, fontSize: 20, fontWeight: '700', color: colors.text },
   refreshBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
   refreshIcon: { color: colors.primaryAccent, fontSize: 19, fontWeight: '700' },
-
+  sectionTabs: { flexDirection: 'row', marginHorizontal: 12, marginTop: 12, borderRadius: 9, padding: 3, backgroundColor: '#eaf0ed' },
+  sectionTab: { flex: 1, alignItems: 'center', paddingVertical: 9, borderRadius: 7 },
+  sectionTabActive: { backgroundColor: '#fff' },
+  sectionTabText: { fontSize: 12, color: colors.textMuted, fontWeight: '600' },
+  sectionTabTextActive: { color: colors.primaryAccent },
   filters: { marginTop: 10, marginBottom: 10, flexGrow: 0 },
   filtersContent: {
     paddingHorizontal: 12,
@@ -317,6 +439,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   filter: {
+    flexShrink: 0,
     paddingHorizontal: 10,
     paddingVertical: 6,
     height: 30,
@@ -348,12 +471,20 @@ const styles = StyleSheet.create({
   actionDangerText: { color: colors.danger, fontSize: 11, fontWeight: '700' },
 
   card: { marginBottom: 9, padding: 12, borderWidth: 1, borderColor: '#e3ece8', borderRadius: 10, backgroundColor: 'white', ...shadow(2, 0.07, 7) },
-  cardHead: { flexDirection: 'row', alignItems: 'flex-start' },
+  complaintCard: { marginBottom: 9, padding: 13, borderWidth: 1, borderColor: '#e3ece8', borderRadius: 10, backgroundColor: 'white', ...shadow(2, 0.07, 7) },
+  complaintCardHead: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 },
+  complaintTitle: { flex: 1, fontSize: 14, fontWeight: '700', color: colors.textDark },
+  complaintStatus: { fontSize: 10, fontWeight: '700', color: colors.primaryAccent },
+  complaintMeta: { marginTop: 5, fontSize: 11, color: colors.textSubtle },
+  complaintDescription: { marginTop: 9, fontSize: 12, lineHeight: 18, color: colors.textDark },
+  evidenceText: { marginTop: 6, fontSize: 11, color: colors.primaryAccent },
+  cardHead: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 },
+  tripSummary: { flex: 1, minWidth: 0 },
   tripRoute: { fontFamily: FONT[700], fontSize: 13, fontWeight: '700', color: colors.textDark },
   stopLine: { fontSize: 12, color: colors.textDark, marginTop: 3 },
   tripTime: { fontSize: 12, color: colors.textSubtle, marginTop: 4 },
-  badge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999, alignSelf: 'flex-start' },
-  badgeText: { fontFamily: FONT[700], fontSize: 10, fontWeight: '700' },
+  badge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999, alignSelf: 'flex-start', flexShrink: 0 },
+  badgeText: { fontFamily: FONT[700], fontSize: 10, fontWeight: '700', textAlign: 'right' },
   separator: { height: 1, backgroundColor: colors.border, marginVertical: 10 },
   metrics: { flexDirection: 'row', gap: 24 },
   metric: { flex: 1 },

@@ -1,7 +1,7 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
-import { DeviceEventEmitter } from 'react-native';
+import { DeviceEventEmitter, Platform } from 'react-native';
 
 // tự lấy base URL: web → localhost, native → IP LAN từ hostUri, cuối cùng là env/extra
 const DEV_PORT = 8080;
@@ -142,6 +142,37 @@ export const createBooking = (form) =>
 
 export const listMyBookings = () =>
   api.get('/customer/bookings/mine').then((r) => r.data.data);
+
+export const createDriverReview = (tripId, rating) =>
+  api.post(`/customer/reviews/${tripId}`, { rating }).then((r) => r.data.data);
+
+const appendFile = async (fd, key, file, fallbackName = `${key}.jpg`) => {
+  const name = file.name || file.fileName || fallbackName;
+  const type = file.type || file.mimeType || 'image/jpeg';
+  if (Platform.OS === 'web') {
+    const blob = await (await fetch(file.uri)).blob();
+    fd.append(key, new File([blob], name, { type: blob.type || type }));
+  } else {
+    fd.append(key, { uri: file.uri, name, type });
+  }
+};
+
+export const createReport = async ({ evidence, ...fields }) => {
+  const fd = new FormData();
+  Object.entries(fields).forEach(([k, v]) => {
+    if (v !== null && v !== undefined && v !== '') fd.append(k, String(v));
+  });
+  await appendFile(fd, 'evidence', evidence, 'evidence.jpg');
+  return api
+    .post('/reports', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+    .then((r) => r.data);
+};
+
+export const listSubmittedComplaints = () =>
+  api.get('/reports/mine/submitted').then((r) => r.data.data);
+
+export const listReceivedComplaints = () =>
+  api.get('/reports/mine/received').then((r) => r.data.data);
 
 export const listMyConversations = () =>
   api.get('/customer/conversations').then((r) => r.data.data);

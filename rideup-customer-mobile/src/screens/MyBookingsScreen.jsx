@@ -1,10 +1,18 @@
 import { useCallback, useEffect, useState } from 'react';
-import { DeviceEventEmitter, FlatList, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { DeviceEventEmitter, FlatList, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../auth/AuthContext';
-import { cancelBooking, listMyBookings, listMyConversations } from '../api/api';
+import {
+  cancelBooking,
+  createDriverReview,
+  createReport,
+  listMyBookings,
+  listMyConversations,
+  listReceivedComplaints,
+  listSubmittedComplaints,
+} from '../api/api';
 import { usePayment } from '../hooks/usePayment';
 import { useDialog } from '../components/AppDialog';
 import { useRealtimeRefresh } from '../realtime/useRealtime';
@@ -12,6 +20,7 @@ import { NOTIFICATIONS_CHANGED } from '../hooks/useUnreadNotifications';
 import { loadUnreadChatBookingIds } from '../utils/chatUnread';
 import { colors, shadow } from '../theme';
 import { Text } from '../components/Typography';
+import ComplaintFormModal from '../components/ComplaintFormModal';
 
 const STATUS_META = {
   PENDING_PAYMENT: { icon: 'credit-card-outline', label: 'Chờ thanh toán', bg: colors.pendingBg, fg: '#92400e' },
@@ -51,19 +60,42 @@ export default function MyBookingsScreen({ navigation }) {
   const [filter, setFilter] = useState('ALL');
   const [actionMsg, setActionMsg] = useState('');
   const [conversationByBooking, setConversationByBooking] = useState({});
+  const [reviewBooking, setReviewBooking] = useState(null);
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [reviewError, setReviewError] = useState('');
+  const [section, setSection] = useState('BOOKINGS');
+  const [complaintView, setComplaintView] = useState('SUBMITTED');
+  const [submittedComplaints, setSubmittedComplaints] = useState([]);
+  const [receivedComplaints, setReceivedComplaints] = useState([]);
+  const [reportBooking, setReportBooking] = useState(null);
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [reportError, setReportError] = useState('');
+  const [reportsLoaded, setReportsLoaded] = useState(false);
+
   const [chatUnread, setChatUnread] = useState(new Set());
 
   function load(silent = false) {
     if (!silent) setLoading(true);
-    Promise.all([listMyBookings(), listMyConversations().catch(() => []), loadUnreadChatBookingIds()])
-      .then(([myBookings, conversations, unreadChats]) => {
+    setReportsLoaded(false);
+    Promise.all([
+      listMyBookings(),
+      listMyConversations().catch(() => []),
+      loadUnreadChatBookingIds(),
+      listSubmittedComplaints().catch(() => []),
+      listReceivedComplaints().catch(() => []),
+    ])
+      .then(([myBookings, conversations, unreadChats, submitted, received]) => {
         setBookings(myBookings);
         setChatUnread(unreadChats);
         setConversationByBooking(Object.fromEntries(
           conversations.map((conversation) => [conversation.bookingId, conversation]),
         ));
+        setSubmittedComplaints(submitted || []);
+        setReceivedComplaints(received || []);
+        setReportsLoaded(true);
       })
-      .catch(() => setActionMsg('Lỗi tải booking'))
+      .catch((e) => setActionMsg(e.response?.data?.message || 'Lỗi tải chuyến xe và khiếu nại'))
       .finally(() => setLoading(false));
   }
 
@@ -196,6 +228,45 @@ export default function MyBookingsScreen({ navigation }) {
     load();
   }
 
+  async function submitReview() {
+    if (!reviewBooking || !reviewRating || reviewSubmitting) return;
+    setReviewSubmitting(true);
+    try {
+      await createDriverReview(reviewBooking.tripId, reviewRating);
+      setReviewBooking(null);
+      setReviewRating(0);
+      setReviewError('');
+      setActionMsg('Đã gửi đánh giá tài xế');
+      load(true);
+    } catch (e) {
+      setReviewError(e.response?.data?.message || 'Lỗi gửi đánh giá');
+    } finally {
+      setReviewSubmitting(false);
+    }
+  }
+
+  async function submitComplaint(form) {
+    if (!reportBooking || reportSubmitting) return false;
+    setReportSubmitting(true);
+    setReportError('');
+    try {
+      await createReport({
+        bookingId: reportBooking.id,
+        reportedUserId: reportBooking.driverId,
+        ...form,
+      });
+      setActionMsg('Đã gửi khiếu nại, chờ Admin xác minh');
+      setReportBooking(null);
+      load(true);
+      return true;
+    } catch (e) {
+      setReportError(e.response?.data?.message || 'Lỗi gửi khiếu nại');
+      return false;
+    } finally {
+      setReportSubmitting(false);
+    }
+  }
+
   return (
     <View style={styles.container}>
       <View style={[styles.heading, { paddingTop: insets.top + 16 }]}>
@@ -208,6 +279,80 @@ export default function MyBookingsScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
+      <View style={styles.sectionTabs}>
+        {[
+          ['BOOKINGS', 'Chuyến xe'],
+          ['COMPLAINTS', 'Khiếu nại'],
+        ].map(([key, label]) => (
+          <TouchableOpacity
+            key={key}
+            style={[styles.sectionTab, section === key && styles.sectionTabActive]}
+            onPress={() => setSection(key)}
+          >
+            <Text style={[styles.sectionTabText, section === key && styles.sectionTabTextActive]}>{label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {section === 'COMPLAINTS' ? (
+        <>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.filters}
+            contentContainerStyle={styles.filtersContent}
+          >
+            {[
+              ['SUBMITTED', 'Khiếu nại đã gửi', submittedComplaints.length],
+              ['RECEIVED', 'Bị khiếu nại', receivedComplaints.length],
+            ].map(([key, label, count]) => (
+              <TouchableOpacity
+                key={key}
+                style={[styles.filter, complaintView === key && styles.filterActive]}
+                onPress={() => setComplaintView(key)}
+              >
+                <Text
+                  numberOfLines={1}
+                  ellipsizeMode="clip"
+                  style={[styles.filterText, complaintView === key && styles.filterTextActive]}
+                >
+                  {label}<Text style={styles.filterCount}> {count}</Text>
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+          {!!actionMsg && <Text style={styles.actionMsg}>{actionMsg}</Text>}
+          <FlatList
+            data={complaintView === 'SUBMITTED' ? submittedComplaints : receivedComplaints}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.listContent}
+            ListEmptyComponent={
+              <View style={styles.emptyBox}>
+                <Text style={styles.muted}>
+                  {loading ? 'Đang tải...' : 'Chưa có khiếu nại nào trong mục này.'}
+                </Text>
+              </View>
+            }
+            renderItem={({ item }) => (
+              <View style={styles.complaintCard}>
+                <View style={styles.complaintCardHead}>
+                  <Text style={styles.complaintTitle}>{item.title}</Text>
+                  <Text style={styles.complaintStatus}>{item.status === 'PENDING' ? 'Đang xử lý' : item.status === 'APPROVED' ? 'Đã duyệt' : 'Đã từ chối'}</Text>
+                </View>
+                <Text style={styles.complaintMeta}>Booking: {item.bookingCode || item.bookingId}</Text>
+                <Text style={styles.complaintMeta}>
+                  {complaintView === 'SUBMITTED' ? `Người bị khiếu nại: ${item.reportedUserName}` : `Người khiếu nại: ${item.reporterName}`}
+                </Text>
+                <Text style={styles.complaintMeta}>Loại: {categoryLabel(item.category)}</Text>
+                <Text style={styles.complaintDescription}>{item.description}</Text>
+                <Text style={styles.complaintMeta}>Gửi lúc: {fmtTime(item.createdAt)}</Text>
+                {!!item.evidenceUrl && <Text style={styles.evidenceText}>Đã đính kèm ảnh bằng chứng</Text>}
+              </View>
+            )}
+          />
+        </>
+      ) : (
+        <>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filters} contentContainerStyle={styles.filtersContent}>
         {FILTERS.map((f) => (
           <TouchableOpacity
@@ -259,7 +404,7 @@ export default function MyBookingsScreen({ navigation }) {
           return (
             <View style={styles.card}>
               <View style={styles.cardHead}>
-                <View style={{ flex: 1 }}>
+                <View style={styles.bookingSummary}>
                   <Text style={styles.code}>Mã: <Text style={{ fontWeight: '700' }}>{b.bookingCode}</Text></Text>
                   <View style={styles.tripTimeRow}>
                     <MaterialCommunityIcons name="bus" size={15} color={colors.textDark} />
@@ -270,7 +415,7 @@ export default function MyBookingsScreen({ navigation }) {
                 </View>
                 <View style={[styles.badge, { backgroundColor: meta.bg }]}>
                   {!!meta.icon && <MaterialCommunityIcons name={meta.icon} size={12} color={meta.fg} />}
-                  <Text style={[styles.badgeText, { color: meta.fg }]}>{meta.label}</Text>
+                  <Text numberOfLines={1} style={[styles.badgeText, { color: meta.fg }]}>{meta.label}</Text>
                 </View>
               </View>
 
@@ -299,9 +444,38 @@ export default function MyBookingsScreen({ navigation }) {
               )}
 
               <View style={styles.actionsRow}>
-                  <TouchableOpacity style={styles.detailBtn} onPress={() => showDetail(b)}>
+                  <TouchableOpacity
+                    style={[styles.detailBtn, b.status === 'COMPLETED' && styles.completedActionButton]}
+                    onPress={() => showDetail(b)}
+                  >
                     <Text style={styles.detailBtnText}>Xem chi tiết</Text>
                   </TouchableOpacity>
+                  {b.status === 'COMPLETED' && (
+                    b.driverReviewRating ? (
+                      <TouchableOpacity
+                        style={[styles.reviewButton, styles.reviewButtonDisabled, styles.reviewButtonReviewed, styles.completedActionButton]}
+                        disabled
+                        accessibilityRole="button"
+                        accessibilityState={{ disabled: true }}
+                        accessibilityLabel={`Đã đánh giá ${b.driverReviewRating} trên 5 sao`}
+                      >
+                        <Text style={styles.reviewButtonText}>Đã đánh giá</Text>
+                        <RatingStars rating={b.driverReviewRating} />
+                      </TouchableOpacity>
+                    ) : (
+                      <TouchableOpacity
+                        style={[styles.reviewButton, styles.completedActionButton]}
+                        onPress={() => {
+                          setReviewBooking(b);
+                          setReviewRating(0);
+                          setReviewError('');
+                        }}
+                      >
+                        <MaterialCommunityIcons name="star-outline" size={16} color="#d99000" />
+                        <Text style={styles.reviewButtonText}>Đánh giá</Text>
+                      </TouchableOpacity>
+                    )
+                  )}
                   <TouchableOpacity
                     style={[styles.chatBtn, !conversation && styles.chatBtnDisabled]}
                     disabled={!conversation}
@@ -314,6 +488,20 @@ export default function MyBookingsScreen({ navigation }) {
                     <Text style={styles.chatBtnText}>{conversation ? 'Chat tài xế' : 'Chat sau khi xác nhận'}</Text>
                     {chatUnread.has(b.id) && <View style={styles.unreadDot} />}
                   </TouchableOpacity>
+                  {b.status === 'COMPLETED' && !!b.driverId && reportsLoaded && (
+                    submittedComplaints.some((complaint) => complaint.bookingId === b.id) ? (
+                      <TouchableOpacity style={[styles.detailBtn, styles.reportButtonDisabled]} disabled>
+                        <Text style={styles.detailBtnText}>Đã khiếu nại</Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <TouchableOpacity
+                        style={styles.detailBtn}
+                        onPress={() => { setReportError(''); setReportBooking(b); }}
+                      >
+                        <Text style={styles.detailBtnText}>Khiếu nại tài xế</Text>
+                      </TouchableOpacity>
+                    )
+                  )}
                   {canPay && (
                     <TouchableOpacity
                       style={[styles.payBtn, payLoading && styles.payBtnDisabled]}
@@ -335,8 +523,90 @@ export default function MyBookingsScreen({ navigation }) {
           );
         }}
       />
+        </>
+      )}
+      <Modal
+        visible={!!reviewBooking}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setReviewBooking(null)}
+      >
+        <View style={styles.reviewOverlay}>
+          <View style={styles.reviewModal}>
+            <Text style={styles.reviewTitle}>Đánh giá tài xế</Text>
+            <Text style={styles.reviewPrompt}>Bạn hài lòng với chuyến đi như thế nào?</Text>
+            {!!reviewError && <Text style={styles.reviewError}>{reviewError}</Text>}
+            <View style={styles.ratingPicker}>
+              {[1, 2, 3, 4, 5].map((star) => (
+                <TouchableOpacity
+                  key={star}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${star} sao`}
+                  onPress={() => setReviewRating(star)}
+                  disabled={reviewSubmitting}
+                >
+                  <MaterialCommunityIcons
+                    name={star <= reviewRating ? 'star' : 'star-outline'}
+                    size={38}
+                    color={star <= reviewRating ? '#f2a900' : colors.textSubtle}
+                  />
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={styles.ratingLabel}>{reviewRating ? `${reviewRating}/5 sao` : 'Chọn số sao'}</Text>
+            <View style={styles.reviewModalActions}>
+              <TouchableOpacity
+                style={styles.reviewCancel}
+                onPress={() => setReviewBooking(null)}
+                disabled={reviewSubmitting}
+              >
+                <Text style={styles.reviewCancelText}>Để sau</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.reviewSubmit, (!reviewRating || reviewSubmitting) && styles.reviewSubmitDisabled]}
+                onPress={submitReview}
+                disabled={!reviewRating || reviewSubmitting}
+              >
+                <Text style={styles.reviewSubmitText}>{reviewSubmitting ? 'Đang gửi...' : 'Gửi đánh giá'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+      <ComplaintFormModal
+        visible={!!reportBooking}
+        submitting={reportSubmitting}
+        error={reportError}
+        onClose={() => { if (!reportSubmitting) setReportBooking(null); }}
+        onSubmit={submitComplaint}
+      />
     </View>
   );
+}
+
+function RatingStars({ rating }) {
+  return (
+    <View style={styles.ratingStars}>
+      {[1, 2, 3, 4, 5].map((star) => (
+        <MaterialCommunityIcons
+          key={star}
+          name={star <= rating ? 'star' : 'star-outline'}
+          size={15}
+          color="#f2a900"
+        />
+      ))}
+    </View>
+  );
+}
+
+function categoryLabel(category) {
+  return {
+    SAFETY: 'An toàn',
+    HARASSMENT: 'Quấy rối',
+    FRAUD: 'Gian lận',
+    PROPERTY_DAMAGE: 'Hư hỏng tài sản',
+    OTHER: 'Khác',
+  }[category] || category;
 }
 
 const styles = StyleSheet.create({
@@ -345,7 +615,11 @@ const styles = StyleSheet.create({
   kicker: { fontSize: 9, fontWeight: '800', color: colors.primaryAccent, letterSpacing: 1.5 },
   title: { marginTop: 3, fontSize: 20, fontWeight: '700', color: colors.text },
   refreshBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
-
+  sectionTabs: { flexDirection: 'row', marginHorizontal: 12, marginTop: 12, borderRadius: 9, padding: 3, backgroundColor: '#eaf0ed' },
+  sectionTab: { flex: 1, alignItems: 'center', paddingVertical: 9, borderRadius: 7 },
+  sectionTabActive: { backgroundColor: '#fff' },
+  sectionTabText: { fontSize: 12, color: colors.textMuted, fontWeight: '600' },
+  sectionTabTextActive: { color: colors.primaryAccent },
   filters: { marginTop: 10, marginBottom: 10, flexGrow: 0 },
   filtersContent: {
     paddingHorizontal: 12,
@@ -354,6 +628,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   filter: {
+    flexShrink: 0,
     paddingHorizontal: 10,
     paddingVertical: 6,
     height: 30,
@@ -375,12 +650,20 @@ const styles = StyleSheet.create({
   emptyBox: { padding: 38, borderRadius: 10, backgroundColor: 'white', color: colors.textSubtle, fontSize: 12, textAlign: 'center' },
 
   card: { marginBottom: 9, padding: 12, borderWidth: 1, borderColor: '#e3ece8', borderRadius: 10, backgroundColor: 'white', ...shadow(2, 0.07, 7) },
-  cardHead: { flexDirection: 'row', alignItems: 'flex-start' },
+  complaintCard: { marginBottom: 9, padding: 13, borderWidth: 1, borderColor: '#e3ece8', borderRadius: 10, backgroundColor: 'white', ...shadow(2, 0.07, 7) },
+  complaintCardHead: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 },
+  complaintTitle: { flex: 1, fontSize: 14, fontWeight: '700', color: colors.textDark },
+  complaintStatus: { fontSize: 10, fontWeight: '700', color: colors.primaryAccent },
+  complaintMeta: { marginTop: 5, fontSize: 11, color: colors.textSubtle },
+  complaintDescription: { marginTop: 9, fontSize: 12, lineHeight: 18, color: colors.textDark },
+  evidenceText: { marginTop: 6, fontSize: 11, color: colors.primaryAccent },
+  cardHead: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 },
+  bookingSummary: { flex: 1, minWidth: 0 },
   code: { fontSize: 10, color: colors.textSubtle, marginBottom: 4 },
   tripTimeRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 },
   tripTime: { fontSize: 13, fontWeight: '700', color: colors.textDark },
   payStatusRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  badge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999, alignSelf: 'flex-start' },
+  badge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999, alignSelf: 'flex-start', flexShrink: 0 },
   badgeText: { fontSize: 10, fontWeight: '700' },
   separator: { height: 1, backgroundColor: colors.border, marginVertical: 10 },
   metrics: { flexDirection: 'row', gap: 24 },
@@ -388,11 +671,31 @@ const styles = StyleSheet.create({
   metricLabel: { fontSize: 10, color: colors.textSubtle, marginBottom: 2 },
   metricValue: { fontSize: 12, fontWeight: '700' },
   cancelReason: { marginTop: 8, fontSize: 11, color: colors.dangerText },
+  ratingStars: { flexDirection: 'row', alignItems: 'center', gap: 1 },
+  reviewButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingVertical: 8, paddingHorizontal: 14, minWidth: 102, borderRadius: 6, backgroundColor: '#fff8e6' },
+  reviewButtonDisabled: { opacity: 0.75 },
+  reviewButtonReviewed: { flexDirection: 'column', gap: 2 },
+  reviewButtonText: { color: '#9a6700', fontSize: 11, fontWeight: '700' },
+  reviewOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.55)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+  reviewModal: { width: '100%', maxWidth: 380, padding: 22, borderRadius: 16, backgroundColor: colors.surface, alignItems: 'center' },
+  reviewTitle: { fontSize: 18, fontWeight: '700', color: colors.text },
+  reviewPrompt: { marginTop: 8, fontSize: 13, color: colors.textSecondary, textAlign: 'center' },
+  reviewError: { marginTop: 10, fontSize: 12, color: colors.dangerText, textAlign: 'center' },
+  ratingPicker: { flexDirection: 'row', gap: 8, marginTop: 18 },
+  ratingLabel: { marginTop: 8, fontSize: 13, fontWeight: '700', color: '#9a6700' },
+  reviewModalActions: { flexDirection: 'row', gap: 10, alignSelf: 'stretch', justifyContent: 'flex-end', marginTop: 22 },
+  reviewCancel: { paddingVertical: 10, paddingHorizontal: 16, borderRadius: 8, backgroundColor: '#f1f5f9' },
+  reviewCancelText: { color: colors.textDark, fontWeight: '600' },
+  reviewSubmit: { paddingVertical: 10, paddingHorizontal: 16, borderRadius: 8, backgroundColor: colors.primary },
+  reviewSubmitDisabled: { opacity: 0.5 },
+  reviewSubmitText: { color: '#fff', fontWeight: '700' },
 
-  actionsRow: { marginTop: 12, flexDirection: 'row', justifyContent: 'flex-end', gap: 8 },
+  actionsRow: { marginTop: 12, flexDirection: 'row', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' },
   route: { fontSize: 12, color: colors.textDark, marginTop: 3 },
-  detailBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 6, borderWidth: 1, borderColor: colors.primaryAccent },
+  detailBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 6, borderWidth: 1, borderColor: colors.primaryAccent, alignItems: 'center', justifyContent: 'center' },
+  completedActionButton: { width: 102, flexGrow: 0 },
   detailBtnText: { color: colors.primaryAccent, fontSize: 11, fontWeight: '700' },
+  reportButtonDisabled: { opacity: 0.65 },
   chatBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6, backgroundColor: colors.primaryLight, borderWidth: 1, borderColor: colors.primaryAccent },
   chatBtnDisabled: { opacity: 0.55 },
   chatBtnText: { color: colors.primaryAccent, fontSize: 11, fontWeight: '700' },

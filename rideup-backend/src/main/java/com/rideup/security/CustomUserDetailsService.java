@@ -1,6 +1,7 @@
 package com.rideup.security;
 
 import com.rideup.entity.User;
+import com.rideup.enums.AccountStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -25,10 +26,8 @@ public class CustomUserDetailsService {
         return org.springframework.security.core.userdetails.User.builder()
             .username(user.getId())
             .password(user.getPassword())
-            .authorities(user.getRoles().stream()
-                .map(r -> new SimpleGrantedAuthority("ROLE_" + r.name()))
-                .collect(Collectors.toSet()))
-            .disabled(false)
+            .authorities(java.util.List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name())))
+            .disabled(user.getAccountStatus() != AccountStatus.ACTIVE)
             .build();
     }
 }

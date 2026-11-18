@@ -11,6 +11,7 @@ import com.rideup.dto.response.AuthResponse;
 import com.rideup.dto.response.UserResponse;
 import com.rideup.entity.RefreshToken;
 import com.rideup.entity.User;
+import com.rideup.enums.AccountStatus;
 import com.rideup.enums.Role;
 import com.rideup.repository.RefreshTokenRepository;
 import com.rideup.repository.UserRepository;
@@ -72,7 +73,7 @@ public class AuthenticationService {
             .phone(request.getPhone())
             .password(passwordEncoder.encode(request.getPassword()))
             .verified(true)
-            .roles(new HashSet<>(Collections.singletonList(role)))
+            .role(role)
             .build();
 
         userRepository.save(user);
@@ -82,6 +83,10 @@ public class AuthenticationService {
     public AuthResponse authenticate(LoginRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
             .orElseThrow(() -> AppException.unauthorized("Invalid email or password"));
+
+        if (user.getAccountStatus() != AccountStatus.ACTIVE) {
+            throw AppException.forbidden("Tài khoản đang bị khóa hoặc ngừng hoạt động");
+        }
 
         boolean authenticated = passwordEncoder.matches(request.getPassword(), user.getPassword());
         if (!authenticated) throw AppException.unauthorized("Invalid email or password");
@@ -123,6 +128,9 @@ public class AuthenticationService {
         }
 
         User user = oldToken.getUser();
+        if (user.getAccountStatus() != AccountStatus.ACTIVE) {
+            throw AppException.forbidden("Tài khoản đang bị khóa hoặc ngừng hoạt động");
+        }
         oldToken.setRevoked(true);
         refreshTokenRepository.save(oldToken);
         redisTemplate.delete(RedisKey.REFRESH_TOKEN + hashedToken);
@@ -174,7 +182,7 @@ public class AuthenticationService {
                 .gender(user.getGender())
                 .avatarUrl(user.getAvatarUrl())
                 .verified(user.getVerified())
-                .roles(user.getRoles())
+                .roles(java.util.Set.of(user.getRole()))
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
                 .build())
