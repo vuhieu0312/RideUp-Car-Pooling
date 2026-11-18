@@ -60,15 +60,9 @@ public class User {
     @Column(nullable = false, unique = true, length = 150)
     String email;
 
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(
-            name = "user_roles",
-            joinColumns = @JoinColumn(name = "user_id")
-    )
-    @Column(name = "role", nullable = false, length = 20)
     @Enumerated(EnumType.STRING)
-    @Builder.Default
-    Set<Role> roles = new HashSet<>();
+    @Column(name = "role", nullable = false, length = 20)
+    Role role;
 
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     DriverProfile driverProfile;

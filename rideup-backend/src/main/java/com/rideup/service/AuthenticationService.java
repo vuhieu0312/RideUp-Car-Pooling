@@ -73,7 +73,7 @@ public class AuthenticationService {
             .phone(request.getPhone())
             .password(passwordEncoder.encode(request.getPassword()))
             .verified(true)
-            .roles(new HashSet<>(Collections.singletonList(role)))
+            .role(role)
             .build();
 
         userRepository.save(user);
@@ -182,7 +182,7 @@ public class AuthenticationService {
                 .gender(user.getGender())
                 .avatarUrl(user.getAvatarUrl())
                 .verified(user.getVerified())
-                .roles(user.getRoles())
+                .roles(java.util.Set.of(user.getRole()))
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
                 .build())

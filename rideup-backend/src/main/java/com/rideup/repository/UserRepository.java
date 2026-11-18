@@ -24,7 +24,7 @@ public interface UserRepository extends JpaRepository<User, String> {
     // kiểm tra trùng khi sửa profile, bỏ qua chính user đó
     boolean existsByPhoneAndIdNot(String phone, String id);
 
-    @Query("select u.id from User u join u.roles r where r = :role")
+    @Query("select u.id from User u where u.role = :role")
     List<String> findIdsByRole(@Param("role") Role role);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

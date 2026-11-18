@@ -18,6 +18,7 @@ import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -32,12 +33,13 @@ public class ReportService {
     final ReportRepository reportRepository;
     final BookingRepository bookingRepository;
     final UserRepository userRepository;
+    final FileService fileService;
 
     @Value("${app.report.violation-threshold:5}")
     int violationThreshold;
 
     @Transactional
-    public ReportResponse create(String reporterId, CreateReportRequest request) {
+    public ReportResponse create(String reporterId, CreateReportRequest request, MultipartFile evidence) {
         User reporter = userRepository.findById(reporterId)
             .orElseThrow(() -> AppException.notFound("Không tìm thấy người gửi khiếu nại"));
         User reportedUser = userRepository.findById(request.getReportedUserId())
@@ -66,6 +68,9 @@ public class ReportService {
             throw AppException.conflict("Bạn đã gửi khiếu nại cho người này trong chuyến xe này");
         }
 
+        // upload sau khi qua hết bước kiểm tra để không để lại file rác khi khiếu nại bị từ chối
+        String evidenceUrl = fileService.upload(evidence, "report-evidence");
+
         Report report = Report.builder()
             .reporter(reporter)
             .reportedUser(reportedUser)
@@ -73,7 +78,7 @@ public class ReportService {
             .category(request.getCategory())
             .title(request.getTitle().trim())
             .description(request.getDescription().trim())
-            .evidenceUrl(request.getEvidenceUrl())
+            .evidenceUrl(evidenceUrl)
             .status(ReportStatus.PENDING)
             .build();
 

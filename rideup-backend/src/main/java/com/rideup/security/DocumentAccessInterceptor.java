@@ -1,6 +1,7 @@
 package com.rideup.security;
 
 import com.rideup.repository.DriverProfileRepository;
+import com.rideup.repository.ReportRepository;
 import com.rideup.repository.VehicleRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -18,11 +19,12 @@ import java.util.List;
 public class DocumentAccessInterceptor implements HandlerInterceptor {
 
     private static final List<String> PRIVATE_PREFIXES = List.of(
-        "cccd-front-", "cccd-back-", "gplx-", "vehicle-reg-"
+        "cccd-front-", "cccd-back-", "gplx-", "vehicle-reg-", "report-evidence-"
     );
 
     private final DriverProfileRepository driverProfileRepository;
     private final VehicleRepository vehicleRepository;
+    private final ReportRepository reportRepository;
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
@@ -43,7 +45,8 @@ public class DocumentAccessInterceptor implements HandlerInterceptor {
         String userId = user.getUsername();
         if (isAdmin
                 || driverProfileRepository.ownsDocument(userId, path)
-                || vehicleRepository.ownsDocument(userId, path)) {
+                || vehicleRepository.ownsDocument(userId, path)
+                || reportRepository.isEvidenceParticipant(path, userId)) {
             return true;
         }
         response.sendError(HttpServletResponse.SC_FORBIDDEN);

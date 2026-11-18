@@ -27,8 +27,4 @@ public class CreateReportRequest {
 
     @NotBlank
     String description;
-
-    @NotBlank
-    @Size(max = 500)
-    String evidenceUrl;
 }

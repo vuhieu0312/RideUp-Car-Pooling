@@ -71,7 +71,7 @@ public class DriverService {
                 .gender(data.getGender())
                 .password(passwordEncoder.encode(data.getPassword()))
                 .verified(true)
-                .roles(Collections.singleton(Role.DRIVER))
+                .role(Role.DRIVER)
                 .build());
 
         DriverProfile profile = driverProfileRepository.save(DriverProfile.builder()

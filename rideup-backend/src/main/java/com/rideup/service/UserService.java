@@ -89,7 +89,7 @@ public class UserService {
             .gender(user.getGender())
             .avatarUrl(user.getAvatarUrl())
             .verified(user.getVerified())
-            .roles(user.getRoles())
+            .roles(java.util.Set.of(user.getRole()))
             .createdAt(user.getCreatedAt())
             .updatedAt(user.getUpdatedAt());
 
