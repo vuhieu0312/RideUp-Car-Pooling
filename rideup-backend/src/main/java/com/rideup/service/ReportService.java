@@ -140,6 +140,22 @@ public class ReportService {
         return toResponse(reportRepository.save(report));
     }
 
+    @Transactional
+    public List<ReportResponse> bulkReview(List<String> reportIds, String adminId, ReportStatus decision) {
+        if (decision != ReportStatus.APPROVED && decision != ReportStatus.REJECTED) {
+            throw AppException.badRequest("Trạng thái xử lý phải là APPROVED hoặc REJECTED");
+        }
+        java.util.ArrayList<ReportResponse> results = new java.util.ArrayList<>();
+        for (String reportId : reportIds) {
+            try {
+                results.add(review(reportId, adminId, decision));
+            } catch (AppException ignored) {
+                // Bỏ qua khiếu nại đã xử lý hoặc không tồn tại trong lô.
+            }
+        }
+        return results;
+    }
+
     private ReportResponse toResponse(Report report) {
         User reportedUser = report.getReportedUser();
         return ReportResponse.builder()
