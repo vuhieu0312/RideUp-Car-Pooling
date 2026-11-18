@@ -187,8 +187,12 @@ export const cancelTrip = (tripId, reason) =>
 export const listDriverBookings = (status) =>
   api.get('/driver/bookings', { params: status ? { status } : {} }).then((r) => r.data.data);
 
-export const createReport = (form) =>
-  api.post('/reports', form).then((r) => r.data);
+export const createReport = async ({ evidence, ...fields }) => {
+  const fd = new FormData();
+  appendFields(fd, fields);
+  await appendFile(fd, 'evidence', evidence, 'evidence.jpg');
+  return api.post('/reports', fd, multipart).then((r) => r.data);
+};
 
 export const listSubmittedComplaints = () =>
   api.get('/reports/mine/submitted').then((r) => r.data.data);

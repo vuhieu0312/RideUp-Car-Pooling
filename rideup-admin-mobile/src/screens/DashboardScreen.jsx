@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Linking, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { Button, Card, Dialog, HelperText, IconButton, Portal, SegmentedButtons, TextInput } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -7,6 +7,7 @@ import {
   listDrivers, listPendingVehicles, listReports, rejectDriver, rejectVehicle, reviewReport,
 } from '../api/api';
 import { useAuth } from '../auth/AuthContext';
+import AuthImage from '../components/AuthImage';
 import DetailModal from '../components/DetailModal';
 import IconText from '../components/IconText';
 import { Text } from '../components/Typography';
@@ -79,14 +80,6 @@ export default function DashboardScreen() {
       loadReports();
     } catch (e) {
       setMsg('Lỗi: ' + (e.response?.data?.message || e.message));
-    }
-  }
-
-  async function openEvidence(url) {
-    try {
-      await Linking.openURL(url);
-    } catch (e) {
-      setMsg('Không thể mở bằng chứng: ' + e.message);
     }
   }
 
@@ -333,7 +326,9 @@ export default function DashboardScreen() {
                   </Text>
                   <Text variant="bodySmall" style={{ marginTop: 6 }}>{report.description}</Text>
                   {!!report.evidenceUrl && (
-                    <Button compact onPress={() => openEvidence(report.evidenceUrl)}>Mở bằng chứng</Button>
+                    <View style={{ marginTop: 8 }}>
+                      <AuthImage path={report.evidenceUrl} label="Ảnh bằng chứng" />
+                    </View>
                   )}
                   <Text variant="bodySmall" style={{ color: '#6b7280' }}>
                     Gửi lúc: {report.createdAt?.replace('T', ' ').substring(0, 16)}

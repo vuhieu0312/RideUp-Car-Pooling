@@ -8,14 +8,17 @@ import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -28,13 +31,14 @@ public class ReportController {
 
     ReportService reportService;
 
-    @PostMapping
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<ReportResponse> create(
-        @Valid @RequestBody CreateReportRequest request,
+        @Valid @ModelAttribute CreateReportRequest request,
+        @RequestPart("evidence") MultipartFile evidence,
         Authentication authentication
     ) {
         String reporterId = ((UserDetails) authentication.getPrincipal()).getUsername();
-        return ApiResponse.success("Đã gửi khiếu nại, chờ Admin xác minh", reportService.create(reporterId, request));
+        return ApiResponse.success("Đã gửi khiếu nại, chờ Admin xác minh", reportService.create(reporterId, request, evidence));
     }
 
     @GetMapping("/mine/submitted")

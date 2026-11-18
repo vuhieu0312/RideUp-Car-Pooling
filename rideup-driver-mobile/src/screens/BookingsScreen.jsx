@@ -77,8 +77,8 @@ export default function BookingsScreen({ navigation, route }) {
         listDriverBookings(),
         listMyConversations().catch(() => []),
         loadUnreadChatBookingIds(),
-        listSubmittedComplaints(),
-        listReceivedComplaints(),
+        listSubmittedComplaints().catch(() => []),
+        listReceivedComplaints().catch(() => []),
       ]);
       setChatUnread(unreadChats);
       setBookings(all || []);
@@ -290,7 +290,7 @@ export default function BookingsScreen({ navigation, route }) {
                 <Text style={styles.complaintMeta}>Loại: {categoryLabel(item.category)}</Text>
                 <Text style={styles.complaintDescription}>{item.description}</Text>
                 <Text style={styles.complaintMeta}>Gửi lúc: {fmtTime(item.createdAt)}</Text>
-                {!!item.evidenceUrl && <Text style={styles.evidenceText}>Bằng chứng: {item.evidenceUrl}</Text>}
+                {!!item.evidenceUrl && <Text style={styles.evidenceText}>Đã đính kèm ảnh bằng chứng</Text>}
               </View>
             )}
           />

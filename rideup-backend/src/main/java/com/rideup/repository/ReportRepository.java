@@ -26,6 +26,14 @@ public interface ReportRepository extends JpaRepository<Report, String> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     java.util.Optional<Report> findForUpdateById(String id);
 
+    @org.springframework.data.jpa.repository.Query(
+        "select count(r) > 0 from Report r where r.evidenceUrl = :path "
+            + "and (r.reporter.id = :userId or r.reportedUser.id = :userId)")
+    boolean isEvidenceParticipant(
+        @org.springframework.data.repository.query.Param("path") String path,
+        @org.springframework.data.repository.query.Param("userId") String userId
+    );
+
     boolean existsByReporterIdAndBookingIdAndReportedUserId(
         String reporterId,
         String bookingId,

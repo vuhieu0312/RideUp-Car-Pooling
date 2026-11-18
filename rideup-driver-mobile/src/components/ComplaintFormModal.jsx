@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Modal, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Image, Modal, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { colors } from '../theme';
 import { Text } from './Typography';
 
@@ -11,12 +12,12 @@ const CATEGORIES = [
   ['OTHER', 'Khác'],
 ];
 
-const EMPTY_FORM = { category: '', title: '', description: '', evidenceUrl: '' };
+const EMPTY_FORM = { category: '', title: '', description: '', evidence: null };
 const FIELD_LABELS = {
   category: 'Loại khiếu nại',
   title: 'Tiêu đề',
   description: 'Nội dung',
-  evidenceUrl: 'Bằng chứng',
+  evidence: 'Ảnh bằng chứng',
 };
 
 export default function ComplaintFormModal({ visible, submitting, error, onClose, onSubmit }) {
@@ -38,7 +39,8 @@ export default function ComplaintFormModal({ visible, submitting, error, onClose
   async function submit() {
     const nextErrors = {};
     Object.keys(FIELD_LABELS).forEach((field) => {
-      if (!String(form[field] || '').trim()) nextErrors[field] = `${FIELD_LABELS[field]} là trường bắt buộc.`;
+      const value = form[field];
+      if (!value || (typeof value === 'string' && !value.trim())) nextErrors[field] = `${FIELD_LABELS[field]} là trường bắt buộc.`;
     });
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length) return;
@@ -46,7 +48,26 @@ export default function ComplaintFormModal({ visible, submitting, error, onClose
       category: form.category,
       title: form.title.trim(),
       description: form.description.trim(),
-      evidenceUrl: form.evidenceUrl.trim(),
+      evidence: form.evidence,
+    });
+  }
+
+  async function pickEvidence() {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      setErrors((current) => ({ ...current, evidence: 'Cần cấp quyền truy cập thư viện ảnh.' }));
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 0.7,
+    });
+    if (result.canceled || !result.assets?.[0]) return;
+    const asset = result.assets[0];
+    update('evidence', {
+      uri: asset.uri,
+      name: asset.fileName || 'evidence.jpg',
+      type: asset.mimeType || 'image/jpeg',
     });
   }
 
@@ -111,18 +132,12 @@ export default function ComplaintFormModal({ visible, submitting, error, onClose
             </View>
 
             <View style={styles.field}>
-              {label('evidenceUrl')}
-              <TextInput
-                style={styles.input}
-                value={form.evidenceUrl}
-                onChangeText={(value) => update('evidenceUrl', value)}
-                placeholder="Nhập đường dẫn ảnh/video bằng chứng"
-                autoCapitalize="none"
-                keyboardType="url"
-                maxLength={500}
-                editable={!submitting}
-              />
-              {!!errors.evidenceUrl && <Text style={styles.fieldError}>{errors.evidenceUrl}</Text>}
+              {label('evidence')}
+              {!!form.evidence && <Image source={{ uri: form.evidence.uri }} style={styles.preview} resizeMode="cover" />}
+              <TouchableOpacity style={styles.pickButton} onPress={pickEvidence} disabled={submitting}>
+                <Text style={styles.pickText}>{form.evidence ? 'Chọn ảnh khác' : 'Chọn ảnh từ thư viện'}</Text>
+              </TouchableOpacity>
+              {!!errors.evidence && <Text style={styles.fieldError}>{errors.evidence}</Text>}
             </View>
           </ScrollView>
 
@@ -159,6 +174,9 @@ const styles = StyleSheet.create({
   categoryTextSelected: { color: colors.primaryAccent, fontWeight: '700' },
   input: { minHeight: 42, paddingHorizontal: 11, paddingVertical: 9, borderWidth: 1, borderColor: colors.border, borderRadius: 8, backgroundColor: '#fff', fontSize: 13, color: colors.text },
   multiline: { minHeight: 90 },
+  preview: { width: '100%', height: 170, marginBottom: 8, borderRadius: 8, backgroundColor: '#e2e8f0' },
+  pickButton: { minHeight: 42, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 11, borderWidth: 1, borderStyle: 'dashed', borderColor: colors.primaryAccent, borderRadius: 8, backgroundColor: colors.primaryLight },
+  pickText: { fontSize: 12, fontWeight: '700', color: colors.primaryAccent },
   fieldError: { marginTop: 4, fontSize: 10, color: colors.dangerText },
   formError: { marginTop: 8, fontSize: 11, color: colors.dangerText },
   actions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 9, marginTop: 16 },

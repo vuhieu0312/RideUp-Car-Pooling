@@ -26,9 +26,7 @@ public class CustomUserDetailsService {
         return org.springframework.security.core.userdetails.User.builder()
             .username(user.getId())
             .password(user.getPassword())
-            .authorities(user.getRoles().stream()
-                .map(r -> new SimpleGrantedAuthority("ROLE_" + r.name()))
-                .collect(Collectors.toSet()))
+            .authorities(java.util.List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name())))
             .disabled(user.getAccountStatus() != AccountStatus.ACTIVE)
             .build();
     }
