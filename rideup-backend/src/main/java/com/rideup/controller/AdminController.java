@@ -5,6 +5,7 @@ import com.rideup.dto.request.DriverRejectRequest;
 import com.rideup.dto.response.DriverDetailResponse;
 import com.rideup.dto.response.DriverResponse;
 import com.rideup.dto.response.VehicleResponse;
+import com.rideup.dto.response.AdminDashboardStats;
 import com.rideup.enums.DriverStatus;
 import com.rideup.service.AdminService;
 import com.rideup.service.VehicleService;
@@ -34,6 +35,11 @@ public class AdminController {
 
     AdminService adminService;
     VehicleService vehicleService;
+
+    @GetMapping("/stats")
+    public ApiResponse<AdminDashboardStats> stats() {
+        return ApiResponse.success(adminService.getDashboardStats());
+    }
 
     @GetMapping("/drivers")
     public ApiResponse<List<DriverResponse>> listDrivers(
@@ -101,6 +107,15 @@ public class AdminController {
             "Đã từ chối tài xế",
             adminService.reject(driverProfileId, adminId, req.getReason())
         );
+    }
+
+    @PostMapping("/users/{id}/unlock")
+    public ApiResponse<Void> unlockUser(
+        @PathVariable("id") String userId,
+        Authentication auth
+    ) {
+        adminService.unlockUser(userId, currentUserId(auth));
+        return ApiResponse.success("Đã mở khóa tài khoản", null);
     }
 
     private String currentUserId(Authentication auth) {

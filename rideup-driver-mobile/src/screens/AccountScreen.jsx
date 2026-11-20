@@ -4,6 +4,7 @@ import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Avatar, Button, IconButton, Snackbar } from 'react-native-paper';
+import AuthAvatarImage from '../components/AuthAvatarImage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../auth/AuthContext';
 import { getDriverProfile, getMyProfile, listMyVehicles, resolveMediaUrl, uploadAvatar } from '../api/api';
@@ -99,7 +100,7 @@ export default function AccountScreen({ navigation }) {
         <View style={styles.avatarCard}>
           <View>
             {avatarUrl ? (
-              <Avatar.Image size={96} source={{ uri: avatarUrl }} />
+              <AuthAvatarImage size={96} uri={avatarUrl} />
             ) : (
               <Avatar.Text
                 size={96}

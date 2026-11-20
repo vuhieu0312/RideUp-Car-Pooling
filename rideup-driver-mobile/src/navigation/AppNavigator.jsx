@@ -208,7 +208,9 @@ export default function AppNavigator() {
       .catch(() => { if (!cancelled) setDriverStatus('APPROVED'); })
       .finally(() => { if (!cancelled) setCheckingStatus(false); });
     return () => { cancelled = true; subscription.remove(); };
-  }, [user]);
+    // chỉ chạy lại khi đổi tài khoản; updateUser (đổi avatar...) tạo object user mới nhưng không được làm remount MainFlow
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   if (loading || (user && checkingStatus)) {
     return (

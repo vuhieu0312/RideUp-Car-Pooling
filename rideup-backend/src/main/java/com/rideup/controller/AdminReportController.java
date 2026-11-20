@@ -1,6 +1,7 @@
 package com.rideup.controller;
 
 import com.rideup.dto.request.ReviewReportRequest;
+import com.rideup.dto.request.BulkReviewReportRequest;
 import com.rideup.dto.response.ReportResponse;
 import com.rideup.enums.ReportStatus;
 import com.rideup.exception.ApiResponse;
@@ -44,5 +45,19 @@ public class AdminReportController {
             : "Đã từ chối khiếu nại";
         return ApiResponse.success(message,
             reportService.review(id, adminId, request.getStatus()));
+    }
+
+    @PatchMapping("/bulk-status")
+    public ApiResponse<List<ReportResponse>> bulkReview(
+        @Valid @RequestBody BulkReviewReportRequest request,
+        Authentication authentication
+    ) {
+        String adminId = ((UserDetails) authentication.getPrincipal()).getUsername();
+        List<ReportResponse> results =
+            reportService.bulkReview(request.getIds(), adminId, request.getStatus());
+        return ApiResponse.success(
+            "Đã xử lý " + results.size() + "/" + request.getIds().size() + " khiếu nại",
+            results
+        );
     }
 }

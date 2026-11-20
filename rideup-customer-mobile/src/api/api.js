@@ -198,11 +198,9 @@ export const updateMyProfile = (body) =>
 export const changePassword = (body) =>
   api.post('/users/me/change-password', body).then((r) => r.data);
 
-export const uploadAvatar = (file) => {
+export const uploadAvatar = async (file) => {
   const fd = new FormData();
-  const name = file.name || file.fileName || 'avatar.jpg';
-  const type = file.type || file.mimeType || 'image/jpeg';
-  fd.append('avatar', { uri: file.uri, name, type });
+  await appendFile(fd, 'avatar', file, 'avatar.jpg');
   return api
     .post('/users/me/avatar', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
     .then((r) => r.data.data);

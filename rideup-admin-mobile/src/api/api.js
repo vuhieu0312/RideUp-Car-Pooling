@@ -130,3 +130,12 @@ export const rejectVehicle = (id, reason) =>
 
 export const getLocationStats = () =>
   api.get('/admin/locations/stats').then((r) => r.data.data);
+
+export const getAdminDashboardStats = () =>
+  api.get('/admin/stats').then((r) => r.data.data);
+
+export const bulkReviewReports = (ids, status) =>
+  api.patch('/admin/reports/bulk-status', { ids, status }).then((r) => r.data);
+
+export const unlockUser = (id) =>
+  api.post(`/admin/users/${id}/unlock`).then((r) => r.data);

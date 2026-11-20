@@ -23,6 +23,13 @@ public interface ReportRepository extends JpaRepository<Report, String> {
     @EntityGraph(attributePaths = {"reporter", "reportedUser", "handledBy", "booking", "booking.trip"})
     List<Report> findByReportedUserIdOrderByCreatedAtDesc(String reportedUserId);
 
+    @org.springframework.data.jpa.repository.Query("select r.status, count(r) from Report r group by r.status")
+    List<Object[]> groupCountByStatus();
+
+    @org.springframework.data.jpa.repository.Query(
+        "select u.role, count(r) from Report r join r.reportedUser u group by u.role")
+    List<Object[]> groupCountByReportedRole();
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     java.util.Optional<Report> findForUpdateById(String id);
 
