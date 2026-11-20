@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Avatar } from 'react-native-paper';
+import AuthAvatarImage from '../components/AuthAvatarImage';
 import { useAuth } from '../auth/AuthContext';
 import { listMyBookings, listProvinces, resolveMediaUrl, listWards, searchTrips } from '../api/api';
 import { colors, FONT, HERO_IMAGE, shadow } from '../theme';
@@ -320,7 +321,7 @@ function renderHeroAvatar(user) {
   return (
     <View style={styles.heroAvatarWrap}>
       {url ? (
-        <Avatar.Image size={36} source={{ uri: url }} />
+        <AuthAvatarImage size={36} uri={url} />
       ) : (
         <Avatar.Text
           size={36}

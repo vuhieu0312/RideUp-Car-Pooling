@@ -3,6 +3,7 @@ import { ImageBackground, ScrollView, StyleSheet, TouchableOpacity, View } from 
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Avatar } from 'react-native-paper';
+import AuthAvatarImage from '../components/AuthAvatarImage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../auth/AuthContext';
@@ -186,7 +187,7 @@ function renderHeroAvatar(user) {
   return (
     <View style={styles.heroAvatarWrap}>
       {url ? (
-        <Avatar.Image size={36} source={{ uri: url }} />
+        <AuthAvatarImage size={36} uri={url} />
       ) : (
         <Avatar.Text
           size={36}
