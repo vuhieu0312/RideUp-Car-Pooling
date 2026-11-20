@@ -109,6 +109,15 @@ public class AdminController {
         );
     }
 
+    @PostMapping("/users/{id}/unlock")
+    public ApiResponse<Void> unlockUser(
+        @PathVariable("id") String userId,
+        Authentication auth
+    ) {
+        adminService.unlockUser(userId, currentUserId(auth));
+        return ApiResponse.success("Đã mở khóa tài khoản", null);
+    }
+
     private String currentUserId(Authentication auth) {
         return ((UserDetails) auth.getPrincipal()).getUsername();
     }

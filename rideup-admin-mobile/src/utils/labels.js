@@ -23,4 +23,18 @@ export const GENDER = {
   OTHER: 'Khác',
 };
 
+export const REPORT_STATUS = {
+  PENDING: 'Chờ xử lý',
+  APPROVED: 'Đã duyệt',
+  REJECTED: 'Đã từ chối',
+};
+
+export const REPORT_CATEGORY = {
+  SAFETY: 'An toàn',
+  HARASSMENT: 'Quấy rối',
+  FRAUD: 'Gian lận',
+  PROPERTY_DAMAGE: 'Hư hại tài sản',
+  OTHER: 'Khác',
+};
+
 export const label = (map, value) => map[value] || value;

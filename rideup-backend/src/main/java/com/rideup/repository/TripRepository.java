@@ -2,6 +2,7 @@ package com.rideup.repository;
 
 import com.rideup.entity.Trip;
 import com.rideup.enums.TripStatus;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.Query;
@@ -16,6 +17,20 @@ import java.util.List;
 public interface TripRepository extends JpaRepository<Trip, String> {
 
     boolean existsByVehicleIdAndStatusIn(String vehicleId, Collection<TripStatus> statuses);
+
+    long countByStatus(TripStatus status);
+
+    @Query("select t.createdAt from Trip t where t.createdAt >= :from")
+    List<LocalDateTime> findCreatedAtSince(@Param("from") LocalDateTime from);
+
+    @Query("""
+                SELECT d.id, d.fullName, COUNT(t)
+                FROM Trip t JOIN t.driver d
+                WHERE t.status = com.rideup.enums.TripStatus.COMPLETED
+                GROUP BY d.id, d.fullName
+                ORDER BY COUNT(t) DESC
+            """)
+    List<Object[]> findTopDriversByCompletedTrips(Pageable pageable);
 
     @EntityGraph(attributePaths = {"driver"})
     List<Trip> findByDriverIdOrderByDepartureTimeDesc(String driverId);

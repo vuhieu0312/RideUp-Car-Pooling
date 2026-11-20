@@ -4,7 +4,7 @@ import { Button, Card, Checkbox, Dialog, HelperText, IconButton, Portal, Segment
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   approveDriver, approveVehicle, bulkReviewReports, getAdminDashboardStats, getDriverDetail, getLocationStats,
-  listDrivers, listPendingVehicles, listReports, rejectDriver, rejectVehicle, reviewReport,
+  listDrivers, listPendingVehicles, listReports, rejectDriver, rejectVehicle, reviewReport, unlockUser,
 } from '../api/api';
 import { useAuth } from '../auth/AuthContext';
 import AuthImage from '../components/AuthImage';
@@ -13,7 +13,102 @@ import IconText from '../components/IconText';
 import { Text } from '../components/Typography';
 import Logo from '../components/Logo';
 import { useRealtimeRefresh } from '../realtime/useRealtime';
-import { DRIVER_STATUS, GENDER, label, VEHICLE_STATUS, VEHICLE_TYPE } from '../utils/labels';
+import { DRIVER_STATUS, GENDER, label, REPORT_CATEGORY, REPORT_STATUS, VEHICLE_STATUS, VEHICLE_TYPE } from '../utils/labels';
+
+function Metric({ icon, label, value, color = '#2563eb', detail: subtext }) {
+  return (
+    <Card style={styles.metric} mode="elevated">
+      <Card.Content style={{ padding: 14 }}>
+        <IconButton icon={icon} iconColor={color} style={{ backgroundColor: color + '18', margin: 0 }} size={20} />
+        <Text variant="bodySmall" style={styles.metricLabel}>{label}</Text>
+        <Text variant="headlineSmall" style={{ color: '#0f172a', fontWeight: '800' }}>{value}</Text>
+        {!!subtext && <Text variant="bodySmall" style={{ color: '#64748b', marginTop: 2 }}>{subtext}</Text>}
+      </Card.Content>
+    </Card>
+  );
+}
+
+function BarChart({ data, period, color = '#2563eb', suffix = '' }) {
+  const [selectedDate, setSelectedDate] = useState(null);
+  const { width: screenWidth } = useWindowDimensions();
+  const monthLabels = ['Th1', 'Th2', 'Th3', 'Th4', 'Th5', 'Th6', 'Th7', 'Th8', 'Th9', 'Th10', 'Th11', 'Th12'];
+  let visible;
+
+  if (period === 'day') {
+    visible = data.slice(-1).map((item) => ({ ...item, key: item.date, label: 'Hôm nay' }));
+  } else if (period === 'week') {
+    visible = data.slice(-7).map((item) => ({
+      ...item,
+      key: item.date,
+      label: item.date ? item.date.substring(8, 10) + '/' + item.date.substring(5, 7) : '',
+    }));
+  } else if (period === 'year') {
+    const months = new Map();
+    const today = new Date();
+    for (let offset = 11; offset >= 0; offset -= 1) {
+      const month = new Date(today.getFullYear(), today.getMonth() - offset, 1);
+      const key = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}`;
+      months.set(key, { date: key, key, label: monthLabels[month.getMonth()], value: 0 });
+    }
+    data.forEach((item) => {
+      const month = months.get(item.date?.substring(0, 7));
+      if (month) month.value += Number(item.value || 0);
+    });
+    visible = Array.from(months.values());
+  } else {
+    visible = data.slice(-30).map((item) => ({
+      ...item,
+      key: item.date,
+      label: item.date ? item.date.substring(8, 10) + '/' + item.date.substring(5, 7) : '',
+    }));
+  }
+
+  const max = Math.max(1, ...visible.map((item) => Number(item.value || 0)));
+  const chartWidth = Math.max(0, screenWidth - 64);
+  const contentWidth = Math.max(chartWidth, visible.length * 36);
+  const selected = visible.find((item) => item.key === selectedDate);
+  const selectedLabel = selected?.date?.length === 7
+    ? `${selected.date.substring(5, 7)}/${selected.date.substring(0, 4)}`
+    : selected?.date
+      ? `${selected.date.substring(8, 10)}/${selected.date.substring(5, 7)}/${selected.date.substring(0, 4)}`
+      : '';
+
+  if (!visible.length) return <Text style={styles.emptyText}>Chưa có dữ liệu biểu đồ</Text>;
+
+  return (
+    <View>
+      <ScrollView horizontal nestedScrollEnabled showsHorizontalScrollIndicator={visible.length * 36 > chartWidth}>
+        <View style={[styles.chart, { width: contentWidth }]}>
+          {visible.map((item, index) => (
+            <Pressable
+              key={item.key || index}
+              accessibilityRole="button"
+              accessibilityLabel={`${item.date || ''}: ${Number(item.value || 0).toLocaleString('vi-VN')}${suffix}`}
+              onHoverIn={() => setSelectedDate(item.key)}
+              onPress={() => setSelectedDate(item.key)}
+              style={[styles.barColumn, { width: contentWidth / visible.length }]}
+            >
+              <View style={[
+                styles.bar,
+                {
+                  height: Math.max(4, Number(item.value || 0) / max * 110),
+                  backgroundColor: color,
+                  opacity: selectedDate === item.key ? 1 : 0.8,
+                },
+              ]} />
+              <Text variant="bodySmall" style={styles.barLabel}>{item.label}</Text>
+            </Pressable>
+          ))}
+        </View>
+      </ScrollView>
+      {!!selected && (
+        <Text variant="bodySmall" style={styles.chartValue}>
+          {selectedLabel} · {Number(selected.value || 0).toLocaleString('vi-VN')}{suffix}
+        </Text>
+      )}
+    </View>
+  );
+}
 
 export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
@@ -32,6 +127,7 @@ export default function DashboardScreen() {
   const [rejectReason, setRejectReason] = useState('');
   const [detail, setDetail] = useState(null);
   const [selectedReports, setSelectedReports] = useState([]);
+  const [confirmApprove, setConfirmApprove] = useState(null);
 
   const fmtDate = (value) => value ? value.substring(0, 10) : '—';
   const fmtDateTime = (value) => value ? value.substring(0, 16).replace('T', ' ') : '—';
@@ -45,15 +141,23 @@ export default function DashboardScreen() {
   async function loadAll() {
     setLoading(true);
     try {
-      const [stats, pendingDrivers, pendingVehicles, allReports, locations] = await Promise.all([
+      const results = await Promise.allSettled([
         getAdminDashboardStats(), listDrivers('PENDING'), listPendingVehicles(),
         listReports(null), getLocationStats(),
       ]);
-      setDashboard(stats);
-      setDrivers(pendingDrivers);
-      setVehicles(pendingVehicles);
-      setReports(allReports);
-      setLocationStats(locations);
+      const [stats, pendingDrivers, pendingVehicles, allReports, locations] = results.map(
+        (r) => (r.status === 'fulfilled' ? r.value : undefined),
+      );
+      if (stats) setDashboard(stats);
+      if (pendingDrivers) setDrivers(pendingDrivers);
+      if (pendingVehicles) setVehicles(pendingVehicles);
+      if (allReports) setReports(allReports);
+      if (locations) setLocationStats(locations);
+      const failed = results.find((r) => r.status === 'rejected');
+      if (failed) {
+        const err = failed.reason;
+        setMsg('Lỗi: ' + (err.response?.data?.message || err.message));
+      }
     } catch (e) {
       setMsg('Lỗi: ' + (e.response?.data?.message || e.message));
     } finally {
@@ -65,7 +169,7 @@ export default function DashboardScreen() {
   useEffect(() => { loadAll(); }, []);
 
   useRealtimeRefresh(() => {
-    if (tab === 'management') loadAll();
+    if (tab === 'management' || tab === 'reports') loadAll();
   }, ['ADMIN_QUEUE_UPDATED']);
 
   async function handleReport(id, status) {
@@ -82,13 +186,31 @@ export default function DashboardScreen() {
   async function handleBulk(status) {
     if (!selectedReports.length) return;
     try {
-      await bulkReviewReports(selectedReports, status);
-      setMsg(`Đã xử lý ${selectedReports.length} khiếu nại`);
+      const res = await bulkReviewReports(selectedReports, status);
+      setMsg(`Đã xử lý ${res.data?.length ?? 0}/${selectedReports.length} khiếu nại`);
       setSelectedReports([]);
       await loadAll();
     } catch (e) {
       setMsg('Lỗi: ' + (e.response?.data?.message || e.message));
     }
+  }
+
+  async function handleUnlock(userId) {
+    try {
+      const res = await unlockUser(userId);
+      setMsg(res.message);
+      await loadAll();
+    } catch (e) {
+      setMsg('Lỗi: ' + (e.response?.data?.message || e.message));
+    }
+  }
+
+  async function confirmApproveReports() {
+    const target = confirmApprove;
+    setConfirmApprove(null);
+    if (!target) return;
+    if (target.bulk) await handleBulk('APPROVED');
+    else await handleReport(target.id, 'APPROVED');
   }
 
   async function openEvidence(url) {
@@ -216,104 +338,19 @@ export default function DashboardScreen() {
     };
   }
 
-  function Metric({ icon, label, value, color = '#2563eb', detail: subtext }) {
-    return (
-      <Card style={styles.metric} mode="elevated">
-        <Card.Content style={{ padding: 14 }}>
-          <IconButton icon={icon} iconColor={color} style={{ backgroundColor: color + '18', margin: 0 }} size={20} />
-          <Text variant="bodySmall" style={styles.metricLabel}>{label}</Text>
-          <Text variant="headlineSmall" style={{ color: '#0f172a', fontWeight: '800' }}>{value}</Text>
-          {!!subtext && <Text variant="bodySmall" style={{ color: '#64748b', marginTop: 2 }}>{subtext}</Text>}
-        </Card.Content>
-      </Card>
-    );
-  }
-
-  function BarChart({ data, color = '#2563eb', suffix = '' }) {
-    const [selectedDate, setSelectedDate] = useState(null);
-    const { width: screenWidth } = useWindowDimensions();
-    const monthLabels = ['Th1', 'Th2', 'Th3', 'Th4', 'Th5', 'Th6', 'Th7', 'Th8', 'Th9', 'Th10', 'Th11', 'Th12'];
-    let visible;
-
-    if (period === 'day') {
-      visible = data.slice(-1).map((item) => ({ ...item, key: item.date, label: 'Hôm nay' }));
-    } else if (period === 'week') {
-      visible = data.slice(-7).map((item) => ({
-        ...item,
-        key: item.date,
-        label: item.date ? item.date.substring(8, 10) + '/' + item.date.substring(5, 7) : '',
-      }));
-    } else if (period === 'year') {
-      const months = new Map();
-      const today = new Date();
-      for (let offset = 11; offset >= 0; offset -= 1) {
-        const month = new Date(today.getFullYear(), today.getMonth() - offset, 1);
-        const key = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}`;
-        months.set(key, { date: key, key, label: monthLabels[month.getMonth()], value: 0 });
-      }
-      data.forEach((item) => {
-        const month = months.get(item.date?.substring(0, 7));
-        if (month) month.value += Number(item.value || 0);
-      });
-      visible = Array.from(months.values());
-    } else {
-      visible = data.slice(-30).map((item) => ({
-        ...item,
-        key: item.date,
-        label: item.date ? item.date.substring(8, 10) + '/' + item.date.substring(5, 7) : '',
-      }));
-    }
-
-    const max = Math.max(1, ...visible.map((item) => Number(item.value || 0)));
-    const chartWidth = Math.max(0, screenWidth - 64);
-    const contentWidth = Math.max(chartWidth, visible.length * 36);
-    const selected = visible.find((item) => item.key === selectedDate);
-    const selectedLabel = selected?.date?.length === 7
-      ? `${selected.date.substring(5, 7)}/${selected.date.substring(0, 4)}`
-      : selected?.date
-        ? `${selected.date.substring(8, 10)}/${selected.date.substring(5, 7)}/${selected.date.substring(0, 4)}`
-        : '';
-
-    if (!visible.length) return <Text style={styles.emptyText}>Chưa có dữ liệu biểu đồ</Text>;
-
-    return (
-      <View>
-        <ScrollView horizontal nestedScrollEnabled showsHorizontalScrollIndicator={visible.length * 36 > chartWidth}>
-          <View style={[styles.chart, { width: contentWidth }]}>
-            {visible.map((item, index) => (
-              <Pressable
-                key={item.key || index}
-                accessibilityRole="button"
-                accessibilityLabel={`${item.date || ''}: ${Number(item.value || 0).toLocaleString('vi-VN')}${suffix}`}
-                onHoverIn={() => setSelectedDate(item.key)}
-                onPress={() => setSelectedDate(item.key)}
-                style={[styles.barColumn, { width: contentWidth / visible.length }]}
-              >
-                <View style={[
-                  styles.bar,
-                  {
-                    height: Math.max(4, Number(item.value || 0) / max * 110),
-                    backgroundColor: color,
-                    opacity: selectedDate === item.key ? 1 : 0.8,
-                  },
-                ]} />
-                <Text variant="bodySmall" style={styles.barLabel}>{item.label}</Text>
-              </Pressable>
-            ))}
-          </View>
-        </ScrollView>
-        {!!selected && (
-          <Text variant="bodySmall" style={styles.chartValue}>
-            {selectedLabel} · {Number(selected.value || 0).toLocaleString('vi-VN')}{suffix}
-          </Text>
-        )}
-      </View>
-    );
-  }
-
   const info = detailInfo();
   const tripTimeline = dashboard?.trips?.timeline || [];
   const revenueTimeline = dashboard?.revenue?.timeline || [];
+  const periodSelector = (
+    <SegmentedButtons value={period} onValueChange={setPeriod}
+      buttons={[
+        { value: 'day', label: 'Ngày' },
+        { value: 'week', label: 'Tuần' },
+        { value: 'month', label: 'Tháng' },
+        { value: 'year', label: 'Năm' },
+      ]}
+      style={{ marginBottom: 12 }} />
+  );
 
   return (
     <View style={{ flex: 1, backgroundColor: '#f3f6fb' }}>
@@ -351,14 +388,7 @@ export default function DashboardScreen() {
           <>
             {tab === 'overview' && dashboard && (
               <>
-                <SegmentedButtons value={period} onValueChange={setPeriod}
-                  buttons={[
-                    { value: 'day', label: 'Ngày' },
-                    { value: 'week', label: 'Tuần' },
-                    { value: 'month', label: 'Tháng' },
-                    { value: 'year', label: 'Năm' },
-                  ]}
-                  style={{ marginBottom: 12 }} />
+                {periodSelector}
                 <View style={styles.metricGrid}>
                   <Metric icon="account-group" label="Người dùng" value={dashboard.totalUsers} color="#2563eb" detail="Tài xế và khách hàng" />
                   <Metric icon="car-multiple" label="Chuyến đi" value={dashboard.totalTrips} color="#7c3aed" detail={`${dashboard.trips?.completed || 0} hoàn thành`} />
@@ -368,13 +398,13 @@ export default function DashboardScreen() {
                 <Card style={styles.card}>
                   <Card.Content>
                     <Text variant="titleMedium" style={styles.cardTitle}>Doanh thu theo thời gian</Text>
-                    <BarChart data={revenueTimeline} color="#10b981" suffix=" đ" />
+                    <BarChart period={period} data={revenueTimeline} color="#10b981" suffix=" đ" />
                   </Card.Content>
                 </Card>
                 <Card style={styles.card}>
                   <Card.Content>
                     <Text variant="titleMedium" style={styles.cardTitle}>Số chuyến theo thời gian</Text>
-                    <BarChart data={tripTimeline} color="#6366f1" />
+                    <BarChart period={period} data={tripTimeline} color="#6366f1" />
                   </Card.Content>
                 </Card>
                 <View style={styles.metricGrid}>
@@ -386,6 +416,7 @@ export default function DashboardScreen() {
 
             {tab === 'trips' && dashboard && (
               <>
+                {periodSelector}
                 <View style={styles.metricGrid}>
                   <Metric icon="routes" label="Tổng chuyến" value={dashboard.trips?.total || 0} color="#2563eb" />
                   <Metric icon="check-circle-outline" label="Hoàn thành" value={dashboard.trips?.completed || 0} color="#10b981" />
@@ -394,12 +425,12 @@ export default function DashboardScreen() {
                 </View>
                 <Card style={styles.card}><Card.Content>
                   <Text variant="titleMedium" style={styles.cardTitle}>Thống kê chuyến theo thời gian</Text>
-                  <BarChart data={tripTimeline} color="#6366f1" />
+                  <BarChart period={period} data={tripTimeline} color="#6366f1" />
                 </Card.Content></Card>
                 <Card style={styles.card}><Card.Content>
                   <Text variant="titleMedium" style={styles.cardTitle}>Doanh thu theo tài xế</Text>
                   {(dashboard.revenue?.byDriver || []).map((row, i) => (
-                    <View key={row.name} style={styles.rankRow}>
+                    <View key={row.id || row.name} style={styles.rankRow}>
                       <Text style={styles.rank}>#{i + 1}</Text><Text style={{ flex: 1, fontWeight: '700' }}>{row.name}</Text>
                       <Text style={{ color: '#059669', fontWeight: '800' }}>{fmtVnd(row.value)}</Text>
                     </View>
@@ -410,7 +441,7 @@ export default function DashboardScreen() {
                   <Text variant="titleMedium" style={styles.cardTitle}>Doanh thu theo thời gian</Text>
                   <Text variant="headlineSmall" style={{ color: '#059669', fontWeight: '800' }}>{fmtVnd(dashboard.revenue?.total)}</Text>
                   <Text variant="bodySmall" style={{ color: '#64748b', marginBottom: 8 }}>Phí nền tảng: {fmtVnd(dashboard.revenue?.platformFee)}</Text>
-                  <BarChart data={revenueTimeline} color="#10b981" suffix=" đ" />
+                  <BarChart period={period} data={revenueTimeline} color="#10b981" suffix=" đ" />
                 </Card.Content></Card>
               </>
             )}
@@ -426,14 +457,14 @@ export default function DashboardScreen() {
                 <Card style={styles.card}><Card.Content>
                   <Text variant="titleMedium" style={styles.cardTitle}>Top tài xế hoạt động</Text>
                   {(dashboard.drivers?.topActive || []).map((row, i) => (
-                    <View key={row.name} style={styles.rankRow}><Text style={styles.rank}>#{i + 1}</Text><Text style={{ flex: 1, fontWeight: '700' }}>{row.name}</Text><Text>{row.trips} chuyến</Text></View>
+                    <View key={row.id || row.name} style={styles.rankRow}><Text style={styles.rank}>#{i + 1}</Text><Text style={{ flex: 1, fontWeight: '700' }}>{row.name}</Text><Text>{row.trips} chuyến</Text></View>
                   ))}
                   {!(dashboard.drivers?.topActive || []).length && <Text style={styles.emptyText}>Chưa có dữ liệu</Text>}
                 </Card.Content></Card>
                 <Card style={styles.card}><Card.Content>
                   <Text variant="titleMedium" style={styles.cardTitle}>Top khách đặt chuyến</Text>
                   {(dashboard.customers?.topCustomers || []).map((row, i) => (
-                    <View key={row.name} style={styles.rankRow}><Text style={styles.rank}>#{i + 1}</Text><Text style={{ flex: 1, fontWeight: '700' }}>{row.name}</Text><Text>{row.trips} chuyến</Text></View>
+                    <View key={row.id || row.name} style={styles.rankRow}><Text style={styles.rank}>#{i + 1}</Text><Text style={{ flex: 1, fontWeight: '700' }}>{row.name}</Text><Text>{row.trips} chuyến</Text></View>
                   ))}
                   {!(dashboard.customers?.topCustomers || []).length && <Text style={styles.emptyText}>Chưa có dữ liệu</Text>}
                 </Card.Content></Card>
@@ -451,7 +482,7 @@ export default function DashboardScreen() {
                 <Card style={styles.card}><Card.Content>
                   <Text variant="titleMedium" style={styles.cardTitle}>Trạng thái xử lý</Text>
                   {Object.entries(dashboard.reports?.byStatus || {}).map(([status, value]) => (
-                    <View key={status} style={styles.rankRow}><Text style={{ flex: 1 }}>{status}</Text><Text style={{ fontWeight: '800' }}>{value}</Text></View>
+                    <View key={status} style={styles.rankRow}><Text style={{ flex: 1 }}>{label(REPORT_STATUS, status)}</Text><Text style={{ fontWeight: '800' }}>{value}</Text></View>
                   ))}
                 </Card.Content></Card>
                 {selectedReports.length > 0 && (
@@ -459,7 +490,7 @@ export default function DashboardScreen() {
                     <Text style={{ marginBottom: 8, fontWeight: '700' }}>Đã chọn {selectedReports.length} khiếu nại</Text>
                     <View style={{ flexDirection: 'row' }}>
                       <Button compact mode="outlined" textColor="#dc2626" onPress={() => handleBulk('REJECTED')} style={{ marginRight: 8 }}>Từ chối hàng loạt</Button>
-                      <Button compact mode="contained" buttonColor="#10b981" onPress={() => handleBulk('APPROVED')}>Duyệt hàng loạt</Button>
+                      <Button compact mode="contained" buttonColor="#10b981" onPress={() => setConfirmApprove({ bulk: true })}>Duyệt hàng loạt</Button>
                     </View>
                   </Card.Content></Card>
                 )}
@@ -470,10 +501,17 @@ export default function DashboardScreen() {
                         {report.status === 'PENDING' && <Checkbox status={selectedReports.includes(report.id) ? 'checked' : 'unchecked'} onPress={() => setSelectedReports((old) => old.includes(report.id) ? old.filter((id) => id !== report.id) : [...old, report.id])} />}
                         <View style={{ flex: 1 }}>
                           <Text style={{ fontWeight: '800' }}>{report.title}</Text>
-                          <Text variant="bodySmall">{report.category} · {report.bookingCode}</Text>
+                          <Text variant="bodySmall">{label(REPORT_CATEGORY, report.category)} · {report.bookingCode}</Text>
+                          <Text variant="bodySmall" style={{ fontWeight: '700', color: report.status === 'APPROVED' ? '#059669' : report.status === 'REJECTED' ? '#dc2626' : '#d97706' }}>
+                            {label(REPORT_STATUS, report.status)}
+                            {report.handledAt ? ` · ${report.handledByName || 'admin'} lúc ${fmtDateTime(report.handledAt)}` : ''}
+                          </Text>
                           <Text variant="bodySmall">Người gửi: {report.reporterName}</Text>
                           <Text variant="bodySmall">Bị khiếu nại: {report.reportedUserName}</Text>
                           <Text variant="bodySmall">Vi phạm đã xác nhận: {report.violationCount}</Text>
+                          {report.accountStatus === 'LOCKED' && (
+                            <Text variant="bodySmall" style={{ color: '#dc2626', fontWeight: '700' }}>Tài khoản đang bị khóa</Text>
+                          )}
                           <Text variant="bodySmall" style={{ marginTop: 5 }}>{report.description}</Text>
                           {!!report.evidenceUrl && (
                             <View style={{ marginTop: 8 }}>
@@ -486,7 +524,10 @@ export default function DashboardScreen() {
                     </Card.Content>
                     {report.status === 'PENDING' && <Card.Actions>
                       <Button textColor="#dc2626" onPress={() => handleReport(report.id, 'REJECTED')}>Từ chối</Button>
-                      <Button mode="contained" buttonColor="#10b981" onPress={() => handleReport(report.id, 'APPROVED')}>Duyệt</Button>
+                      <Button mode="contained" buttonColor="#10b981" onPress={() => setConfirmApprove({ id: report.id })}>Duyệt</Button>
+                    </Card.Actions>}
+                    {report.accountStatus === 'LOCKED' && <Card.Actions>
+                      <Button textColor="#2563eb" onPress={() => handleUnlock(report.reportedUserId)}>Mở khóa tài khoản</Button>
                     </Card.Actions>}
                   </Card>
                 ))}
@@ -551,6 +592,19 @@ export default function DashboardScreen() {
           <Dialog.Actions>
             <Button onPress={() => setRejectTarget(null)}>Huỷ</Button>
             <Button mode="contained" buttonColor="#dc2626" onPress={doReject}>Từ chối</Button>
+          </Dialog.Actions>
+        </Dialog>
+        <Dialog visible={!!confirmApprove} onDismiss={() => setConfirmApprove(null)}>
+          <Dialog.Title>Xác nhận duyệt khiếu nại</Dialog.Title>
+          <Dialog.Content>
+            <Text>
+              {confirmApprove?.bulk ? `${selectedReports.length} khiếu nại đã chọn sẽ được duyệt. ` : 'Khiếu nại này sẽ được duyệt. '}
+              Mỗi khiếu nại được duyệt cộng 1 lần vi phạm cho người bị khiếu nại, đủ ngưỡng thì tài khoản bị khóa. Tài khoản bị khóa có thể mở lại ngay trên thẻ khiếu nại.
+            </Text>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setConfirmApprove(null)}>Huỷ</Button>
+            <Button mode="contained" buttonColor="#10b981" onPress={confirmApproveReports}>Duyệt</Button>
           </Dialog.Actions>
         </Dialog>
       </Portal>

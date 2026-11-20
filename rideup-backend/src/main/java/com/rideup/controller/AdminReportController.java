@@ -53,9 +53,11 @@ public class AdminReportController {
         Authentication authentication
     ) {
         String adminId = ((UserDetails) authentication.getPrincipal()).getUsername();
+        List<ReportResponse> results =
+            reportService.bulkReview(request.getIds(), adminId, request.getStatus());
         return ApiResponse.success(
-            "Đã xử lý hàng loạt " + request.getIds().size() + " khiếu nại",
-            reportService.bulkReview(request.getIds(), adminId, request.getStatus())
+            "Đã xử lý " + results.size() + "/" + request.getIds().size() + " khiếu nại",
+            results
         );
     }
 }

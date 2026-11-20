@@ -34,6 +34,7 @@ public class ReportService {
     final BookingRepository bookingRepository;
     final UserRepository userRepository;
     final FileService fileService;
+    final RealtimeService realtimeService;
 
     @Value("${app.report.violation-threshold:5}")
     int violationThreshold;
@@ -82,7 +83,9 @@ public class ReportService {
             .status(ReportStatus.PENDING)
             .build();
 
-        return toResponse(reportRepository.save(report));
+        ReportResponse response = toResponse(reportRepository.save(report));
+        realtimeService.adminQueueChanged();
+        return response;
     }
 
     @Transactional(readOnly = true)
@@ -107,6 +110,12 @@ public class ReportService {
 
     @Transactional
     public ReportResponse review(String reportId, String adminId, ReportStatus decision) {
+        ReportResponse response = applyReview(reportId, adminId, decision);
+        realtimeService.adminQueueChanged();
+        return response;
+    }
+
+    private ReportResponse applyReview(String reportId, String adminId, ReportStatus decision) {
         if (decision != ReportStatus.APPROVED && decision != ReportStatus.REJECTED) {
             throw AppException.badRequest("Trạng thái xử lý phải là APPROVED hoặc REJECTED");
         }
@@ -148,10 +157,13 @@ public class ReportService {
         java.util.ArrayList<ReportResponse> results = new java.util.ArrayList<>();
         for (String reportId : reportIds) {
             try {
-                results.add(review(reportId, adminId, decision));
+                results.add(applyReview(reportId, adminId, decision));
             } catch (AppException ignored) {
                 // Bỏ qua khiếu nại đã xử lý hoặc không tồn tại trong lô.
             }
+        }
+        if (!results.isEmpty()) {
+            realtimeService.adminQueueChanged();
         }
         return results;
     }

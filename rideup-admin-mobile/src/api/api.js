@@ -136,3 +136,6 @@ export const getAdminDashboardStats = () =>
 
 export const bulkReviewReports = (ids, status) =>
   api.patch('/admin/reports/bulk-status', { ids, status }).then((r) => r.data);
+
+export const unlockUser = (id) =>
+  api.post(`/admin/users/${id}/unlock`).then((r) => r.data);

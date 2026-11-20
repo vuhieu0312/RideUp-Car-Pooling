@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -18,6 +19,20 @@ import java.util.Optional;
 public interface PaymentRepository extends JpaRepository<Payment, String> {
 
     Optional<Payment> findByBookingId(String bookingId);
+
+    @Query("select sum(p.amount) from Payment p where p.status = :status")
+    BigDecimal sumAmountByStatus(@Param("status") PaymentStatus status);
+
+    @Query("select sum(p.platformFee) from Payment p where p.status = :status")
+    BigDecimal sumPlatformFeeByStatus(@Param("status") PaymentStatus status);
+
+    @Query("select p.paidAt, p.amount from Payment p where p.status = :status and p.paidAt >= :from")
+    List<Object[]> findPaidSince(@Param("status") PaymentStatus status, @Param("from") LocalDateTime from);
+
+    @Query("select d.id, d.fullName, sum(p.amount) "
+        + "from Payment p join p.booking b join b.trip t join t.driver d "
+        + "where p.status = :status group by d.id, d.fullName order by sum(p.amount) desc")
+    List<Object[]> findRevenueByDriver(@Param("status") PaymentStatus status, Pageable pageable);
 
     Optional<Payment> findByTransactionId(String transactionId);
 
