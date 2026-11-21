@@ -54,6 +54,7 @@ public class PaymentService {
     final RedisTemplate<String, Object> redisTemplate;
     final RealtimeService realtimeService;
     final StripeConnectService stripeConnectService;
+    final WalletService walletService;
     final PlatformTransactionManager transactionManager;
 
     @Value("${stripe.currency-code:vnd}")
@@ -473,11 +474,22 @@ public class PaymentService {
             case "payment_intent.canceled":
                 handlePaymentIntentCanceled(event);
                 break;
+            case "checkout.session.completed":
+            case "checkout.session.async_payment_succeeded":
+                handleCheckoutSessionCompleted(event);
+                break;
             case "charge.expired":
                 handleChargeExpired(event);
                 break;
             default:
                 log.debug("Unhandled webhook event type: {}", type);
+        }
+    }
+
+    private void handleCheckoutSessionCompleted(Event event) {
+        Object obj = eventObject(event);
+        if (obj instanceof Session session && "paid".equals(session.getPaymentStatus())) {
+            walletService.creditFromSession(session);
         }
     }
 
@@ -511,6 +523,10 @@ public class PaymentService {
     @Transactional
     protected void handlePaymentIntentSucceeded(Event event) {
         PaymentIntent intent = (PaymentIntent) eventObject(event);
+        if (WalletService.isDeposit(intent.getMetadata())) {
+            walletService.creditFromIntent(intent);
+            return;
+        }
         String paymentId = intent.getMetadata().get("paymentId");
         if (paymentId == null) {
             log.warn("Webhook succeeded missing paymentId metadata");
@@ -614,13 +630,4 @@ public class PaymentService {
         log.info("Webhook {}: payment {} {} → {}", source, payment.getId(), current, PaymentStatus.VOIDED);
     }
 
-    // Phase B, chưa làm
-
-    public Payment depositWallet() {
-        throw new AppException(ErrorCode.DEPOSIT_NOT_ALLOWED);
-    }
-
-    public void confirmDeposit(String transactionId) {
-        throw new AppException(ErrorCode.DEPOSIT_NOT_ALLOWED);
-    }
 }

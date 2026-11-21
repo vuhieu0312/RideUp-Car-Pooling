@@ -2,10 +2,12 @@ package com.rideup.entity;
 
 import com.rideup.enums.RefundStatus;
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -33,6 +35,8 @@ public class Refund {
     BigDecimal amount;
 
     @Enumerated(EnumType.STRING)
+
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     @Column(nullable = false, length = 20)
     RefundStatus status;
 

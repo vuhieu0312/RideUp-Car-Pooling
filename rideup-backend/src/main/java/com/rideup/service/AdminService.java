@@ -15,6 +15,8 @@ import com.rideup.enums.AccountStatus;
 import com.rideup.enums.BookingStatus;
 import com.rideup.enums.ReportStatus;
 import com.rideup.exception.AppException;
+import com.rideup.config.PlatformFee;
+import com.rideup.config.WalletSettings;
 import com.rideup.repository.DriverProfileRepository;
 import com.rideup.repository.UserRepository;
 import com.rideup.repository.VehicleRepository;
@@ -55,6 +57,8 @@ public class AdminService {
     TripRepository tripRepository;
     BookingRepository bookingRepository;
     PaymentRepository paymentRepository;
+    PlatformFee platformFee;
+    WalletSettings walletSettings;
     ReportRepository reportRepository;
     MailService mailService;
     RealtimeService realtimeService;
@@ -158,6 +162,28 @@ public class AdminService {
         realtimeService.adminQueueChanged();
     }
 
+    public int getCommissionPercent() {
+        return platformFee.getPercent();
+    }
+
+    public int updateCommissionPercent(int percent, String adminUserId) {
+        int old = platformFee.getPercent();
+        platformFee.setPercent(percent);
+        log.info("Admin {} đổi hoa hồng nền tảng {}% -> {}%", adminUserId, old, percent);
+        return percent;
+    }
+
+    public long getDebtLimit() {
+        return walletSettings.getDebtLimit();
+    }
+
+    public long updateDebtLimit(long limit, String adminUserId) {
+        long old = walletSettings.getDebtLimit();
+        walletSettings.setDebtLimit(limit);
+        log.info("Admin {} đổi hạn mức nợ tài xế {} -> {}", adminUserId, old, limit);
+        return limit;
+    }
+
     private DriverProfile requireProfile(String driverProfileId) {
         return driverProfileRepository.findById(driverProfileId)
                 .orElseThrow(() -> AppException.notFound("Không tìm thấy hồ sơ tài xế"));
@@ -175,7 +201,7 @@ public class AdminService {
         long tripCompleted = tripRepository.countByStatus(TripStatus.COMPLETED);
         long tripCanceled = tripRepository.countByStatus(TripStatus.CANCELED);
         BigDecimal revenue = orZero(paymentRepository.sumAmountByStatus(PaymentStatus.PAID));
-        BigDecimal fee = orZero(paymentRepository.sumPlatformFeeByStatus(PaymentStatus.PAID));
+        BigDecimal fee = orZero(paymentRepository.sumCommissionByStatus(PaymentStatus.PAID));
 
         Map<String, Long> tripTimeline = tripRepository.findCreatedAtSince(fromYear).stream()
                 .collect(Collectors.groupingBy(createdAt -> createdAt.format(formatter), Collectors.counting()));

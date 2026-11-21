@@ -267,8 +267,21 @@ export const getPayoutSummary = () =>
 export const startPayoutOnboarding = () =>
   api.post('/driver/payout/onboarding').then((r) => r.data.data);
 
-export const withdrawPayout = () =>
-  api.post('/driver/payout/withdraw').then((r) => r.data.data);
+
+export const getWalletSummary = () =>
+  api.get('/driver/wallet').then((r) => r.data.data);
+
+export const startWalletDeposit = (amount) =>
+  api.post('/driver/wallet/deposit', amount ? { amount } : {}).then((r) => r.data.data);
+
+export const startWalletDepositIntent = (amount) =>
+  api.post('/driver/wallet/deposit-intent', amount ? { amount } : {}).then((r) => r.data.data);
+
+export const confirmWalletDeposit = (reference) =>
+  api.post('/driver/wallet/deposit/confirm', null, { params: { reference } }).then((r) => r.data.data);
+
+export const listPendingBookings = () =>
+  api.get('/driver/bookings/pending').then((r) => r.data.data);
 
 export const getEarningsStats = () =>
   api.get('/driver/payout/stats').then((r) => r.data.data);

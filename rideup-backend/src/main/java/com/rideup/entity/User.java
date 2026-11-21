@@ -4,10 +4,12 @@ import com.rideup.enums.Gender;
 import com.rideup.enums.Role;
 import com.rideup.enums.AccountStatus;
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -43,9 +45,13 @@ public class User {
     String password;
 
     @Enumerated(EnumType.STRING)
+
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     Gender gender;
 
     @Enumerated(EnumType.STRING)
+
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     @Column(name = "account_status", nullable = false, length = 20)
     @Builder.Default
     AccountStatus accountStatus = AccountStatus.ACTIVE;
@@ -61,6 +67,8 @@ public class User {
     String email;
 
     @Enumerated(EnumType.STRING)
+
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     @Column(name = "role", nullable = false, length = 20)
     Role role;
 

@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Avatar } from 'react-native-paper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AuthAvatarImage from '../components/AuthAvatarImage';
 import { useAuth } from '../auth/AuthContext';
 import { listMyBookings, listProvinces, resolveMediaUrl, listWards, searchTrips } from '../api/api';
@@ -19,6 +20,7 @@ const UPCOMING_STATUSES = ['PENDING_PAYMENT', 'WAITING_DRIVER_APPROVAL', 'CONFIR
 
 export default function HomeScreen({ navigation }) {
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
   const [provinces, setProvinces] = useState([]);
   const [pickupWards, setPickupWards] = useState([]);
   const [dropoffWards, setDropoffWards] = useState([]);
@@ -110,7 +112,7 @@ export default function HomeScreen({ navigation }) {
     <View style={styles.container}>
       <ScrollView contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
         {/* Hero */}
-        <ImageBackground source={{ uri: HERO_IMAGE }} style={styles.hero} imageStyle={{ resizeMode: 'cover' }}>
+        <ImageBackground source={{ uri: HERO_IMAGE }} style={[styles.hero, { paddingTop: insets.top + 18 }]} imageStyle={{ resizeMode: 'cover' }}>
           <View style={styles.heroOverlay} />
           <View style={styles.heroTop}>
             <View>

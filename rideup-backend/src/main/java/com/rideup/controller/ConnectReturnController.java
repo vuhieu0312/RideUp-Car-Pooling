@@ -6,19 +6,31 @@ import org.springframework.web.bind.annotation.RestController;
 
 // công khai vì trình duyệt không gửi JWT
 @RestController
-@RequestMapping("/public/connect")
+@RequestMapping("/public")
 public class ConnectReturnController {
 
-    @GetMapping(value = "/return", produces = "text/html;charset=UTF-8")
+    @GetMapping(value = "/connect/return", produces = "text/html;charset=UTF-8")
     public String done() {
         return page("Hoàn tất",
             "Bạn đã thiết lập xong tài khoản nhận tiền. Hãy quay lại ứng dụng RideUp (Tài xế) và mở lại màn Ví.");
     }
 
-    @GetMapping(value = "/refresh", produces = "text/html;charset=UTF-8")
+    @GetMapping(value = "/connect/refresh", produces = "text/html;charset=UTF-8")
     public String refresh() {
         return page("Link đã hết hạn",
             "Link thiết lập đã hết hạn. Hãy quay lại ứng dụng RideUp (Tài xế) và bấm \"Thiết lập nhận tiền\" lần nữa.");
+    }
+
+    @GetMapping(value = "/wallet/return", produces = "text/html;charset=UTF-8")
+    public String walletDone() {
+        return page("Nạp tiền thành công",
+            "Hãy quay lại ứng dụng RideUp (Tài xế) và mở lại màn Ví để xem số dư mới.");
+    }
+
+    @GetMapping(value = "/wallet/cancel", produces = "text/html;charset=UTF-8")
+    public String walletCancel() {
+        return page("Đã huỷ nạp tiền",
+            "Bạn chưa nạp tiền. Hãy quay lại ứng dụng RideUp (Tài xế) và bấm \"Nạp tiền\" lần nữa khi cần.");
     }
 
     private static String page(String title, String message) {

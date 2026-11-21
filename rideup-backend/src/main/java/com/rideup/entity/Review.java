@@ -8,7 +8,10 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "review")
+@Table(
+    name = "review",
+    uniqueConstraints = @UniqueConstraint(name = "uk_review_trip_customer", columnNames = {"trip_id", "customer_id"})
+)
 @Getter
 @Setter
 @NoArgsConstructor

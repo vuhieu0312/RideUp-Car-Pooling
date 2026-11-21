@@ -2,16 +2,20 @@ package com.rideup.entity;
 
 import com.rideup.enums.DriverStatus;
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import org.hibernate.annotations.DynamicUpdate;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
+@DynamicUpdate
 @Table(name = "driver_profile")
 @Getter
 @Setter
@@ -54,6 +58,8 @@ public class DriverProfile {
     Integer totalDriverRides;
 
     @Enumerated(EnumType.STRING)
+
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     @Column(nullable = false, length = 20)
     DriverStatus status;
 
@@ -70,6 +76,10 @@ public class DriverProfile {
     // tài khoản Stripe Connect của tài xế (acct_xxx), null là chưa thiết lập
     @Column(length = 64)
     String stripeAccountId;
+
+    @Builder.Default
+    @Column(nullable = false, precision = 15, scale = 2, columnDefinition = "decimal(15,2) not null default 0")
+    BigDecimal walletBalance = BigDecimal.ZERO;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

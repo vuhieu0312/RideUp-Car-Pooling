@@ -42,11 +42,6 @@ public class DriverPayoutController {
         return ApiResponse.success(stripeConnectService.createOnboardingLink(currentUserId(auth), apiBase));
     }
 
-    @PostMapping("/withdraw")
-    public ApiResponse<StripeConnectService.PayoutItem> withdraw(Authentication auth) {
-        return ApiResponse.success("Đã gửi yêu cầu rút tiền", stripeConnectService.withdraw(currentUserId(auth)));
-    }
-
     private String currentUserId(Authentication auth) {
         return ((UserDetails) auth.getPrincipal()).getUsername();
     }

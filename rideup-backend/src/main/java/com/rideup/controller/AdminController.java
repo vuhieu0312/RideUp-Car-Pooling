@@ -2,6 +2,8 @@ package com.rideup.controller;
 
 import com.rideup.exception.ApiResponse;
 import com.rideup.dto.request.DriverRejectRequest;
+import com.rideup.dto.request.UpdateCommissionRequest;
+import com.rideup.dto.request.UpdateDebtLimitRequest;
 import com.rideup.dto.response.DriverDetailResponse;
 import com.rideup.dto.response.DriverResponse;
 import com.rideup.dto.response.VehicleResponse;
@@ -19,12 +21,14 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/admin")
@@ -116,6 +120,34 @@ public class AdminController {
     ) {
         adminService.unlockUser(userId, currentUserId(auth));
         return ApiResponse.success("Đã mở khóa tài khoản", null);
+    }
+
+    @GetMapping("/settings/commission")
+    public ApiResponse<Map<String, Integer>> getCommission() {
+        return ApiResponse.success(Map.of("percent", adminService.getCommissionPercent()));
+    }
+
+    @PutMapping("/settings/commission")
+    public ApiResponse<Map<String, Integer>> updateCommission(
+        @Valid @RequestBody UpdateCommissionRequest req,
+        Authentication auth
+    ) {
+        int percent = adminService.updateCommissionPercent(req.getPercent(), currentUserId(auth));
+        return ApiResponse.success("Đã cập nhật hoa hồng", Map.of("percent", percent));
+    }
+
+    @GetMapping("/settings/debt-limit")
+    public ApiResponse<Map<String, Long>> getDebtLimit() {
+        return ApiResponse.success(Map.of("limit", adminService.getDebtLimit()));
+    }
+
+    @PutMapping("/settings/debt-limit")
+    public ApiResponse<Map<String, Long>> updateDebtLimit(
+        @Valid @RequestBody UpdateDebtLimitRequest req,
+        Authentication auth
+    ) {
+        long limit = adminService.updateDebtLimit(req.getLimit(), currentUserId(auth));
+        return ApiResponse.success("Đã cập nhật hạn mức nợ", Map.of("limit", limit));
     }
 
     private String currentUserId(Authentication auth) {

@@ -2,6 +2,7 @@ package com.rideup.entity;
 
 import com.rideup.enums.PaymentMethod;
 import com.rideup.enums.PaymentStatus;
+import com.rideup.enums.PayoutStatus;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
@@ -15,7 +16,9 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "payment")
+@Table(name = "payment", indexes = {
+    @Index(name = "idx_payment_transaction", columnList = "transaction_id")
+})
 @Getter
 @Setter
 @NoArgsConstructor
@@ -56,15 +59,19 @@ public class Payment {
     @Column(length = 500)
     String failureReason;
 
-    // hoa hồng RideUp (VND), có khi đã chuyển phần cho tài xế
-    @JsonIgnore
     @Column(precision = 15, scale = 2)
-    BigDecimal platformFee;
+    BigDecimal commissionAmount;
 
-    // mã Stripe Transfer (tr_xxx), null là chưa chuyển
-    @JsonIgnore
-    @Column(length = 100)
-    String transferId;
+    @Column(precision = 15, scale = 2)
+    BigDecimal debtDeducted;
+
+    @Column(length = 64)
+    String stripeTransferId;
+
+    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(length = 32)
+    PayoutStatus payoutStatus;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

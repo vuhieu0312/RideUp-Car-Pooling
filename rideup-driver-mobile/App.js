@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { PaperProvider } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { StripeProvider } from '@stripe/stripe-react-native';
 import { useFonts } from 'expo-font';
 import {
   Inter_400Regular, Inter_500Medium, Inter_600SemiBold,
@@ -34,7 +35,7 @@ export default function App() {
   if (!fontsLoaded) return null;
 
   return (
-    <>
+    <StripeProvider publishableKey={process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY}>
       <GlobalStyles />
       <SafeAreaProvider>
         <PaperProvider theme={paperTheme}>
@@ -49,6 +50,6 @@ export default function App() {
           </AuthProvider>
         </PaperProvider>
       </SafeAreaProvider>
-    </>
+    </StripeProvider>
   );
 }

@@ -4,24 +4,26 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AuthImage from './AuthImage';
 import IconText from './IconText';
 import { Text } from './Typography';
+import { FONT, accent, colors, radius, shadow } from '../theme';
+import { useLayout } from '../utils/useLayout';
 
-// sections: [{ title, rows: [[nhãn, giá trị]] }], imageGroups: [{ title, images: [{ label, path }] }]
 export default function DetailModal({
   visible, title, rows, sections, images, imageGroups, warnings, onClose, onApprove, onReject,
 }) {
   const insets = useSafeAreaInsets();
+  const { wide } = useLayout();
   const allSections = sections || [{ title: null, rows: rows || [] }];
   const allImageGroups = imageGroups || [{ title: 'Ảnh giấy tờ', images: images || [] }];
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: '#f1f5f9' }}>
+      <View style={{ flex: 1, backgroundColor: colors.bg }}>
         <View style={[styles.top, { paddingTop: insets.top + 8 }]}>
-          <Text variant="titleMedium" style={styles.title}>{title}</Text>
+          <Text style={styles.title}>{title}</Text>
           <IconButton icon="close" iconColor="#fff" onPress={onClose} />
         </View>
 
-        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 24 }}>
+        <ScrollView contentContainerStyle={[{ padding: 16, paddingBottom: 24 }, wide && { width: '100%', maxWidth: 820, alignSelf: 'center' }]}>
           {!!warnings?.length && (
             <View style={styles.warnBox}>
               {warnings.map((w) => (
@@ -34,12 +36,12 @@ export default function DetailModal({
 
           {allSections.map((sec, i) => (
             <View key={sec.title || i}>
-              {!!sec.title && <Text variant="titleSmall" style={styles.section}>{sec.title}</Text>}
+              {!!sec.title && <Text style={styles.section}>{sec.title}</Text>}
               <View style={styles.card}>
                 {sec.rows.map(([label, value]) => (
                   <View key={label} style={styles.row}>
-                    <Text variant="bodySmall" style={styles.rowLabel}>{label}</Text>
-                    <Text variant="bodyMedium" style={styles.rowValue}>
+                    <Text style={styles.rowLabel}>{label}</Text>
+                    <Text style={styles.rowValue}>
                       {value === null || value === undefined || value === '' ? '—' : String(value)}
                     </Text>
                   </View>
@@ -50,7 +52,7 @@ export default function DetailModal({
 
           {allImageGroups.map((g) => (
             <View key={g.title}>
-              <Text variant="titleSmall" style={styles.section}>{g.title}</Text>
+              <Text style={styles.section}>{g.title}</Text>
               <View style={styles.card}>
                 {g.images.map((im) => (
                   <AuthImage key={im.label} label={im.label} path={im.path} />
@@ -61,9 +63,9 @@ export default function DetailModal({
         </ScrollView>
 
         {(onApprove || onReject) && (
-          <View style={[styles.actions, { paddingBottom: insets.bottom + 12 }]}>
-            {onReject && <Button mode="outlined" textColor="#dc2626" style={{ flex: 1 }} onPress={onReject}>Từ chối</Button>}
-            {onApprove && <Button mode="contained" buttonColor="#10b981" style={{ flex: 1 }} onPress={onApprove}>Duyệt</Button>}
+          <View style={[styles.actions, { paddingBottom: insets.bottom + 12 }, wide && { justifyContent: 'center' }]}>
+            {onReject && <Button mode="outlined" textColor={colors.danger} style={{ flex: 1, maxWidth: wide ? 240 : undefined }} onPress={onReject}>Từ chối</Button>}
+            {onApprove && <Button mode="contained" buttonColor={accent.green} style={{ flex: 1, maxWidth: wide ? 240 : undefined }} onPress={onApprove}>Duyệt</Button>}
           </View>
         )}
       </View>
@@ -72,13 +74,13 @@ export default function DetailModal({
 }
 
 const styles = StyleSheet.create({
-  top: { backgroundColor: '#1e293b', paddingHorizontal: 16, paddingBottom: 8, flexDirection: 'row', alignItems: 'center' },
-  title: { color: '#fff', fontWeight: '700', flex: 1 },
-  card: { backgroundColor: '#fff', borderRadius: 12, padding: 14, marginBottom: 12 },
-  row: { flexDirection: 'row', paddingVertical: 6, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#e2e8f0' },
-  rowLabel: { width: 120, color: '#64748b' },
-  rowValue: { flex: 1, color: '#0f172a' },
-  section: { fontWeight: '700', marginBottom: 8, marginTop: 4, color: '#334155' },
-  warnBox: { backgroundColor: '#fef3c7', borderRadius: 12, padding: 12, marginBottom: 12 },
-  actions: { flexDirection: 'row', gap: 12, paddingHorizontal: 16, paddingTop: 12, backgroundColor: '#fff' },
+  top: { backgroundColor: colors.primary, paddingHorizontal: 16, paddingBottom: 10, flexDirection: 'row', alignItems: 'center' },
+  title: { fontFamily: FONT[800], fontSize: 18, color: '#fff', flex: 1 },
+  card: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: 14, marginBottom: 14, ...shadow(2, 0.06, 10) },
+  row: { flexDirection: 'row', paddingVertical: 9, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#e2e8f0' },
+  rowLabel: { width: 120, fontFamily: FONT[500], fontSize: 12, color: colors.textMuted },
+  rowValue: { flex: 1, fontFamily: FONT[600], fontSize: 13, color: colors.text },
+  section: { fontFamily: FONT[800], fontSize: 13, marginBottom: 8, marginTop: 4, color: '#475569', textTransform: 'uppercase' },
+  warnBox: { backgroundColor: colors.pendingBg, borderRadius: radius.md, padding: 12, marginBottom: 14 },
+  actions: { flexDirection: 'row', gap: 12, paddingHorizontal: 16, paddingTop: 12, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: '#e2e8f0' },
 });

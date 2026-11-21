@@ -195,56 +195,40 @@ export default function AccountScreen({ navigation }) {
           )}
         </View>
 
-        {/* Actions */}
-        <View style={styles.actions}>
-          <Button
-            mode="contained"
-            icon="account-edit-outline"
-            onPress={() => navigation.navigate('EditProfile', { profile })}
-            buttonColor={colors.primary}
-            textColor="#fff"
-            style={styles.btn}
-            contentStyle={styles.btnContent}
-          >
-            Sửa thông tin
-          </Button>
-          <Button
-            mode="outlined"
-            icon="wallet-outline"
-            onPress={() => navigation.navigate('Payout')}
-            style={styles.btn}
-            contentStyle={styles.btnContent}
-            textColor={colors.primary}
-          >
-            Ví & rút tiền
-          </Button>
-          <Button
-            mode="outlined"
-            icon="lock-outline"
-            onPress={() => navigation.navigate('ChangePassword')}
-            style={styles.btn}
-            contentStyle={styles.btnContent}
-            textColor={colors.primary}
-          >
-            Đổi mật khẩu
-          </Button>
-          <Button
-            mode="text"
-            icon="logout"
-            onPress={doLogout}
-            textColor={colors.danger}
-            style={styles.btn}
-            contentStyle={styles.btnContent}
-          >
-            Đăng xuất
-          </Button>
+        <View style={styles.menu}>
+          <MenuItem icon="account-edit-outline" label="Sửa thông tin" onPress={() => navigation.navigate('EditProfile', { profile })} />
+          <MenuItem icon="wallet-outline" label="Ví & công nợ" onPress={() => navigation.navigate('Payout')} />
+          <MenuItem icon="lock-outline" label="Đổi mật khẩu" onPress={() => navigation.navigate('ChangePassword')} last />
         </View>
+
+        <Button
+          mode="text"
+          icon="logout"
+          onPress={doLogout}
+          textColor={colors.danger}
+          style={styles.logout}
+          contentStyle={styles.btnContent}
+        >
+          Đăng xuất
+        </Button>
       </ScrollView>
 
       <Snackbar visible={!!snack} onDismiss={() => setSnack('')} duration={2500}>
         {snack}
       </Snackbar>
     </View>
+  );
+}
+
+function MenuItem({ icon, label, onPress, last }) {
+  return (
+    <TouchableOpacity activeOpacity={0.7} onPress={onPress} style={[styles.menuItem, last && { borderBottomWidth: 0 }]}>
+      <View style={styles.menuIcon}>
+        <MaterialCommunityIcons name={icon} size={20} color={colors.primaryAccent} />
+      </View>
+      <Text style={styles.menuLabel}>{label}</Text>
+      <MaterialCommunityIcons name="chevron-right" size={22} color={colors.textMuted} />
+    </TouchableOpacity>
   );
 }
 
@@ -285,8 +269,8 @@ function formatDate(d) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   header: { flexDirection: 'row', alignItems: 'center', paddingTop: 4, paddingHorizontal: 4 },
-  kicker: { fontFamily: FONT[800], fontSize: 9, color: colors.primaryAccent, letterSpacing: 1.5, fontWeight: '800' },
-  title: { fontFamily: FONT[700], fontSize: 18, fontWeight: '700', color: colors.text, marginTop: 2 },
+  kicker: { fontFamily: FONT[800], fontSize: 11, color: colors.primaryAccent, letterSpacing: 1.5, fontWeight: '800' },
+  title: { fontFamily: FONT[800], fontSize: 22, fontWeight: '700', color: colors.text, marginTop: 2 },
 
   avatarCard: { alignItems: 'center', marginTop: 8, marginBottom: 14 },
   cameraBtn: {
@@ -295,37 +279,40 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryAccent, alignItems: 'center', justifyContent: 'center',
     borderWidth: 2, borderColor: colors.bg,
   },
-  name: { fontFamily: FONT[700], marginTop: 12, fontSize: 17, fontWeight: '700', color: colors.text },
-  muted: { marginTop: 2, fontSize: 12, color: colors.textSubtle },
+  name: { fontFamily: FONT[800], marginTop: 12, fontSize: 21, fontWeight: '700', color: colors.text },
+  muted: { marginTop: 2, fontSize: 14, color: colors.textSubtle },
   verifiedRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 },
-  verified: { fontSize: 11, color: colors.success, fontWeight: '600' },
+  verified: { fontSize: 12, color: colors.success, fontWeight: '600' },
 
   ratingCard: {
     flexDirection: 'row', marginHorizontal: 14, marginBottom: 12, padding: 14,
-    borderRadius: 12, backgroundColor: 'white', borderWidth: 1, borderColor: colors.border,
+    borderRadius: 16, backgroundColor: 'white', borderWidth: 1, borderColor: colors.border,
   },
   ratingItem: { flex: 1, alignItems: 'center' },
   divider: { width: 1, backgroundColor: colors.border },
   starsRow: { flexDirection: 'row', gap: 2 },
-  ratingValue: { fontFamily: FONT[800], marginTop: 4, fontSize: 17, fontWeight: '800', color: '#f2a900' },
-  ratingLabel: { marginTop: 2, fontSize: 10, color: colors.textSubtle, fontWeight: '600' },
+  ratingValue: { fontFamily: FONT[800], marginTop: 4, fontSize: 22, fontWeight: '800', color: '#f2a900' },
+  ratingLabel: { marginTop: 2, fontSize: 12, color: colors.textSubtle, fontWeight: '600' },
 
-  card: { marginHorizontal: 14, marginTop: 4, padding: 14, borderRadius: 12, backgroundColor: 'white', borderWidth: 1, borderColor: colors.border },
-  cardKicker: { fontFamily: FONT[800], fontSize: 9, color: colors.primaryAccent, letterSpacing: 1.5, fontWeight: '800', marginBottom: 8 },
+  card: { marginHorizontal: 14, marginTop: 12, padding: 16, borderRadius: 16, backgroundColor: 'white', borderWidth: 1, borderColor: colors.border },
+  cardKicker: { fontFamily: FONT[800], fontSize: 11, color: colors.primaryAccent, letterSpacing: 1.5, fontWeight: '800', marginBottom: 8 },
   row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderTopWidth: 1, borderColor: colors.border },
-  rowLabel: { fontSize: 10, color: colors.textSubtle, fontWeight: '600' },
-  rowValue: { fontSize: 13, color: colors.text, fontWeight: '600', marginTop: 1 },
+  rowLabel: { fontSize: 12, color: colors.textSubtle, fontWeight: '600' },
+  rowValue: { fontSize: 15, color: colors.text, fontWeight: '600', marginTop: 1 },
 
   vehicleRow: { flexDirection: 'row', alignItems: 'center' },
   vehicleIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.primaryFaintest, alignItems: 'center', justifyContent: 'center' },
-  vehiclePlate: { fontFamily: FONT[800], fontSize: 15, fontWeight: '800', color: colors.text },
-  vehicleMeta: { fontSize: 11, color: colors.textSubtle, marginTop: 2 },
+  vehiclePlate: { fontFamily: FONT[800], fontSize: 17, fontWeight: '800', color: colors.text },
+  vehicleMeta: { fontSize: 13, color: colors.textSubtle, marginTop: 2 },
   verifiedBadge: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 3, marginTop: 6, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, backgroundColor: colors.successBg },
-  verifiedText: { fontSize: 10, color: colors.successDark, fontWeight: '700' },
+  verifiedText: { fontSize: 11, color: colors.successDark, fontWeight: '700' },
   noVehicle: { alignItems: 'flex-start', paddingVertical: 8 },
-  noVehicleText: { fontSize: 12, color: colors.textSubtle },
+  noVehicleText: { fontSize: 14, color: colors.textSubtle },
 
-  actions: { marginTop: 18, paddingHorizontal: 14, gap: 8 },
-  btn: { borderRadius: 9 },
+  menu: { marginHorizontal: 14, marginTop: 14, borderRadius: 16, backgroundColor: 'white', borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
+  menuItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, paddingHorizontal: 14, borderBottomWidth: 1, borderBottomColor: colors.border },
+  menuIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.primaryFaintest, alignItems: 'center', justifyContent: 'center' },
+  menuLabel: { flex: 1, fontFamily: FONT[600], fontSize: 15, color: colors.text },
+  logout: { marginTop: 10, marginHorizontal: 14, borderRadius: 12 },
   btnContent: { paddingVertical: 4 },
 });

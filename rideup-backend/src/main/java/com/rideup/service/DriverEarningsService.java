@@ -1,5 +1,6 @@
 package com.rideup.service;
 
+import com.rideup.config.PlatformFee;
 import com.rideup.entity.Booking;
 import com.rideup.entity.Payment;
 import com.rideup.enums.BookingStatus;
@@ -35,9 +36,7 @@ public class DriverEarningsService {
     private static final DateTimeFormatter MONTH_FMT = DateTimeFormatter.ofPattern("MM/yyyy");
 
     final PaymentRepository paymentRepository;
-
-    @Value("${stripe.connect.platform-fee-percent:10}")
-    int feePercent;
+    final PlatformFee platformFee;
 
     public record Bucket(String label, BigDecimal gross, BigDecimal fee, BigDecimal net, int bookings) {}
 
@@ -72,21 +71,21 @@ public class DriverEarningsService {
         Set<String> tripIds = new HashSet<>();
         int seats = 0;
 
-        for (Payment p : paymentRepository.findCompletedForStats(
+        List<Payment> payments = paymentRepository.findCompletedForStats(
                 driverUserId, BookingStatus.COMPLETED,
                 List.of(PaymentStatus.VOIDED, PaymentStatus.VOID_FAILED, PaymentStatus.FAILED, PaymentStatus.REFUNDED),
-                thisMonth.minusMonths(MONTHS - 1).atDay(1).atStartOfDay())) {
+                thisMonth.minusMonths(MONTHS - 1).atDay(1).atStartOfDay());
+        for (Payment p : payments) {
             Booking b = p.getBooking();
             BigDecimal gross = p.getAmount() != null ? p.getAmount() : b.getTotalAmount();
             if (gross == null) continue;
 
             boolean stripe = p.getMethod() == PaymentMethod.STRIPE;
-            BigDecimal fee = !stripe ? BigDecimal.ZERO
-                : p.getPlatformFee() != null ? p.getPlatformFee() : StripeConnectService.feeOf(gross, feePercent);
+            BigDecimal fee = p.getCommissionAmount() != null ? p.getCommissionAmount() : platformFee.of(gross);
             LocalDate day = b.getTrip().getDepartureTime().toLocalDate();
 
             total.add(gross, fee);
-            if (!stripe) cash = cash.add(gross);
+            if (!stripe) cash = cash.add(gross.subtract(fee));
             tripIds.add(b.getTrip().getId());
             if (b.getSeatCount() != null) seats += b.getSeatCount();
             for (Acc a : new Acc[] {byDay.get(day), byMonth.get(YearMonth.from(day))}) {
@@ -99,6 +98,6 @@ public class DriverEarningsService {
             byDay.get(today).net(), byMonth.get(thisMonth).net(),
             byDay.entrySet().stream().map(e -> e.getValue().bucket(e.getKey().format(DAY_FMT))).toList(),
             byMonth.entrySet().stream().map(e -> e.getValue().bucket(e.getKey().format(MONTH_FMT))).toList(),
-            feePercent);
+            platformFee.getPercent());
     }
 }

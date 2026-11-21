@@ -2,10 +2,12 @@ package com.rideup.entity;
 
 import com.rideup.enums.TripStatus;
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -13,7 +15,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "trip")
+@Table(name = "trip", indexes = {
+    @Index(name = "idx_trip_status_departure", columnList = "status, departure_time"),
+    @Index(name = "idx_trip_driver_departure", columnList = "driver_id, departure_time")
+})
 @Getter
 @Setter
 @NoArgsConstructor
@@ -56,6 +61,8 @@ public class Trip {
     BigDecimal priceVnd;
 
     @Enumerated(EnumType.STRING)
+
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     @Column(nullable = false, length = 20)
     TripStatus status;
 

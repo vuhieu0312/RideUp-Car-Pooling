@@ -1,117 +1,44 @@
 import { useEffect, useState } from 'react';
-import { Linking, Pressable, RefreshControl, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
-import { Button, Card, Checkbox, Dialog, HelperText, IconButton, Portal, SegmentedButtons, TextInput } from 'react-native-paper';
+import { ActivityIndicator, Linking, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Button, Dialog, IconButton, Portal, TextInput } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
-  approveDriver, approveVehicle, bulkReviewReports, getAdminDashboardStats, getDriverDetail, getLocationStats,
-  listDrivers, listPendingVehicles, listReports, rejectDriver, rejectVehicle, reviewReport, unlockUser,
+  approveDriver, approveVehicle, bulkReviewReports, getAdminDashboardStats, getCommissionSetting, getDebtLimitSetting, getDriverDetail,
+  getLocationStats, listDrivers, listPendingVehicles, listReports, rejectDriver, rejectVehicle, reviewReport,
+  unlockUser, updateCommissionSetting, updateDebtLimitSetting,
 } from '../api/api';
 import { useAuth } from '../auth/AuthContext';
-import AuthImage from '../components/AuthImage';
 import DetailModal from '../components/DetailModal';
-import IconText from '../components/IconText';
-import { Text } from '../components/Typography';
 import Logo from '../components/Logo';
+import { Text } from '../components/Typography';
 import { useRealtimeRefresh } from '../realtime/useRealtime';
-import { DRIVER_STATUS, GENDER, label, REPORT_CATEGORY, REPORT_STATUS, VEHICLE_STATUS, VEHICLE_TYPE } from '../utils/labels';
+import { FONT, accent, colors, shadow } from '../theme';
+import { buildDetailInfo } from '../utils/detailInfo';
+import { initialsOf } from '../utils/format';
+import { CONTENT_MAX_WIDTH, useLayout } from '../utils/useLayout';
+import ApprovalsTab from './tabs/ApprovalsTab';
+import OverviewTab from './tabs/OverviewTab';
+import ReportsTab from './tabs/ReportsTab';
+import SettingsTab from './tabs/SettingsTab';
 
-function Metric({ icon, label, value, color = '#2563eb', detail: subtext }) {
-  return (
-    <Card style={styles.metric} mode="elevated">
-      <Card.Content style={{ padding: 14 }}>
-        <IconButton icon={icon} iconColor={color} style={{ backgroundColor: color + '18', margin: 0 }} size={20} />
-        <Text variant="bodySmall" style={styles.metricLabel}>{label}</Text>
-        <Text variant="headlineSmall" style={{ color: '#0f172a', fontWeight: '800' }}>{value}</Text>
-        {!!subtext && <Text variant="bodySmall" style={{ color: '#64748b', marginTop: 2 }}>{subtext}</Text>}
-      </Card.Content>
-    </Card>
-  );
-}
+const TABS = [
+  { key: 'overview', label: 'Tổng quan', icon: 'view-dashboard-outline', active: 'view-dashboard' },
+  { key: 'approvals', label: 'Duyệt hồ sơ', icon: 'clipboard-check-outline', active: 'clipboard-check' },
+  { key: 'reports', label: 'Khiếu nại', icon: 'shield-alert-outline', active: 'shield-alert' },
+  { key: 'settings', label: 'Cấu hình', icon: 'cog-outline', active: 'cog' },
+];
 
-function BarChart({ data, period, color = '#2563eb', suffix = '' }) {
-  const [selectedDate, setSelectedDate] = useState(null);
-  const { width: screenWidth } = useWindowDimensions();
-  const monthLabels = ['Th1', 'Th2', 'Th3', 'Th4', 'Th5', 'Th6', 'Th7', 'Th8', 'Th9', 'Th10', 'Th11', 'Th12'];
-  let visible;
-
-  if (period === 'day') {
-    visible = data.slice(-1).map((item) => ({ ...item, key: item.date, label: 'Hôm nay' }));
-  } else if (period === 'week') {
-    visible = data.slice(-7).map((item) => ({
-      ...item,
-      key: item.date,
-      label: item.date ? item.date.substring(8, 10) + '/' + item.date.substring(5, 7) : '',
-    }));
-  } else if (period === 'year') {
-    const months = new Map();
-    const today = new Date();
-    for (let offset = 11; offset >= 0; offset -= 1) {
-      const month = new Date(today.getFullYear(), today.getMonth() - offset, 1);
-      const key = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}`;
-      months.set(key, { date: key, key, label: monthLabels[month.getMonth()], value: 0 });
-    }
-    data.forEach((item) => {
-      const month = months.get(item.date?.substring(0, 7));
-      if (month) month.value += Number(item.value || 0);
-    });
-    visible = Array.from(months.values());
-  } else {
-    visible = data.slice(-30).map((item) => ({
-      ...item,
-      key: item.date,
-      label: item.date ? item.date.substring(8, 10) + '/' + item.date.substring(5, 7) : '',
-    }));
-  }
-
-  const max = Math.max(1, ...visible.map((item) => Number(item.value || 0)));
-  const chartWidth = Math.max(0, screenWidth - 64);
-  const contentWidth = Math.max(chartWidth, visible.length * 36);
-  const selected = visible.find((item) => item.key === selectedDate);
-  const selectedLabel = selected?.date?.length === 7
-    ? `${selected.date.substring(5, 7)}/${selected.date.substring(0, 4)}`
-    : selected?.date
-      ? `${selected.date.substring(8, 10)}/${selected.date.substring(5, 7)}/${selected.date.substring(0, 4)}`
-      : '';
-
-  if (!visible.length) return <Text style={styles.emptyText}>Chưa có dữ liệu biểu đồ</Text>;
-
-  return (
-    <View>
-      <ScrollView horizontal nestedScrollEnabled showsHorizontalScrollIndicator={visible.length * 36 > chartWidth}>
-        <View style={[styles.chart, { width: contentWidth }]}>
-          {visible.map((item, index) => (
-            <Pressable
-              key={item.key || index}
-              accessibilityRole="button"
-              accessibilityLabel={`${item.date || ''}: ${Number(item.value || 0).toLocaleString('vi-VN')}${suffix}`}
-              onHoverIn={() => setSelectedDate(item.key)}
-              onPress={() => setSelectedDate(item.key)}
-              style={[styles.barColumn, { width: contentWidth / visible.length }]}
-            >
-              <View style={[
-                styles.bar,
-                {
-                  height: Math.max(4, Number(item.value || 0) / max * 110),
-                  backgroundColor: color,
-                  opacity: selectedDate === item.key ? 1 : 0.8,
-                },
-              ]} />
-              <Text variant="bodySmall" style={styles.barLabel}>{item.label}</Text>
-            </Pressable>
-          ))}
-        </View>
-      </ScrollView>
-      {!!selected && (
-        <Text variant="bodySmall" style={styles.chartValue}>
-          {selectedLabel} · {Number(selected.value || 0).toLocaleString('vi-VN')}{suffix}
-        </Text>
-      )}
-    </View>
-  );
-}
+const TITLES = {
+  overview: 'Tổng quan',
+  approvals: 'Duyệt hồ sơ',
+  reports: 'Khiếu nại',
+  settings: 'Cấu hình',
+};
 
 export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
+  const { wide } = useLayout();
   const { user, doLogout } = useAuth();
   const [tab, setTab] = useState('overview');
   const [period, setPeriod] = useState('month');
@@ -128,24 +55,21 @@ export default function DashboardScreen() {
   const [detail, setDetail] = useState(null);
   const [selectedReports, setSelectedReports] = useState([]);
   const [confirmApprove, setConfirmApprove] = useState(null);
-
-  const fmtDate = (value) => value ? value.substring(0, 10) : '—';
-  const fmtDateTime = (value) => value ? value.substring(0, 16).replace('T', ' ') : '—';
-  const fmtVnd = (value) => {
-    const number = Number(value || 0);
-    if (number >= 1000000000) return `${(number / 1000000000).toFixed(1)} tỷ`;
-    if (number >= 1000000) return `${(number / 1000000).toFixed(1)} triệu`;
-    return `${Math.round(number).toLocaleString('vi-VN')} đ`;
-  };
+  const [commission, setCommission] = useState(null);
+  const [commissionInput, setCommissionInput] = useState('');
+  const [savingCommission, setSavingCommission] = useState(false);
+  const [debtLimit, setDebtLimit] = useState(null);
+  const [debtLimitInput, setDebtLimitInput] = useState('');
+  const [savingDebtLimit, setSavingDebtLimit] = useState(false);
 
   async function loadAll() {
     setLoading(true);
     try {
       const results = await Promise.allSettled([
         getAdminDashboardStats(), listDrivers('PENDING'), listPendingVehicles(),
-        listReports(null), getLocationStats(),
+        listReports(null), getLocationStats(), getCommissionSetting(), getDebtLimitSetting(),
       ]);
-      const [stats, pendingDrivers, pendingVehicles, allReports, locations] = results.map(
+      const [stats, pendingDrivers, pendingVehicles, allReports, locations, commission, debt] = results.map(
         (r) => (r.status === 'fulfilled' ? r.value : undefined),
       );
       if (stats) setDashboard(stats);
@@ -153,6 +77,8 @@ export default function DashboardScreen() {
       if (pendingVehicles) setVehicles(pendingVehicles);
       if (allReports) setReports(allReports);
       if (locations) setLocationStats(locations);
+      if (commission) { setCommission(commission.percent); setCommissionInput(String(commission.percent)); }
+      if (debt) { setDebtLimit(debt.limit); setDebtLimitInput(String(debt.limit)); }
       const failed = results.find((r) => r.status === 'rejected');
       if (failed) {
         const err = failed.reason;
@@ -168,9 +94,7 @@ export default function DashboardScreen() {
 
   useEffect(() => { loadAll(); }, []);
 
-  useRealtimeRefresh(() => {
-    if (tab === 'management' || tab === 'reports') loadAll();
-  }, ['ADMIN_QUEUE_UPDATED']);
+  useRealtimeRefresh(() => { loadAll(); }, ['ADMIN_QUEUE_UPDATED']);
 
   async function handleReport(id, status) {
     try {
@@ -192,6 +116,44 @@ export default function DashboardScreen() {
       await loadAll();
     } catch (e) {
       setMsg('Lỗi: ' + (e.response?.data?.message || e.message));
+    }
+  }
+
+  async function saveCommission() {
+    const percent = Number(commissionInput);
+    if (!Number.isInteger(percent) || percent < 0 || percent > 50) {
+      setMsg('Lỗi: Hoa hồng phải là số nguyên từ 0 đến 50');
+      return;
+    }
+    setSavingCommission(true);
+    try {
+      const res = await updateCommissionSetting(percent);
+      setCommission(res.data.percent);
+      setCommissionInput(String(res.data.percent));
+      setMsg(res.message);
+    } catch (e) {
+      setMsg('Lỗi: ' + (e.response?.data?.message || e.message));
+    } finally {
+      setSavingCommission(false);
+    }
+  }
+
+  async function saveDebtLimit() {
+    const limit = Number(debtLimitInput);
+    if (debtLimitInput === '' || !Number.isInteger(limit) || limit < 0 || limit > 10000000) {
+      setMsg('Lỗi: Hạn mức nợ phải là số nguyên từ 0 đến 10.000.000');
+      return;
+    }
+    setSavingDebtLimit(true);
+    try {
+      const res = await updateDebtLimitSetting(limit);
+      setDebtLimit(res.data.limit);
+      setDebtLimitInput(String(res.data.limit));
+      setMsg(res.message);
+    } catch (e) {
+      setMsg('Lỗi: ' + (e.response?.data?.message || e.message));
+    } finally {
+      setSavingDebtLimit(false);
     }
   }
 
@@ -247,329 +209,150 @@ export default function DashboardScreen() {
     catch (e) { setMsg('Lỗi: ' + (e.response?.data?.message || e.message)); }
   }
 
-  function reviewHistory(item, reviewerName) {
-    if (item.approvedAt) return `Duyệt bởi ${reviewerName || 'admin'} lúc ${fmtDateTime(item.approvedAt)}`;
-    if (item.rejectedAt && item.status === 'PENDING') return `Gửi lại sau khi bị từ chối lúc ${fmtDateTime(item.rejectedAt)}: ${item.rejectionReason || ''}`;
-    if (item.rejectedAt) return `Từ chối lúc ${fmtDateTime(item.rejectedAt)}: ${item.rejectionReason || ''}`;
-    if (item.rejectionReason) return `Lần trước bị từ chối: ${item.rejectionReason}`;
-    return 'Chưa xử lý';
-  }
+  const info = buildDetailInfo(detail);
+  const pendingReports = reports.filter((r) => r.status === 'PENDING').length;
+  const badges = { approvals: drivers.length + vehicles.length, reports: pendingReports };
+  const isError = msg.startsWith('Lỗi');
 
-  function detailInfo() {
-    if (!detail) return { title: '', rows: [], images: [] };
-    const x = detail.item;
-    if (detail.type === 'driver') {
-      const d = detail.data?.driver || x;
-      const v = detail.data?.vehicle;
-      const sections = [
-        {
-          title: 'Tài khoản',
-          rows: [
-            ['Họ tên', d.fullName], ['Email', d.email], ['Số điện thoại', d.phone],
-            ['Ngày sinh', fmtDate(d.dateOfBirth)], ['Giới tính', label(GENDER, d.gender)],
-            ['Ngày tạo tài khoản', fmtDate(detail.data?.accountCreatedAt)],
-          ],
-        },
-        {
-          title: 'Giấy tờ',
-          rows: [
-            ['CCCD', d.cccd], ['GPLX', d.gplx], ['Hạn GPLX', fmtDate(d.gplxExpiryDate)],
-            ['Trạng thái', label(DRIVER_STATUS, d.status)], ['Ngày nộp hồ sơ', fmtDate(d.createdAt)],
-            ['Lịch sử duyệt', reviewHistory(d, detail.data?.driverReviewedByName)],
-          ],
-        },
-        {
-          title: 'Phương tiện',
-          rows: v ? [
-            ['Biển số', v.plateNumber], ['Hãng / dòng', [v.vehicleBrand, v.vehicleModel].filter(Boolean).join(' ')],
-            ['Năm sản xuất', v.vehicleYear], ['Màu sắc', v.vehicleColor], ['Loại xe', label(VEHICLE_TYPE, v.vehicleType)],
-            ['Số chỗ', v.seatCapacity], ['Hạn đăng kiểm', fmtDate(v.registrationExpiryDate)],
-            ['Trạng thái xe', label(VEHICLE_STATUS, v.status)],
-            ['Lịch sử duyệt xe', reviewHistory(v, detail.data?.vehicleReviewedByName)],
-          ] : [['Phương tiện', 'Chưa đăng ký']],
-        },
-      ];
-      const allVehicles = detail.data?.vehicles || [];
-      if (allVehicles.length > 1) {
-        sections.push({
-          title: 'Lịch sử xe',
-          rows: allVehicles.map((x) => [x.plateNumber, `${label(VEHICLE_STATUS, x.status)} · đăng ký ${fmtDate(x.createdAt)}`]),
-        });
-      }
-      const imageGroups = [
-        {
-          title: 'Giấy tờ tài xế',
-          images: [
-            { label: 'CCCD mặt trước', path: d.cccdImageFront },
-            { label: 'CCCD mặt sau', path: d.cccdImageBack },
-            { label: 'Giấy phép lái xe', path: d.gplxImage },
-          ],
-        },
-      ];
-      if (v) {
-        imageGroups.push({
-          title: 'Phương tiện',
-          images: [
-            { label: 'Ảnh xe', path: v.vehicleImage },
-            { label: 'Giấy đăng ký xe', path: v.registrationImage },
-          ],
-        });
-      }
-      return {
-        title: 'Hồ sơ tài xế',
-        sections,
-        imageGroups,
-        warnings: detail.data?.warnings || [],
-      };
-    }
-    return {
-      title: 'Hồ sơ phương tiện',
-      rows: [
-        ['Biển số', x.plateNumber], ['Tài xế', x.driverName], ['SĐT tài xế', x.driverPhone], ['Hãng xe', x.vehicleBrand],
-        ['Dòng xe', x.vehicleModel], ['Năm sản xuất', x.vehicleYear], ['Màu sắc', x.vehicleColor],
-        ['Loại xe', label(VEHICLE_TYPE, x.vehicleType)], ['Số chỗ', x.seatCapacity],
-        ['Hạn đăng kiểm', fmtDate(x.registrationExpiryDate)],
-        ['Ngày đăng ký', fmtDate(x.createdAt)],
-      ],
-      images: [
-        { label: 'Ảnh xe', path: x.vehicleImage },
-        { label: 'Giấy đăng ký xe', path: x.registrationImage },
-      ],
-    };
-  }
+  const toast = !!msg && (
+    <Pressable onPress={() => setMsg('')} style={[styles.toast, wide && { marginHorizontal: 0, marginTop: 0, marginBottom: 14 }, { backgroundColor: isError ? colors.dangerBg : colors.successBg }]}>
+      <MaterialCommunityIcons name={isError ? 'alert-circle-outline' : 'check-circle-outline'} size={18} color={isError ? colors.dangerText : colors.successDark} />
+      <Text style={[styles.toastText, { color: isError ? colors.dangerText : colors.successDark }]}>{msg}</Text>
+      <MaterialCommunityIcons name="close" size={16} color={isError ? colors.dangerText : colors.successDark} />
+    </Pressable>
+  );
 
-  const info = detailInfo();
-  const tripTimeline = dashboard?.trips?.timeline || [];
-  const revenueTimeline = dashboard?.revenue?.timeline || [];
-  const periodSelector = (
-    <SegmentedButtons value={period} onValueChange={setPeriod}
-      buttons={[
-        { value: 'day', label: 'Ngày' },
-        { value: 'week', label: 'Tuần' },
-        { value: 'month', label: 'Tháng' },
-        { value: 'year', label: 'Năm' },
-      ]}
-      style={{ marginBottom: 12 }} />
+  const body = loading && !dashboard ? (
+    <ActivityIndicator style={{ marginTop: 40 }} color={accent.green} />
+  ) : (
+    <>
+      {tab === 'overview' && <OverviewTab dashboard={dashboard} period={period} onPeriodChange={setPeriod} />}
+      {tab === 'approvals' && (
+        <ApprovalsTab
+          drivers={drivers}
+          vehicles={vehicles}
+          onDriverDetail={openDriverDetail}
+          onVehicleDetail={(v) => setDetail({ type: 'vehicle', item: v })}
+          onApproveDriver={approveD}
+          onApproveVehicle={approveV}
+          onReject={(type, id) => { setRejectTarget({ type, id }); setRejectReason(''); }}
+        />
+      )}
+      {tab === 'reports' && (
+        <ReportsTab
+          dashboard={dashboard}
+          reports={reports}
+          selected={selectedReports}
+          onSelect={setSelectedReports}
+          onReview={handleReport}
+          onBulk={handleBulk}
+          onAskApprove={setConfirmApprove}
+          onUnlock={handleUnlock}
+          onOpenEvidence={openEvidence}
+        />
+      )}
+      {tab === 'settings' && (
+        <SettingsTab
+          commission={commission}
+          commissionInput={commissionInput}
+          onCommissionInputChange={setCommissionInput}
+          saving={savingCommission}
+          onSave={saveCommission}
+          debtLimit={debtLimit}
+          debtLimitInput={debtLimitInput}
+          onDebtLimitInputChange={setDebtLimitInput}
+          savingDebtLimit={savingDebtLimit}
+          onSaveDebtLimit={saveDebtLimit}
+          locationStats={locationStats}
+        />
+      )}
+    </>
+  );
+
+  const scroller = (
+    <ScrollView
+      style={[{ flex: 1 }, wide && Platform.OS === 'web' && { overflowY: 'scroll' }]}
+      contentContainerStyle={[{ padding: wide ? 28 : 14, paddingBottom: 24 }, wide && styles.wideContent]}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadAll(); }} />}
+    >
+      {wide && <Text style={styles.pageTitle}>{TITLES[tab]}</Text>}
+      {wide && toast}
+      {body}
+    </ScrollView>
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#f3f6fb' }}>
-      <View style={[styles.topBar, { paddingTop: insets.top + 10 }]}>
-        <View style={{ flex: 1 }}>
-          <Logo size="sm" tag="ADMIN" />
-          <Text variant="titleLarge" style={{ color: '#fff', fontWeight: '800' }}>Trung tâm điều hành</Text>
-        </View>
-        <View style={{ alignItems: 'flex-end' }}>
-          <Text variant="bodySmall" style={{ color: '#cbd5e1' }}>{user?.fullName || user?.email || 'Quản trị viên'}</Text>
-          <IconButton icon="logout" onPress={doLogout} iconColor="#fff" size={20} />
-        </View>
-      </View>
-
-      <ScrollView
-        contentContainerStyle={{ padding: 14, paddingBottom: 32 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadAll(); }} />}
-      >
-        {!!msg && <HelperText type={msg.startsWith('Lỗi') ? 'error' : 'info'} visible>{msg}</HelperText>}
-
-        <View style={{ marginBottom: 12 }}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {[
-              ['overview', 'Tổng quan'], ['trips', 'Chuyến & doanh thu'],
-              ['people', 'Tài xế & khách'], ['reports', 'Khiếu nại'], ['management', 'Quản lý'],
-            ].map(([value, label]) => (
-              <Button key={value} compact mode={tab === value ? 'contained' : 'outlined'}
-                buttonColor={tab === value ? '#2563eb' : undefined} textColor={tab === value ? '#fff' : '#64748b'}
-                style={{ marginRight: 8, borderRadius: 20 }} onPress={() => setTab(value)}>{label}</Button>
-            ))}
-          </ScrollView>
-        </View>
-
-        {loading && !dashboard ? <Text>Đang tải dữ liệu...</Text> : (
-          <>
-            {tab === 'overview' && dashboard && (
-              <>
-                {periodSelector}
-                <View style={styles.metricGrid}>
-                  <Metric icon="account-group" label="Người dùng" value={dashboard.totalUsers} color="#2563eb" detail="Tài xế và khách hàng" />
-                  <Metric icon="car-multiple" label="Chuyến đi" value={dashboard.totalTrips} color="#7c3aed" detail={`${dashboard.trips?.completed || 0} hoàn thành`} />
-                  <Metric icon="cash-multiple" label="Doanh thu" value={fmtVnd(dashboard.totalRevenue)} color="#059669" />
-                  <Metric icon="alert-circle-outline" label="Khiếu nại" value={dashboard.reports?.total || 0} color="#dc2626" detail="Tổng hồ sơ" />
-                </View>
-                <Card style={styles.card}>
-                  <Card.Content>
-                    <Text variant="titleMedium" style={styles.cardTitle}>Doanh thu theo thời gian</Text>
-                    <BarChart period={period} data={revenueTimeline} color="#10b981" suffix=" đ" />
-                  </Card.Content>
-                </Card>
-                <Card style={styles.card}>
-                  <Card.Content>
-                    <Text variant="titleMedium" style={styles.cardTitle}>Số chuyến theo thời gian</Text>
-                    <BarChart period={period} data={tripTimeline} color="#6366f1" />
-                  </Card.Content>
-                </Card>
-                <View style={styles.metricGrid}>
-                  <Metric icon="map-marker-outline" label="Tỉnh/thành" value={locationStats?.provinces || 0} color="#0891b2" />
-                  <Metric icon="home-map-marker" label="Phường/xã" value={locationStats?.wards || 0} color="#ea580c" />
-                </View>
-              </>
-            )}
-
-            {tab === 'trips' && dashboard && (
-              <>
-                {periodSelector}
-                <View style={styles.metricGrid}>
-                  <Metric icon="routes" label="Tổng chuyến" value={dashboard.trips?.total || 0} color="#2563eb" />
-                  <Metric icon="check-circle-outline" label="Hoàn thành" value={dashboard.trips?.completed || 0} color="#10b981" />
-                  <Metric icon="close-circle-outline" label="Đã hủy" value={dashboard.trips?.canceled || 0} color="#ef4444" />
-                  <Metric icon="percent" label="Phí nền tảng" value={fmtVnd(dashboard.platformFee)} color="#f59e0b" />
-                </View>
-                <Card style={styles.card}><Card.Content>
-                  <Text variant="titleMedium" style={styles.cardTitle}>Thống kê chuyến theo thời gian</Text>
-                  <BarChart period={period} data={tripTimeline} color="#6366f1" />
-                </Card.Content></Card>
-                <Card style={styles.card}><Card.Content>
-                  <Text variant="titleMedium" style={styles.cardTitle}>Doanh thu theo tài xế</Text>
-                  {(dashboard.revenue?.byDriver || []).map((row, i) => (
-                    <View key={row.id || row.name} style={styles.rankRow}>
-                      <Text style={styles.rank}>#{i + 1}</Text><Text style={{ flex: 1, fontWeight: '700' }}>{row.name}</Text>
-                      <Text style={{ color: '#059669', fontWeight: '800' }}>{fmtVnd(row.value)}</Text>
+    <View style={{ flex: 1, backgroundColor: colors.bg, flexDirection: wide ? 'row' : 'column' }}>
+      {wide ? (
+        <View style={styles.sidebar}>
+          <View style={styles.sidebarBrand}>
+            <Logo tag="ADMIN" />
+          </View>
+          <View style={{ flex: 1, paddingTop: 8 }}>
+            {TABS.map((t) => {
+              const active = tab === t.key;
+              const badge = badges[t.key] || 0;
+              return (
+                <Pressable key={t.key} onPress={() => setTab(t.key)} style={[styles.navItem, active && styles.navItemActive]}>
+                  <MaterialCommunityIcons name={active ? t.active : t.icon} size={22} color={active ? '#fff' : '#94a3b8'} />
+                  <Text style={[styles.navLabel, active && { color: '#fff', fontFamily: FONT[800] }]}>{t.label}</Text>
+                  {badge > 0 && (
+                    <View style={styles.navBadge}>
+                      <Text style={styles.tabBadgeText}>{badge > 99 ? '99+' : badge}</Text>
                     </View>
-                  ))}
-                  {!(dashboard.revenue?.byDriver || []).length && <Text style={styles.emptyText}>Chưa có doanh thu</Text>}
-                </Card.Content></Card>
-                <Card style={styles.card}><Card.Content>
-                  <Text variant="titleMedium" style={styles.cardTitle}>Doanh thu theo thời gian</Text>
-                  <Text variant="headlineSmall" style={{ color: '#059669', fontWeight: '800' }}>{fmtVnd(dashboard.revenue?.total)}</Text>
-                  <Text variant="bodySmall" style={{ color: '#64748b', marginBottom: 8 }}>Phí nền tảng: {fmtVnd(dashboard.revenue?.platformFee)}</Text>
-                  <BarChart period={period} data={revenueTimeline} color="#10b981" suffix=" đ" />
-                </Card.Content></Card>
-              </>
-            )}
+                  )}
+                </Pressable>
+              );
+            })}
+          </View>
+          <View style={styles.sidebarUser}>
+            <View style={styles.userAvatar}>
+              <Text style={styles.userInitial}>{initialsOf(user?.fullName || user?.email)}</Text>
+            </View>
+            <Text style={styles.sidebarUserName} numberOfLines={1}>{user?.fullName || user?.email || 'Quản trị viên'}</Text>
+            <IconButton icon="logout" onPress={doLogout} iconColor="#cbd5e1" size={20} style={{ margin: 0 }} />
+          </View>
+        </View>
+      ) : (
+        <View style={[styles.topBar, { paddingTop: insets.top + 10 }]}>
+          <View style={{ flex: 1 }}>
+            <Logo size="sm" tag="ADMIN" />
+            <Text style={styles.heading}>{TITLES[tab]}</Text>
+          </View>
+          <View style={styles.userBox}>
+            <View style={styles.userAvatar}>
+              <Text style={styles.userInitial}>{initialsOf(user?.fullName || user?.email)}</Text>
+            </View>
+            <IconButton icon="logout" onPress={doLogout} iconColor="#fff" size={20} style={{ margin: 0 }} />
+          </View>
+        </View>
+      )}
 
-            {tab === 'people' && dashboard && (
-              <>
-                <View style={styles.metricGrid}>
-                  <Metric icon="steering" label="Tài xế" value={dashboard.drivers?.total || 0} color="#2563eb" detail={`${dashboard.drivers?.newDrivers || 0} tài xế mới`} />
-                  <Metric icon="account-check-outline" label="Tài xế hoạt động" value={dashboard.drivers?.activeDrivers || 0} color="#10b981" />
-                  <Metric icon="account-outline" label="Khách hàng" value={dashboard.customers?.total || 0} color="#7c3aed" detail={`${dashboard.customers?.newCustomers || 0} khách mới`} />
-                  <Metric icon="account-check-outline" label="Khách hoạt động" value={dashboard.customers?.activeCustomers || 0} color="#10b981" />
-                </View>
-                <Card style={styles.card}><Card.Content>
-                  <Text variant="titleMedium" style={styles.cardTitle}>Top tài xế hoạt động</Text>
-                  {(dashboard.drivers?.topActive || []).map((row, i) => (
-                    <View key={row.id || row.name} style={styles.rankRow}><Text style={styles.rank}>#{i + 1}</Text><Text style={{ flex: 1, fontWeight: '700' }}>{row.name}</Text><Text>{row.trips} chuyến</Text></View>
-                  ))}
-                  {!(dashboard.drivers?.topActive || []).length && <Text style={styles.emptyText}>Chưa có dữ liệu</Text>}
-                </Card.Content></Card>
-                <Card style={styles.card}><Card.Content>
-                  <Text variant="titleMedium" style={styles.cardTitle}>Top khách đặt chuyến</Text>
-                  {(dashboard.customers?.topCustomers || []).map((row, i) => (
-                    <View key={row.id || row.name} style={styles.rankRow}><Text style={styles.rank}>#{i + 1}</Text><Text style={{ flex: 1, fontWeight: '700' }}>{row.name}</Text><Text>{row.trips} chuyến</Text></View>
-                  ))}
-                  {!(dashboard.customers?.topCustomers || []).length && <Text style={styles.emptyText}>Chưa có dữ liệu</Text>}
-                </Card.Content></Card>
-              </>
-            )}
-
-            {tab === 'reports' && dashboard && (
-              <>
-                <View style={styles.metricGrid}>
-                  <Metric icon="alert-outline" label="Tổng khiếu nại" value={dashboard.reports?.total || 0} color="#dc2626" />
-                  <Metric icon="clock-outline" label="Chờ xử lý" value={dashboard.reports?.byStatus?.PENDING || 0} color="#f59e0b" />
-                  <Metric icon="account-outline" label="Theo khách" value={dashboard.reports?.byTarget?.CUSTOMER || 0} color="#2563eb" />
-                  <Metric icon="steering" label="Theo tài xế" value={dashboard.reports?.byTarget?.DRIVER || 0} color="#7c3aed" />
-                </View>
-                <Card style={styles.card}><Card.Content>
-                  <Text variant="titleMedium" style={styles.cardTitle}>Trạng thái xử lý</Text>
-                  {Object.entries(dashboard.reports?.byStatus || {}).map(([status, value]) => (
-                    <View key={status} style={styles.rankRow}><Text style={{ flex: 1 }}>{label(REPORT_STATUS, status)}</Text><Text style={{ fontWeight: '800' }}>{value}</Text></View>
-                  ))}
-                </Card.Content></Card>
-                {selectedReports.length > 0 && (
-                  <Card style={[styles.card, { backgroundColor: '#eff6ff' }]}><Card.Content>
-                    <Text style={{ marginBottom: 8, fontWeight: '700' }}>Đã chọn {selectedReports.length} khiếu nại</Text>
-                    <View style={{ flexDirection: 'row' }}>
-                      <Button compact mode="outlined" textColor="#dc2626" onPress={() => handleBulk('REJECTED')} style={{ marginRight: 8 }}>Từ chối hàng loạt</Button>
-                      <Button compact mode="contained" buttonColor="#10b981" onPress={() => setConfirmApprove({ bulk: true })}>Duyệt hàng loạt</Button>
-                    </View>
-                  </Card.Content></Card>
-                )}
-                {reports.map((report) => (
-                  <Card key={report.id} style={{ marginBottom: 8 }}>
-                    <Card.Content>
-                      <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-                        {report.status === 'PENDING' && <Checkbox status={selectedReports.includes(report.id) ? 'checked' : 'unchecked'} onPress={() => setSelectedReports((old) => old.includes(report.id) ? old.filter((id) => id !== report.id) : [...old, report.id])} />}
-                        <View style={{ flex: 1 }}>
-                          <Text style={{ fontWeight: '800' }}>{report.title}</Text>
-                          <Text variant="bodySmall">{label(REPORT_CATEGORY, report.category)} · {report.bookingCode}</Text>
-                          <Text variant="bodySmall" style={{ fontWeight: '700', color: report.status === 'APPROVED' ? '#059669' : report.status === 'REJECTED' ? '#dc2626' : '#d97706' }}>
-                            {label(REPORT_STATUS, report.status)}
-                            {report.handledAt ? ` · ${report.handledByName || 'admin'} lúc ${fmtDateTime(report.handledAt)}` : ''}
-                          </Text>
-                          <Text variant="bodySmall">Người gửi: {report.reporterName}</Text>
-                          <Text variant="bodySmall">Bị khiếu nại: {report.reportedUserName}</Text>
-                          <Text variant="bodySmall">Vi phạm đã xác nhận: {report.violationCount}</Text>
-                          {report.accountStatus === 'LOCKED' && (
-                            <Text variant="bodySmall" style={{ color: '#dc2626', fontWeight: '700' }}>Tài khoản đang bị khóa</Text>
-                          )}
-                          <Text variant="bodySmall" style={{ marginTop: 5 }}>{report.description}</Text>
-                          {!!report.evidenceUrl && (
-                            <View style={{ marginTop: 8 }}>
-                              <AuthImage path={report.evidenceUrl} label="Ảnh bằng chứng" />
-                              <Button compact onPress={() => openEvidence(report.evidenceUrl)}>Mở bằng chứng</Button>
-                            </View>
-                          )}
-                        </View>
+      <View style={{ flex: 1 }}>
+        {!wide && toast}
+        {scroller}
+        {!wide && (
+          <View style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+            {TABS.map((t) => {
+              const active = tab === t.key;
+              const badge = badges[t.key] || 0;
+              return (
+                <Pressable key={t.key} style={styles.tabItem} onPress={() => setTab(t.key)}>
+                  <View>
+                    <MaterialCommunityIcons name={active ? t.active : t.icon} size={24} color={active ? accent.green : '#94a3b8'} />
+                    {badge > 0 && (
+                      <View style={styles.tabBadge}>
+                        <Text style={styles.tabBadgeText}>{badge > 99 ? '99+' : badge}</Text>
                       </View>
-                    </Card.Content>
-                    {report.status === 'PENDING' && <Card.Actions>
-                      <Button textColor="#dc2626" onPress={() => handleReport(report.id, 'REJECTED')}>Từ chối</Button>
-                      <Button mode="contained" buttonColor="#10b981" onPress={() => setConfirmApprove({ id: report.id })}>Duyệt</Button>
-                    </Card.Actions>}
-                    {report.accountStatus === 'LOCKED' && <Card.Actions>
-                      <Button textColor="#2563eb" onPress={() => handleUnlock(report.reportedUserId)}>Mở khóa tài khoản</Button>
-                    </Card.Actions>}
-                  </Card>
-                ))}
-              </>
-            )}
-
-            {tab === 'management' && (
-              <>
-                <Text variant="titleMedium" style={styles.sectionTitle}>Tài xế chờ duyệt ({drivers.length})</Text>
-                {drivers.map((d) => (
-                  <Card key={d.id} style={{ marginBottom: 8 }}><Card.Content>
-                    <Text style={{ fontWeight: '800' }}>{d.fullName}</Text>
-                    <IconText name="email-outline" size={14} gap={5} variant="bodySmall">{d.email}</IconText>
-                    <IconText name="phone-outline" size={14} gap={5} variant="bodySmall">{d.phone}</IconText>
-                    <IconText name="card-account-details-outline" size={14} gap={5} variant="bodySmall">CCCD: {d.cccd} · GPLX: {d.gplx}</IconText>
-                    <Text variant="bodySmall" style={{ color: '#64748b' }}>Ngày tạo: {fmtDate(d.createdAt)}</Text>
-                  </Card.Content><Card.Actions>
-                    <Button onPress={() => openDriverDetail(d)}>Chi tiết</Button>
-                    <Button mode="contained" buttonColor="#10b981" onPress={() => approveD(d.id)}>Duyệt</Button>
-                    <Button textColor="#dc2626" onPress={() => { setRejectTarget({ type: 'driver', id: d.id }); setRejectReason(''); }}>Từ chối</Button>
-                  </Card.Actions></Card>
-                ))}
-                {!drivers.length && <Card style={styles.card}><Card.Content><Text style={styles.emptyText}>Không có tài xế chờ duyệt</Text></Card.Content></Card>}
-                <Text variant="titleMedium" style={styles.sectionTitle}>Phương tiện chờ duyệt ({vehicles.length})</Text>
-                {vehicles.map((v) => (
-                  <Card key={v.id} style={{ marginBottom: 8 }}><Card.Content>
-                    <IconText name="car-outline" size={16} textStyle={{ fontWeight: '800' }}>{v.plateNumber}</IconText>
-                    <IconText name="account-outline" size={14} gap={5} variant="bodySmall">{v.driverName} · {v.driverPhone}</IconText>
-                    <Text variant="bodySmall">{label(VEHICLE_TYPE, v.vehicleType)} · {v.seatCapacity} chỗ</Text>
-                    <Text variant="bodySmall" style={{ color: '#64748b' }}>Hạn đăng kiểm: {fmtDate(v.registrationExpiryDate)}</Text>
-                  </Card.Content><Card.Actions>
-                    <Button onPress={() => setDetail({ type: 'vehicle', item: v })}>Chi tiết</Button>
-                    <Button mode="contained" buttonColor="#10b981" onPress={() => approveV(v.id)}>Duyệt</Button>
-                    <Button textColor="#dc2626" onPress={() => { setRejectTarget({ type: 'vehicle', id: v.id }); setRejectReason(''); }}>Từ chối</Button>
-                  </Card.Actions></Card>
-                ))}
-                {!vehicles.length && <Card style={styles.card}><Card.Content><Text style={styles.emptyText}>Không có phương tiện chờ duyệt</Text></Card.Content></Card>}
-              </>
-            )}
-          </>
+                    )}
+                  </View>
+                  <Text style={[styles.tabLabel, active && { color: accent.green, fontFamily: FONT[800] }]}>{t.label}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
         )}
-      </ScrollView>
+      </View>
 
       <DetailModal
         visible={!!detail}
@@ -591,7 +374,7 @@ export default function DashboardScreen() {
           </Dialog.Content>
           <Dialog.Actions>
             <Button onPress={() => setRejectTarget(null)}>Huỷ</Button>
-            <Button mode="contained" buttonColor="#dc2626" onPress={doReject}>Từ chối</Button>
+            <Button mode="contained" buttonColor={colors.danger} disabled={!rejectReason.trim()} onPress={doReject}>Từ chối</Button>
           </Dialog.Actions>
         </Dialog>
         <Dialog visible={!!confirmApprove} onDismiss={() => setConfirmApprove(null)}>
@@ -604,7 +387,7 @@ export default function DashboardScreen() {
           </Dialog.Content>
           <Dialog.Actions>
             <Button onPress={() => setConfirmApprove(null)}>Huỷ</Button>
-            <Button mode="contained" buttonColor="#10b981" onPress={confirmApproveReports}>Duyệt</Button>
+            <Button mode="contained" buttonColor={accent.green} onPress={confirmApproveReports}>Duyệt</Button>
           </Dialog.Actions>
         </Dialog>
       </Portal>
@@ -613,19 +396,28 @@ export default function DashboardScreen() {
 }
 
 const styles = StyleSheet.create({
-  topBar: { backgroundColor: '#172033', paddingHorizontal: 16, paddingBottom: 12, flexDirection: 'row', alignItems: 'center' },
-  metricGrid: { flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -4 },
-  metric: { width: '48%', margin: '1%', borderRadius: 16, backgroundColor: '#fff' },
-  metricLabel: { color: '#64748b', marginTop: 8 },
-  card: { marginBottom: 10, borderRadius: 16, backgroundColor: '#fff' },
-  cardTitle: { fontWeight: '800', color: '#0f172a', marginBottom: 8 },
-  chart: { height: 140, flexDirection: 'row', alignItems: 'flex-end', borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
-  barColumn: { alignItems: 'center', justifyContent: 'flex-end', height: 140, paddingHorizontal: 2 },
-  bar: { width: 16, borderTopLeftRadius: 5, borderTopRightRadius: 5 },
-  barLabel: { height: 18, fontSize: 9, color: '#64748b', marginTop: 3, textAlign: 'center' },
-  chartValue: { color: '#334155', fontWeight: '700', textAlign: 'center', marginTop: 8 },
-  rankRow: { minHeight: 38, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
-  rank: { width: 38, color: '#2563eb', fontWeight: '800' },
-  sectionTitle: { fontWeight: '800', marginVertical: 10 },
-  emptyText: { textAlign: 'center', color: '#94a3b8', paddingVertical: 12 },
+  sidebar: { width: 250, backgroundColor: colors.primary, paddingVertical: 22, paddingHorizontal: 14 },
+  sidebarBrand: { paddingHorizontal: 8, paddingBottom: 22, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.1)' },
+  navItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 14, borderRadius: 12, marginTop: 6 },
+  navItemActive: { backgroundColor: 'rgba(255,255,255,0.12)' },
+  navLabel: { flex: 1, fontFamily: FONT[600], fontSize: 14, color: '#94a3b8' },
+  navBadge: { minWidth: 22, height: 22, borderRadius: 11, paddingHorizontal: 6, backgroundColor: colors.danger, alignItems: 'center', justifyContent: 'center' },
+  sidebarUser: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingTop: 14, paddingHorizontal: 6, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)' },
+  sidebarUserName: { flex: 1, fontFamily: FONT[600], fontSize: 13, color: '#e2e8f0' },
+  pageHeader: { paddingHorizontal: 28, paddingTop: 24, paddingBottom: 4, width: '100%', maxWidth: CONTENT_MAX_WIDTH + 56, alignSelf: 'center' },
+  pageTitle: { fontFamily: FONT[800], fontSize: 26, color: colors.text, marginBottom: 16 },
+  wideContent: { width: '100%', maxWidth: CONTENT_MAX_WIDTH + 56, alignSelf: 'center' },
+  wideToast: { width: '100%', maxWidth: CONTENT_MAX_WIDTH + 56, alignSelf: 'center', paddingHorizontal: 14 },
+  topBar: { backgroundColor: colors.primary, paddingHorizontal: 16, paddingBottom: 14, flexDirection: 'row', alignItems: 'center' },
+  heading: { fontFamily: FONT[800], fontSize: 22, color: '#fff', marginTop: 2 },
+  userBox: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  userAvatar: { width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
+  userInitial: { fontFamily: FONT[800], fontSize: 14, color: '#fff' },
+  toast: { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 14, marginTop: 10, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12 },
+  toastText: { flex: 1, fontFamily: FONT[600], fontSize: 13 },
+  tabBar: { flexDirection: 'row', backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: '#e2e8f0', paddingTop: 8, ...shadow(8, 0.06, 12) },
+  tabItem: { flex: 1, alignItems: 'center', gap: 3 },
+  tabLabel: { fontFamily: FONT[600], fontSize: 11, color: '#94a3b8' },
+  tabBadge: { position: 'absolute', top: -4, right: -10, minWidth: 16, height: 16, borderRadius: 8, paddingHorizontal: 4, backgroundColor: colors.danger, alignItems: 'center', justifyContent: 'center' },
+  tabBadgeText: { fontFamily: FONT[800], fontSize: 9, color: '#fff' },
 });

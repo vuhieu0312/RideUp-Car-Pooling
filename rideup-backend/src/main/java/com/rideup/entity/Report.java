@@ -3,9 +3,11 @@ package com.rideup.entity;
 import com.rideup.enums.ReportCategory;
 import com.rideup.enums.ReportStatus;
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 
@@ -47,6 +49,8 @@ public class Report {
     Booking booking;
 
     @Enumerated(EnumType.STRING)
+
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     @Column(nullable = false, length = 30)
     ReportCategory category;
 
@@ -60,6 +64,8 @@ public class Report {
     String evidenceUrl;
 
     @Enumerated(EnumType.STRING)
+
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     @Column(nullable = false, length = 20)
     @Builder.Default
     ReportStatus status = ReportStatus.PENDING;

@@ -7,7 +7,7 @@ import AuthAvatarImage from '../components/AuthAvatarImage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../auth/AuthContext';
-import { getDriverProfile, getEarningsStats, listMyTrips, listProvinces, resolveMediaUrl } from '../api/api';
+import { getDriverProfile, getEarningsStats, getWalletSummary, listMyTrips, listPendingBookings, listProvinces, resolveMediaUrl } from '../api/api';
 import { colors, FONT, HERO_IMAGE, shadow, typography } from '../theme';
 import { Text } from '../components/Typography';
 import Logo from '../components/Logo';
@@ -19,7 +19,9 @@ export default function HomeScreen({ navigation }) {
   const [provinces, setProvinces] = useState([]);
   const [loading, setLoading] = useState(true);
   const [rating, setRating] = useState(null);
-  const [totalNet, setTotalNet] = useState(null);
+  const [todayNet, setTodayNet] = useState(null);
+  const [pendingCount, setPendingCount] = useState(null);
+  const [wallet, setWallet] = useState(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -29,17 +31,22 @@ export default function HomeScreen({ navigation }) {
         listProvinces().catch(() => []),
         getDriverProfile().catch(() => null),
         getEarningsStats().catch(() => null),
+        listPendingBookings().catch(() => null),
+        getWalletSummary().catch(() => null),
       ])
-        .then(([t, p, profile, earnings]) => {
+        .then(([t, p, profile, earnings, pending, walletSummary]) => {
           setTrips(t);
           setProvinces(p);
           setRating(Number(profile?.driverRating) > 0 ? Number(profile.driverRating).toFixed(1) : null);
-          setTotalNet(earnings ? Number(earnings.totalNet || 0) : null);
+          setTodayNet(earnings ? Number(earnings.todayNet || 0) : null);
+          setPendingCount(pending ? pending.length : null);
+          setWallet(walletSummary);
         })
         .finally(() => setLoading(false));
     }, [])
   );
 
+  const overLimit = !!wallet && Number(wallet.debt) > Number(wallet.debtLimit || 0);
   const running = trips.filter((t) => t.status === 'STARTED');
   const scheduled = trips.filter((t) => t.status === 'OPEN' || t.status === 'FULL');
 
@@ -75,10 +82,31 @@ export default function HomeScreen({ navigation }) {
         </ImageBackground>
 
         <View style={styles.statsRow}>
-          <Stat icon="car-outline" value={trips.length} label="Tổng chuyến" />
+          <Stat icon="cash-multiple" value={todayNet == null ? '--' : shortMoney(todayNet)} label="Thu nhập ròng hôm nay" />
+          <Stat icon="clock-outline" value={pendingCount ?? '--'} label="Booking chờ duyệt" onPress={() => navigation.navigate('AllTripsTab')} />
           <Stat icon="star-outline" value={rating ?? '--'} label="Đánh giá" accent />
-          <Stat icon="cash-multiple" value={totalNet == null ? '--' : shortMoney(totalNet)} label="Thực nhận" />
         </View>
+
+        {wallet && (
+          <TouchableOpacity activeOpacity={0.85} style={[styles.walletCard, overLimit && styles.walletCardOver]} onPress={() => navigation.navigate('Payout')}>
+            <View style={styles.walletHead}>
+              <MaterialCommunityIcons name="wallet-outline" size={18} color={overLimit ? '#b91c1c' : colors.primaryAccent} />
+              <Text style={styles.walletTitle}>Ví & công nợ</Text>
+              <MaterialCommunityIcons name="chevron-right" size={18} color={colors.textMuted} style={{ marginLeft: 'auto' }} />
+            </View>
+            <View style={styles.walletRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.walletLabel}>Hoa hồng đang nợ</Text>
+                <Text style={[styles.walletValue, overLimit && { color: '#b91c1c' }]}>{fmtMoney(wallet.debt)}</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.walletLabel}>Hạn mức nợ</Text>
+                <Text style={styles.walletValue}>{fmtMoney(wallet.debtLimit)}</Text>
+              </View>
+            </View>
+            {overLimit && <Text style={styles.walletWarn}>Đã vượt hạn mức nợ, bạn không thể tạo chuyến mới. Nạp tiền để tiếp tục.</Text>}
+          </TouchableOpacity>
+        )}
 
         <View style={styles.actions}>
           <TouchableOpacity style={styles.createButton} onPress={() => navigation.navigate('TripCreate')}>
@@ -105,6 +133,8 @@ export default function HomeScreen({ navigation }) {
   );
 }
 
+const fmtMoney = (n) => `${Math.round(Number(n || 0)).toLocaleString('en-US')} ₫`;
+
 function shortMoney(n) {
   if (n >= 1e6) return `${(n / 1e6).toFixed(1)}tr`;
   if (n >= 1e3) return `${Math.round(n / 1e3)}k`;
@@ -120,13 +150,13 @@ function Section({ title, children }) {
   );
 }
 
-function Stat({ icon, value, label, accent }) {
+function Stat({ icon, value, label, accent, onPress }) {
   return (
-    <View style={styles.statBox}>
+    <TouchableOpacity activeOpacity={onPress ? 0.8 : 1} disabled={!onPress} onPress={onPress} style={styles.statBox}>
       <MaterialCommunityIcons name={icon} size={14} color={accent ? '#f2a900' : colors.primaryAccent} />
       <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
-    </View>
+      <Text style={styles.statLabel} numberOfLines={2}>{label}</Text>
+    </TouchableOpacity>
   );
 }
 
@@ -222,8 +252,16 @@ const styles = StyleSheet.create({
   statsRow: { flexDirection: 'row', marginHorizontal: 14, marginTop: -26, marginBottom: 16, gap: 7, zIndex: 2 },
   statBox: { flex: 1, minHeight: 72, alignItems: 'center', justifyContent: 'center', backgroundColor: 'white', borderRadius: 9, ...shadow(2, 0.1, 8) },
   statValue: { fontFamily: FONT[700], fontSize: 17, fontWeight: '700', color: colors.text, marginTop: 2 },
-  statLabel: { marginTop: 2, fontSize: 9, color: colors.textMuted },
+  statLabel: { marginTop: 2, fontSize: 9, color: colors.textMuted, textAlign: 'center', paddingHorizontal: 4 },
 
+  walletCard: { marginHorizontal: 20, marginBottom: 16, padding: 14, borderRadius: 12, backgroundColor: 'white', ...shadow(2, 0.08, 8) },
+  walletCardOver: { borderWidth: 1, borderColor: '#fecaca' },
+  walletHead: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
+  walletTitle: { fontFamily: FONT[700], fontSize: 14, color: colors.textDark },
+  walletRow: { flexDirection: 'row', gap: 12 },
+  walletLabel: { fontSize: 11, color: colors.textMuted },
+  walletValue: { fontFamily: FONT[700], fontSize: 16, color: colors.text, marginTop: 2 },
+  walletWarn: { fontSize: 12, color: '#b91c1c', marginTop: 10 },
   actions: { flexDirection: 'row', gap: 8, padding: 20, paddingBottom: 0 },
   createButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 11, borderRadius: 22, backgroundColor: colors.primary },
   createButtonText: { fontFamily: FONT[600], color: '#fff', fontSize: 13, fontWeight: '600' },

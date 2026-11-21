@@ -13,7 +13,11 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "booking")
+@Table(name = "booking", indexes = {
+    @Index(name = "idx_booking_customer_created", columnList = "customer_id, created_at"),
+    @Index(name = "idx_booking_status_expires", columnList = "status, expires_at"),
+    @Index(name = "idx_booking_trip_status", columnList = "trip_id, status")
+})
 @Getter
 @Setter
 @NoArgsConstructor
@@ -49,7 +53,10 @@ public class Booking {
     // trạng thái thanh toán lấy từ payment.status, không lưu lại ở đây
 
     Integer seatCount;
+    @Column(precision = 15, scale = 2)
     BigDecimal pricePerSeat;
+
+    @Column(precision = 15, scale = 2)
     BigDecimal totalAmount;
 
     LocalDateTime expiresAt;
