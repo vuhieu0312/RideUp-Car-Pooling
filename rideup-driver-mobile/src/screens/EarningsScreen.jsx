@@ -1,6 +1,8 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Card, IconButton, Snackbar } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getEarningsStats } from '../api/api';
@@ -17,8 +19,9 @@ const short = (n) => {
 
 function BarChart({ data }) {
   const max = Math.max(1, ...data.map((b) => Number(b.net)));
+  const ref = useRef(null);
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} ref={ref} onContentSizeChange={() => ref.current?.scrollToEnd({ animated: false })}>
       <View style={styles.chart}>
         {data.map((b, i) => {
           const h = Math.max(2, (Number(b.net) / max) * 110);
@@ -74,33 +77,51 @@ export default function EarningsScreen({ navigation }) {
           <Text style={{ textAlign: 'center', padding: 24 }}>Đang tải...</Text>
         ) : !data ? null : (
           <>
-            <Card style={styles.card}><Card.Content>
-              <Text style={styles.sub}>Tổng thực nhận (chuyến đã hoàn thành)</Text>
-              <Text style={styles.big}>{vnd(data.totalNet)}</Text>
-              <View style={styles.grid}>
-                <View style={styles.cell}><Text style={styles.sub}>Hôm nay</Text><Text style={styles.num}>{vnd(data.todayNet)}</Text></View>
-                <View style={styles.cell}><Text style={styles.sub}>Tháng này</Text><Text style={styles.num}>{vnd(data.monthNet)}</Text></View>
+            <LinearGradient colors={['#0a9c5a', '#0b6e4f', '#0f3d33']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
+              <View style={styles.heroCircleBig} />
+              <View style={styles.heroCircleSmall} />
+              <View style={styles.heroTop}>
+                <View style={styles.heroIcon}>
+                  <MaterialCommunityIcons name="cash-multiple" size={20} color="#fff" />
+                </View>
+                <Text style={styles.heroLabel}>Tổng thu nhập ròng</Text>
               </View>
-            </Card.Content></Card>
+              <View style={styles.heroValueRow}>
+                <Text style={styles.heroValue} numberOfLines={1} adjustsFontSizeToFit>
+                  {Math.round(Number(data.totalNet || 0)).toLocaleString('en-US')}
+                </Text>
+                <Text style={styles.heroUnit}>₫</Text>
+              </View>
+              <View style={styles.heroPill}>
+                <MaterialCommunityIcons name="check-circle" size={14} color="#bbf7d0" />
+                <Text style={styles.heroPillText}>{data.trips} chuyến hoàn thành</Text>
+              </View>
+            </LinearGradient>
 
             <View style={styles.grid}>
-              <View style={[styles.cell, styles.tile]}><Text style={styles.tileNum}>{data.trips}</Text><Text style={styles.sub}>Chuyến</Text></View>
-              <View style={[styles.cell, styles.tile]}><Text style={styles.tileNum}>{data.bookings}</Text><Text style={styles.sub}>Lượt đặt</Text></View>
-              <View style={[styles.cell, styles.tile]}><Text style={styles.tileNum}>{data.seats}</Text><Text style={styles.sub}>Ghế bán</Text></View>
+              <View style={styles.miniCard}>
+                <Text style={styles.sub}>Hôm nay</Text>
+                <Text style={styles.num} numberOfLines={1} adjustsFontSizeToFit>{vnd(data.todayNet)}</Text>
+              </View>
+              <View style={styles.miniCard}>
+                <Text style={styles.sub}>Tháng này</Text>
+                <Text style={styles.num} numberOfLines={1} adjustsFontSizeToFit>{vnd(data.monthNet)}</Text>
+              </View>
             </View>
 
             <Card style={styles.card}><Card.Content>
               <Text style={styles.h}>Cơ cấu thu nhập</Text>
-              <View style={styles.line}><Text>Doanh thu (cước)</Text><Text style={styles.bold}>{vnd(data.totalGross)}</Text></View>
-              <View style={styles.line}><Text>Phí nền tảng ({data.feePercent}% thanh toán Stripe)</Text><Text style={[styles.bold, { color: '#dc2626' }]}>-{vnd(data.totalFee)}</Text></View>
-              <View style={styles.line}><Text>Nhận qua Stripe (vào ví)</Text><Text style={styles.bold}>{vnd(data.stripeNet)}</Text></View>
-              <View style={styles.line}><Text>Thu tiền mặt trực tiếp</Text><Text style={styles.bold}>{vnd(data.cashNet)}</Text></View>
+              <View style={styles.row}><Text style={styles.rowLabel}>Doanh thu (cước)</Text><Text style={styles.rowValue}>{vnd(data.totalGross)}</Text></View>
+              <View style={styles.row}><Text style={styles.rowLabel}>Phí nền tảng ({data.feePercent}%)</Text><Text style={[styles.rowValue, { color: '#dc2626' }]}>-{vnd(data.totalFee)}</Text></View>
+              <View style={[styles.row, styles.rowTotal]}><Text style={[styles.rowLabel, styles.bold]}>Thu nhập ròng</Text><Text style={[styles.rowValue, { color: '#059669' }]}>{vnd(data.totalNet)}</Text></View>
+              <View style={styles.row}><Text style={styles.rowLabel}>Nhận qua Stripe (vào ví)</Text><Text style={styles.rowValue}>{vnd(data.stripeNet)}</Text></View>
+              <View style={styles.row}><Text style={styles.rowLabel}>Thu tiền mặt trực tiếp</Text><Text style={styles.rowValue}>{vnd(data.cashNet)}</Text></View>
             </Card.Content></Card>
 
             <View style={styles.tabs}>
               {[['daily', '30 ngày'], ['monthly', '6 tháng']].map(([k, label]) => (
                 <TouchableOpacity key={k} onPress={() => setMode(k)} style={[styles.tab, mode === k && styles.tabOn]}>
-                  <Text style={{ color: mode === k ? '#fff' : colors.primary, fontWeight: '700' }}>{label}</Text>
+                  <Text style={{ color: mode === k ? '#fff' : '#475569', fontWeight: '700', fontSize: 13 }}>{label}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -116,14 +137,14 @@ export default function EarningsScreen({ navigation }) {
                 <View style={styles.line}>
                   <View>
                     <Text style={styles.bold}>{b.label}</Text>
-                    <Text style={styles.sub}>{b.bookings} lượt đặt · cước {vnd(b.gross)}</Text>
+                    <Text style={styles.sub}>{b.bookings} booking · cước {vnd(b.gross)}</Text>
                   </View>
                   <Text style={{ color: '#059669', fontWeight: '700' }}>+{vnd(b.net)}</Text>
                 </View>
               </Card.Content></Card>
             ))}
             <Text style={[styles.sub, { marginTop: 8 }]}>
-              Thống kê tính theo ngày khởi hành của chuyến. Tiền mặt do tài xế thu trực tiếp nên không trừ phí.
+              Thống kê tính theo ngày khởi hành của chuyến.
             </Text>
           </>
         )}
@@ -139,17 +160,29 @@ const styles = StyleSheet.create({
   card: { marginBottom: 12, backgroundColor: '#fff' },
   item: { marginBottom: 8, backgroundColor: '#fff' },
   sub: { color: '#6b7280', fontSize: 13 },
-  big: { fontSize: 30, fontWeight: '800', color: '#059669', marginVertical: 4 },
-  num: { fontSize: 16, fontWeight: '700' },
-  grid: { flexDirection: 'row', gap: 8, marginBottom: 12 },
-  cell: { flex: 1 },
-  tile: { backgroundColor: '#fff', padding: 12, borderRadius: 10, alignItems: 'center' },
-  tileNum: { fontSize: 22, fontWeight: '800' },
+  hero: { borderRadius: 22, paddingVertical: 22, paddingHorizontal: 20, marginBottom: 12, overflow: 'hidden', shadowColor: '#0a9c5a', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 16, elevation: 6 },
+  heroCircleBig: { position: 'absolute', right: -50, top: -60, width: 190, height: 190, borderRadius: 95, backgroundColor: 'rgba(255,255,255,0.09)' },
+  heroCircleSmall: { position: 'absolute', right: 40, bottom: -50, width: 110, height: 110, borderRadius: 55, backgroundColor: 'rgba(255,255,255,0.07)' },
+  heroTop: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  heroIcon: { width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
+  heroLabel: { color: 'rgba(255,255,255,0.85)', fontSize: 14, fontWeight: '600' },
+  heroValueRow: { flexDirection: 'row', alignItems: 'flex-end', marginTop: 14, marginBottom: 14 },
+  heroValue: { color: '#fff', fontSize: 42, fontWeight: '800', letterSpacing: -0.5, flexShrink: 1 },
+  heroUnit: { color: 'rgba(255,255,255,0.8)', fontSize: 22, fontWeight: '700', marginLeft: 6, marginBottom: 5 },
+  heroPill: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255,255,255,0.16)', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },
+  heroPillText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  num: { fontSize: 18, fontWeight: '800', marginTop: 4, color: '#0f172a' },
+  grid: { flexDirection: 'row', gap: 10, marginBottom: 12 },
+  miniCard: { flex: 1, backgroundColor: '#fff', borderRadius: 14, paddingVertical: 14, paddingHorizontal: 14, borderWidth: 1, borderColor: '#e5e7eb' },
+  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 9, gap: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#e5e7eb' },
+  rowTotal: { borderTopWidth: 1, borderTopColor: '#cbd5e1', borderBottomWidth: 0 },
+  rowLabel: { flex: 1, color: '#334155', fontSize: 14 },
+  rowValue: { fontWeight: '700', fontSize: 14, color: '#0f172a', textAlign: 'right' },
   h: { fontSize: 15, fontWeight: '700', marginBottom: 8, marginTop: 4 },
   line: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4, gap: 8 },
   bold: { fontWeight: '700' },
-  tabs: { flexDirection: 'row', gap: 8, marginBottom: 8 },
-  tab: { paddingVertical: 6, paddingHorizontal: 14, borderRadius: 16, borderWidth: 1, borderColor: colors.primary },
+  tabs: { flexDirection: 'row', gap: 8, marginBottom: 10 },
+  tab: { flex: 1, alignItems: 'center', paddingVertical: 9, borderRadius: 12, borderWidth: 1, borderColor: '#cbd5e1', backgroundColor: '#fff' },
   tabOn: { backgroundColor: colors.primary },
   chart: { flexDirection: 'row', alignItems: 'flex-end', height: 170, gap: 6, paddingTop: 8 },
   barCol: { width: 52, alignItems: 'center', justifyContent: 'flex-end' },

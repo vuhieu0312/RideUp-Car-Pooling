@@ -2,10 +2,12 @@ package com.rideup.entity;
 
 import com.rideup.enums.VehicleType;
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -48,6 +50,8 @@ public class Vehicle {
     Integer seatCapacity;
 
     @Enumerated(EnumType.STRING)
+
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     @Column(nullable = false, length = 20)
     VehicleType vehicleType;
 

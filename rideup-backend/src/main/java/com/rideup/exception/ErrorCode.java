@@ -50,11 +50,14 @@ public enum ErrorCode {
     STRIPE_PAYMENT_FAILED           (1047, "Thanh toán Stripe thất bại",              HttpStatus.BAD_REQUEST),
     INVALID_PAYMENT_AMOUNT          (1048, "Số tiền thanh toán không hợp lệ",         HttpStatus.BAD_REQUEST),
     PAYMENT_STATUS_INVALID          (1049, "Trạng thái thanh toán không hợp lệ",     HttpStatus.BAD_REQUEST),
-    DEPOSIT_NOT_ALLOWED             (1051, "Không có nợ hoa hồng để thanh toán",     HttpStatus.BAD_REQUEST),
-    SEARCH_DATE_IN_PAST             (1052, "Không thể tìm chuyến ở ngày đã qua",     HttpStatus.BAD_REQUEST),
+        SEARCH_DATE_IN_PAST             (1052, "Không thể tìm chuyến ở ngày đã qua",     HttpStatus.BAD_REQUEST),
     BOOKING_TRIP_DEPARTED           (1053, "Chuyến đã quá giờ khởi hành, không thể đặt chỗ", HttpStatus.BAD_REQUEST),
     CONNECT_NOT_READY               (1054, "Bạn chưa hoàn tất thiết lập tài khoản nhận tiền", HttpStatus.BAD_REQUEST),
-    PAYOUT_NO_BALANCE               (1055, "Không có số dư khả dụng để rút",          HttpStatus.BAD_REQUEST);
+    PAYOUT_NO_BALANCE               (1055, "Không có số dư khả dụng để rút",          HttpStatus.BAD_REQUEST),
+    WALLET_IN_DEBT                  (1056, "Nợ hoa hồng đã vượt hạn mức, vui lòng nạp tiền để tiếp tục nhận chuyến", HttpStatus.FORBIDDEN),
+    WALLET_DEPOSIT_TOO_SMALL        (1057, "Số tiền nạp quá nhỏ",                      HttpStatus.BAD_REQUEST),
+    WALLET_DEPOSIT_NOT_PAID         (1058, "Giao dịch nạp tiền chưa thanh toán thành công", HttpStatus.BAD_REQUEST),
+    CASH_NOT_CONFIRMED              (1059, "Vui lòng xác nhận đã thu tiền mặt trước khi kết thúc chuyến", HttpStatus.BAD_REQUEST);
 
     private final int code;
     private final String message;

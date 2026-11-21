@@ -4,6 +4,7 @@ import com.rideup.entity.Payment;
 import com.rideup.enums.BookingStatus;
 import com.rideup.enums.PaymentMethod;
 import com.rideup.enums.PaymentStatus;
+import com.rideup.enums.PayoutStatus;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -23,9 +24,6 @@ public interface PaymentRepository extends JpaRepository<Payment, String> {
     @Query("select sum(p.amount) from Payment p where p.status = :status")
     BigDecimal sumAmountByStatus(@Param("status") PaymentStatus status);
 
-    @Query("select sum(p.platformFee) from Payment p where p.status = :status")
-    BigDecimal sumPlatformFeeByStatus(@Param("status") PaymentStatus status);
-
     @Query("select p.paidAt, p.amount from Payment p where p.status = :status and p.paidAt >= :from")
     List<Object[]> findPaidSince(@Param("status") PaymentStatus status, @Param("from") LocalDateTime from);
 
@@ -36,17 +34,25 @@ public interface PaymentRepository extends JpaRepository<Payment, String> {
 
     Optional<Payment> findByTransactionId(String transactionId);
 
+    @Query("select sum(p.commissionAmount) from Payment p where p.status = :status")
+    BigDecimal sumCommissionByStatus(@Param("status") PaymentStatus status);
+
     // payment đã PAID nhưng chưa chuyển phần cho tài xế
     @Query("select p from Payment p join fetch p.booking b join fetch b.trip t "
         + "where t.driver.id = :driverUserId and p.method = :method and p.status = :status "
-        + "and p.transferId is null")
+        + "and (p.payoutStatus is null or p.payoutStatus not in :done)")
     List<Payment> findUntransferred(@Param("driverUserId") String driverUserId,
                                     @Param("method") PaymentMethod method,
-                                    @Param("status") PaymentStatus status);
+                                    @Param("status") PaymentStatus status,
+                                    @Param("done") java.util.Collection<PayoutStatus> done);
 
     @Query("select p from Payment p join fetch p.booking b join fetch b.trip t "
-        + "where t.driver.id = :driverUserId and p.transferId is not null order by p.paidAt desc")
-    List<Payment> findTransferred(@Param("driverUserId") String driverUserId, Pageable pageable);
+        + "where t.driver.id = :driverUserId "
+        + "and p.payoutStatus in :done "
+        + "order by p.paidAt desc")
+    List<Payment> findTransferred(@Param("driverUserId") String driverUserId,
+                                  @Param("done") java.util.Collection<PayoutStatus> done,
+                                  Pageable pageable);
 
     // booking đã hoàn thành từ mốc thời gian, dùng cho thống kê
     @Query("select p from Payment p join fetch p.booking b join fetch b.trip t "

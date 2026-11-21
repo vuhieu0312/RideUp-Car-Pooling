@@ -78,18 +78,6 @@ public class PaymentController {
             PaymentResponse.from(paymentService.markPaymentFailed(paymentId, reason, currentUserId(auth))));
     }
 
-    @PostMapping("/wallet/deposit")
-    @PreAuthorize("hasRole('DRIVER')")
-    public ApiResponse<PaymentResponse> depositWallet(Authentication auth) {
-        return ApiResponse.success("Deposit initialized", PaymentResponse.from(paymentService.depositWallet()));
-    }
-
-    @PostMapping("/wallet/confirm")
-    public ApiResponse<Void> confirmDeposit(@RequestParam("transactionId") String transactionId) {
-        paymentService.confirmDeposit(transactionId);
-        return ApiResponse.success("Deposit confirmed", null);
-    }
-
     private String currentUserId(Authentication auth) {
         return ((UserDetails) auth.getPrincipal()).getUsername();
     }

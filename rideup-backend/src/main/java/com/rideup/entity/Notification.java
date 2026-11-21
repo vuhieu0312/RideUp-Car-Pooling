@@ -12,7 +12,10 @@ import org.hibernate.type.SqlTypes;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "notification")
+@Table(name = "notification", indexes = {
+    @Index(name = "idx_notification_user_created", columnList = "user_id, created_at"),
+    @Index(name = "idx_notification_user_status", columnList = "user_id, status")
+})
 @Getter
 @Setter
 @NoArgsConstructor

@@ -142,3 +142,15 @@ export const paperTheme = {
     },
   }),
 };
+
+export const accent = {
+  blue: '#2563eb',
+  violet: '#7c3aed',
+  amber: '#f59e0b',
+  cyan: '#0891b2',
+  orange: '#ea580c',
+  green: '#0a9c5a',
+  red: '#dc2626',
+};
+
+export const radius = { sm: 10, md: 14, lg: 18, pill: 999 };

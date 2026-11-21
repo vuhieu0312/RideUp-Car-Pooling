@@ -30,6 +30,14 @@ WHERE payment_id IN (
     )
 );
 
+-- (2b) Bỏ liên kết giao dịch ví (wallet_transaction) tới các booking sắp xóa, giữ nguyên dòng ví
+UPDATE wallet_transaction
+SET booking_id = NULL
+WHERE booking_id IN (
+    SELECT id FROM booking
+    WHERE status IN ('PENDING', 'PICKED_UP', 'CANCELLED_USER')
+);
+
 -- (3) DELETE payment (FK → booking)
 DELETE FROM payment
 WHERE booking_id IN (

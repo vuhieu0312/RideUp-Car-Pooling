@@ -119,20 +119,22 @@ Thẻ test: `4242 4242 4242 4242`, ngày hết hạn bất kỳ trong tương la
 
 ---
 
-## 8. (Tuỳ chọn) Ví & rút tiền cho tài xế (Stripe Connect, chỉ môi trường test)
+## 8. (Tuỳ chọn) Ví & công nợ cho tài xế (Stripe Connect, chỉ môi trường test)
 
-Khi chuyến hoàn thành và khách đã thanh toán Stripe, backend tự chuyển **90% cước** (phí nền tảng 10%) vào tài khoản Stripe của tài xế; tài xế xem số dư và rút trong app (Tài khoản → **Ví & rút tiền**).
+Khi chuyến hoàn thành và khách đã thanh toán Stripe, backend tự chuyển **90% cước** (phí nền tảng 10%) vào tài khoản Stripe của tài xế; tài xế xem số dư và rút trong app (Tài khoản → **Ví & công nợ**).
 
 1. Vào [Stripe Dashboard](https://dashboard.stripe.com) (sandbox) → **Connect** → *Get started* (bật Connect cho nền tảng).
 2. Tài khoản nhận tiền phải cùng quốc gia với tài khoản Stripe của bạn (mặc định `US`). Nếu khác, đặt biến môi trường `STRIPE_CONNECT_COUNTRY` (vd. `SG`). Stripe không hỗ trợ chuyển chéo sang Việt Nam.
 3. (Tuỳ chọn) `STRIPE_PLATFORM_FEE_PERCENT` (mặc định 10).
 4. Trang Stripe quay về app qua `<địa chỉ backend>/api/public/connect/return`. Nếu Stripe từ chối địa chỉ `http://` thì chạy ngrok (https) và đặt `STRIPE_CONNECT_RETURN_BASE_URL=https://xxxx.ngrok-free.app/api`.
-5. Khởi động lại backend (Hibernate tự thêm cột `driver_profile.stripe_account_id`, `payment.platform_fee`, `payment.transfer_id`).
+5. Khởi động lại backend (Hibernate tự thêm cột `driver_profile.stripe_account_id` và các cột chi trả của bảng `payment`).
 
 Demo:
-1. App tài xế → Tài khoản → **Ví & rút tiền** → *Thiết lập ngay* → trên trang Stripe bấm **Use test account** (hoặc điền dữ liệu test), thêm thẻ/ngân hàng test, xong quay lại app.
+1. App tài xế → Tài khoản → **Ví & công nợ** → *Thiết lập ngay* → trên trang Stripe bấm **Use test account** (hoặc điền dữ liệu test), thêm thẻ/ngân hàng test, xong quay lại app.
 2. App khách đặt chuyến thanh toán **Stripe** bằng thẻ `4000 0000 0000 0077` (tiền khả dụng ngay; thẻ 4242 phải chờ ~2 ngày mới rút được).
 3. Tài xế duyệt → bắt đầu → **Kết thúc** chuyến → mở Ví: thấy số dư → **Rút tiền**.
+
+Hoa hồng tiền mặt: khi tài xế bấm *Đã nhận tiền* ở booking thanh toán **tiền mặt**, hoa hồng (cùng `STRIPE_PLATFORM_FEE_PERCENT`) được trừ vào **ví hoa hồng** của tài xế. Ví âm = đang nợ hoa hồng: tài xế không tạo chuyến mới và không duyệt booking mới được cho tới khi nạp tiền (Ví & công nợ → *Nạp tiền*, thanh toán qua Stripe Checkout). Khi tài xế đang nợ mà có chuyến Stripe hoàn thành, backend tự trừ nợ vào phần tiền chuyển cho tài xế (ghi ở các cột `commission_amount`, `debt_deducted`, `payout_status` của bảng `payment`). Số tiền nạp tối thiểu đặt bằng `WALLET_MIN_DEPOSIT_VND` (mặc định 20000). Backend cộng tiền khi nhận webhook `checkout.session.completed` (thêm event này vào `stripe listen` / endpoint webhook), hoặc khi app tài xế gọi xác nhận lúc quay lại từ trang Stripe.
 
 ---
 
@@ -168,6 +170,12 @@ Demo:
 13. `drop-ward-code.sql`
 14. `drop-vehicle-driver-unique.sql` (cho phép 1 tài xế có nhiều xe và dùng lại biển số của xe đã ngừng dùng; chạy trước khi chạy backend mới)
 15. `fix-notification-columns.sql` (chức năng thông báo: đổi cột type/status của bảng notification sang VARCHAR, thêm dedup_key; chỉ cần chạy nếu bảng notification đã tồn tại từ trước)
+16. `add-driver-wallet.sql` (ví hoa hồng tài xế: thêm cột wallet_balance vào driver_profile; chạy 1 lần trước khi chạy backend mới)
+17. `merge-payout-into-payment.sql` (chạy sau khi đã chạy backend mới 1 lần: chuyển hoa hồng / nợ đã bù / mã chuyển tiền / trạng thái chi trả từ bảng driver_payout_transaction (hoặc 2 cột cũ payment.platform_fee, payment.transfer_id) sang 4 cột mới của bảng payment rồi xoá bảng và cột cũ)
+18. `rename-wallet-stripe-reference.sql` (nạp ví bằng PaymentSheet: đổi tên cột wallet_transaction.stripe_session_id thành stripe_reference; chạy sau khi đã chạy backend mới 1 lần)
+19. `add-wallet-booking-fk.sql` (chạy sau khi đã chạy backend mới 1 lần: thêm khóa ngoại wallet_transaction.booking_id → booking.id, ON DELETE SET NULL)
+20. `fix-more-enum-columns.sql` (tắt backend rồi chạy 1 lần: đổi các cột ENUM còn lại sang VARCHAR và thu gọn cột refresh_token.token; chỉ cần với DB tạo từ code cũ)
+21. `add-review-unique-booking-money.sql` (tắt backend rồi chạy 1 lần: xóa đánh giá trùng và thêm unique (trip_id, customer_id) cho review; đổi booking.price_per_seat, total_amount sang decimal(15,2))
 
 Sau đó chạy lại backend. Muốn làm sạch hoàn toàn: `DROP DATABASE rideup;` rồi làm lại từ Bước 1.
 

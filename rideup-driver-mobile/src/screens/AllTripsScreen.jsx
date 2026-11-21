@@ -215,8 +215,7 @@ export default function AllTripsScreen({ navigation }) {
               >
                 <Text
                   numberOfLines={1}
-                  ellipsizeMode="clip"
-                  style={[styles.filterText, complaintView === key && styles.filterTextActive]}
+                      style={[styles.filterText, complaintView === key && styles.filterTextActive]}
                 >
                   {label}<Text style={styles.filterCount}> {count}</Text>
                 </Text>
@@ -272,8 +271,6 @@ export default function AllTripsScreen({ navigation }) {
             onPress={() => setFilter(f.key)}
           >
             <Text
-              numberOfLines={1}
-              ellipsizeMode="clip"
               style={[styles.filterText, filter === f.key && styles.filterTextActive]}
             >
               {f.label}<Text style={styles.filterCount}> {counts[f.key]}</Text>
@@ -422,72 +419,69 @@ const styles = StyleSheet.create({
   actionMsg: { padding: 9, marginHorizontal: 12, marginBottom: 6, backgroundColor: colors.primaryFaintest, borderRadius: 6, fontSize: 11, color: colors.textDark },
   container: { flex: 1, backgroundColor: colors.bg },
   heading: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 16 },
-  kicker: { fontFamily: FONT[800], fontSize: 9, fontWeight: '800', color: colors.primaryAccent, letterSpacing: 1.5 },
-  title: { fontFamily: FONT[700], marginTop: 3, fontSize: 20, fontWeight: '700', color: colors.text },
-  refreshBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
+  kicker: { fontFamily: FONT[800], fontSize: 10, fontWeight: '800', color: colors.primaryAccent, letterSpacing: 1.5 },
+  title: { fontFamily: FONT[800], marginTop: 3, fontSize: 20, fontWeight: '700', color: colors.text },
+  refreshBtn: { width: 30, height: 30, borderRadius: 15, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
   refreshIcon: { color: colors.primaryAccent, fontSize: 19, fontWeight: '700' },
-  sectionTabs: { flexDirection: 'row', marginHorizontal: 12, marginTop: 12, borderRadius: 9, padding: 3, backgroundColor: '#eaf0ed' },
-  sectionTab: { flex: 1, alignItems: 'center', paddingVertical: 9, borderRadius: 7 },
+  sectionTabs: { flexDirection: 'row', marginHorizontal: 14, marginTop: 12, borderRadius: 12, padding: 3, backgroundColor: '#eaf0ed' },
+  sectionTab: { flex: 1, alignItems: 'center', paddingVertical: 7, borderRadius: 9 },
   sectionTabActive: { backgroundColor: '#fff' },
-  sectionTabText: { fontSize: 12, color: colors.textMuted, fontWeight: '600' },
+  sectionTabText: { fontSize: 13, color: colors.textMuted, fontWeight: '600' },
   sectionTabTextActive: { color: colors.primaryAccent },
-  filters: { marginTop: 10, marginBottom: 10, flexGrow: 0 },
-  filtersContent: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    gap: 6,
+  filters: { marginTop: 8, marginBottom: 8, flexGrow: 0, flexShrink: 0 },
+  filtersContent: { paddingHorizontal: 14, paddingVertical: 6, gap: 6,
     alignItems: 'center',
   },
   filter: {
     flexShrink: 0,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    height: 30,
+    paddingHorizontal: 13,
+    paddingVertical: 5,
+    minHeight: 32,
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#e1ebe7',
-    borderRadius: 14,
+    borderRadius: 16,
     backgroundColor: 'white',
   },
   filterActive: { borderColor: colors.primaryAccent, backgroundColor: colors.primaryLight },
-  filterText: { fontFamily: FONT[500], fontSize: 11, lineHeight: 14, color: colors.textMuted, fontWeight: '500' },
+  filterText: { fontFamily: FONT[600], fontSize: 12, lineHeight: 18, color: colors.textMuted, fontWeight: '500' },
   filterTextActive: { color: colors.primaryAccent, fontWeight: '500' },
-  filterCount: { fontSize: 10, lineHeight: 13, fontWeight: '500' },
+  filterCount: { fontSize: 11, lineHeight: 18, fontWeight: '500' },
 
-  listContent: { padding: 12, paddingBottom: 24 },
-  muted: { color: colors.textSubtle, fontSize: 12 },
-  emptyBox: { padding: 38, borderRadius: 10, backgroundColor: 'white', color: colors.textSubtle, fontSize: 12, textAlign: 'center' },
+  listContent: { padding: 14, paddingBottom: 28 },
+  muted: { color: colors.textSubtle, fontSize: 14 },
+  emptyBox: { padding: 38, borderRadius: 16, backgroundColor: 'white', color: colors.textSubtle, fontSize: 14, textAlign: 'center' },
 
-  primaryBtn: { marginTop: 12, paddingVertical: 10, paddingHorizontal: 18, borderRadius: 6, backgroundColor: colors.primary, alignSelf: 'center' },
-  primaryBtnText: { color: 'white', fontSize: 12, fontWeight: '700' },
+  primaryBtn: { marginTop: 14, paddingVertical: 12, paddingHorizontal: 22, borderRadius: 12, backgroundColor: colors.primary, alignSelf: 'center' },
+  primaryBtnText: { color: 'white', fontSize: 14, fontWeight: '700' },
 
-  actions: { flexDirection: 'row', gap: 8, marginTop: 10, justifyContent: 'flex-end', flexWrap: 'wrap' },
-  actionBtn: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 6 },
-  actionPrimary: { backgroundColor: colors.primary },
-  actionPrimaryText: { color: 'white', fontSize: 11, fontWeight: '700' },
-  actionSecondary: { backgroundColor: colors.primaryLight, borderWidth: 1, borderColor: colors.primaryAccent },
-  actionSecondaryText: { color: colors.primaryDark, fontSize: 11, fontWeight: '700' },
-  actionDanger: { backgroundColor: colors.dangerBg, borderWidth: 1, borderColor: '#fecaca' },
-  actionDangerText: { color: colors.danger, fontSize: 11, fontWeight: '700' },
+  actions: { flexDirection: 'row', gap: 10, marginTop: 12, justifyContent: 'flex-end', flexWrap: 'wrap' },
+  actionBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 6, borderWidth: 1, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
+  actionPrimary: { borderColor: colors.primary },
+  actionPrimaryText: { color: colors.primary, fontSize: 14 },
+  actionSecondary: { borderColor: '#d1d5db' },
+  actionSecondaryText: { color: colors.textDark, fontSize: 14 },
+  actionDanger: { borderColor: '#d1d5db' },
+  actionDangerText: { color: colors.textDark, fontSize: 14 },
 
-  card: { marginBottom: 9, padding: 12, borderWidth: 1, borderColor: '#e3ece8', borderRadius: 10, backgroundColor: 'white', ...shadow(2, 0.07, 7) },
-  complaintCard: { marginBottom: 9, padding: 13, borderWidth: 1, borderColor: '#e3ece8', borderRadius: 10, backgroundColor: 'white', ...shadow(2, 0.07, 7) },
+  card: { marginBottom: 12, padding: 16, borderWidth: 1, borderColor: '#e3ece8', borderRadius: 18, backgroundColor: 'white', ...shadow(2, 0.07, 7) },
+  complaintCard: { marginBottom: 12, padding: 16, borderWidth: 1, borderColor: '#e3ece8', borderRadius: 18, backgroundColor: 'white', ...shadow(2, 0.07, 7) },
   complaintCardHead: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 },
-  complaintTitle: { flex: 1, fontSize: 14, fontWeight: '700', color: colors.textDark },
-  complaintStatus: { fontSize: 10, fontWeight: '700', color: colors.primaryAccent },
-  complaintMeta: { marginTop: 5, fontSize: 11, color: colors.textSubtle },
-  complaintDescription: { marginTop: 9, fontSize: 12, lineHeight: 18, color: colors.textDark },
-  evidenceText: { marginTop: 6, fontSize: 11, color: colors.primaryAccent },
+  complaintTitle: { flex: 1, fontSize: 15, fontWeight: '700', color: colors.textDark },
+  complaintStatus: { fontSize: 12, fontWeight: '700', color: colors.primaryAccent },
+  complaintMeta: { marginTop: 5, fontSize: 13, color: colors.textSubtle },
+  complaintDescription: { marginTop: 9, fontSize: 14, lineHeight: 20, color: colors.textDark },
+  evidenceText: { marginTop: 6, fontSize: 13, color: colors.primaryAccent },
   cardHead: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 },
   tripSummary: { flex: 1, minWidth: 0 },
-  tripRoute: { fontFamily: FONT[700], fontSize: 13, fontWeight: '700', color: colors.textDark },
-  stopLine: { fontSize: 12, color: colors.textDark, marginTop: 3 },
-  tripTime: { fontSize: 12, color: colors.textSubtle, marginTop: 4 },
-  badge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999, alignSelf: 'flex-start', flexShrink: 0 },
-  badgeText: { fontFamily: FONT[700], fontSize: 10, fontWeight: '700', textAlign: 'right' },
-  separator: { height: 1, backgroundColor: colors.border, marginVertical: 10 },
-  metrics: { flexDirection: 'row', gap: 24 },
+  tripRoute: { fontFamily: FONT[800], fontSize: 16, fontWeight: '700', color: colors.textDark },
+  stopLine: { fontSize: 13, color: colors.textDark, marginTop: 4 },
+  tripTime: { fontSize: 13, color: colors.textSubtle, marginTop: 6 },
+  badge: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999, alignSelf: 'flex-start', flexShrink: 0 },
+  badgeText: { fontFamily: FONT[700], fontSize: 12, fontWeight: '700', textAlign: 'right' },
+  separator: { height: 1, backgroundColor: colors.border, marginVertical: 12 },
+  metrics: { flexDirection: 'row', gap: 12 },
   metric: { flex: 1 },
-  metricLabel: { fontSize: 10, color: colors.textSubtle, marginBottom: 2 },
-  metricValue: { fontFamily: FONT[700], fontSize: 12, fontWeight: '700' },
+  metricLabel: { fontSize: 12, color: colors.textSubtle, marginBottom: 3 },
+  metricValue: { fontFamily: FONT[800], fontSize: 14, fontWeight: '700' },
 });

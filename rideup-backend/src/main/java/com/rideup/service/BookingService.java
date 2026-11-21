@@ -59,6 +59,7 @@ public class BookingService {
     final PaymentRepository paymentRepository;
     final ReviewRepository reviewRepository;
     final PaymentService paymentService;
+    final WalletService walletService;
     final RealtimeService realtimeService;
 
     // REQUIRES_NEW thủ công vì gọi this.expire...() trong cùng class không qua proxy nên @Transactional bị bỏ qua
@@ -81,6 +82,7 @@ public class BookingService {
                           PaymentRepository paymentRepository,
                           ReviewRepository reviewRepository,
                           PaymentService paymentService,
+                          WalletService walletService,
                           RealtimeService realtimeService,
                           PlatformTransactionManager transactionManager) {
         this.bookingRepository = bookingRepository;
@@ -93,6 +95,7 @@ public class BookingService {
         this.paymentRepository = paymentRepository;
         this.reviewRepository = reviewRepository;
         this.paymentService = paymentService;
+        this.walletService = walletService;
         this.realtimeService = realtimeService;
         this.requiresNewTx = new TransactionTemplate(transactionManager);
         this.requiresNewTx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
@@ -222,6 +225,7 @@ public class BookingService {
         Booking booking = bookingRepository.findById(bookingId)
             .orElseThrow(() -> AppException.notFound("Không tìm thấy booking"));
         ensureDriverOwnsTrip(booking, driverUserId);
+        walletService.requireWithinDebtLimit(driverUserId);
 
         if (booking.getStatus() != BookingStatus.WAITING_DRIVER_APPROVAL) {
             throw AppException.badRequest("Booking không ở trạng thái chờ duyệt");
@@ -341,12 +345,12 @@ public class BookingService {
         if (payment.getMethod() != PaymentMethod.CASH) {
             throw AppException.badRequest("Booking này không phải CASH");
         }
-        if (booking.getStatus() != BookingStatus.CONFIRMED && booking.getStatus() != BookingStatus.COMPLETED) {
-            throw AppException.badRequest("Chỉ xác nhận đã nhận tiền khi booking đã được duyệt");
-        }
         if (payment.getStatus() == PaymentStatus.PAID) {
             log.info("confirmCashPayment idempotent noop for booking={} (already PAID)", bookingId);
             return toResponse(booking);
+        }
+        if (booking.getStatus() != BookingStatus.CONFIRMED) {
+            throw AppException.badRequest("Chỉ xác nhận đã nhận tiền khi booking đã được duyệt và chuyến chưa kết thúc");
         }
         if (payment.getStatus() != PaymentStatus.PENDING) {
             throw AppException.badRequest("Payment không ở trạng thái chờ (status="
@@ -355,6 +359,7 @@ public class BookingService {
 
         payment.setStatus(PaymentStatus.PAID);
         payment.setPaidAt(LocalDateTime.now());
+        walletService.accrueCashCommission(payment, driverUserId);
         paymentRepository.save(payment);
         bookingRepository.save(booking);
         realtimeService.bookingChanged(booking);

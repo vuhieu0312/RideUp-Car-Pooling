@@ -2,7 +2,9 @@ package com.rideup.repository;
 
 import com.rideup.entity.DriverProfile;
 import com.rideup.enums.DriverStatus;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.repository.query.Param;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -15,6 +17,10 @@ import java.util.Optional;
 public interface DriverProfileRepository extends JpaRepository<DriverProfile, String> {
 
     Optional<DriverProfile> findByUserId(String userId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select d from DriverProfile d where d.user.id = :userId")
+    Optional<DriverProfile> findByUserIdForUpdate(@Param("userId") String userId);
 
     List<DriverProfile> findByStatus(DriverStatus status);
 

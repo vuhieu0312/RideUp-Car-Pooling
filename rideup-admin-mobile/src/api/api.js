@@ -139,3 +139,15 @@ export const bulkReviewReports = (ids, status) =>
 
 export const unlockUser = (id) =>
   api.post(`/admin/users/${id}/unlock`).then((r) => r.data);
+
+export const getCommissionSetting = () =>
+  api.get('/admin/settings/commission').then((r) => r.data.data);
+
+export const updateCommissionSetting = (percent) =>
+  api.put('/admin/settings/commission', { percent }).then((r) => r.data);
+
+export const getDebtLimitSetting = () =>
+  api.get('/admin/settings/debt-limit').then((r) => r.data.data);
+
+export const updateDebtLimitSetting = (limit) =>
+  api.put('/admin/settings/debt-limit', { limit }).then((r) => r.data);

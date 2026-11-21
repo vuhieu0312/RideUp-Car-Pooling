@@ -47,6 +47,7 @@ public class TripService {
 
     TripRepository tripRepository;
     WardRepository wardRepository;
+    WalletService walletService;
     ProvinceRepository provinceRepository;
     DriverService driverService;
     VehicleService vehicleService;
@@ -60,6 +61,7 @@ public class TripService {
     @Transactional
     public TripResponse createTrip(String userId, CreateTripRequest req) {
         DriverProfile driver = driverService.requireApprovedDriver(userId);
+        walletService.requireWithinDebtLimit(userId);
         Vehicle vehicle = vehicleService.requireVerifiedVehicle(driver.getId());
 
         Province start = locationService.getProvinceEntity(req.getStartProvinceId());
@@ -272,6 +274,7 @@ public class TripService {
         if (!trip.getDriver().getId().equals(driverUserId)) {
             throw new AppException(HttpStatus.FORBIDDEN, 403, "Bạn không sở hữu chuyến này");
         }
+        walletService.requireWithinDebtLimit(driverUserId);
         if (trip.getStatus() != TripStatus.OPEN && trip.getStatus() != TripStatus.FULL) {
             throw new AppException(HttpStatus.BAD_REQUEST, 400,
                 "Chỉ chuyến OPEN/FULL mới có thể bắt đầu (hiện tại: " + trip.getStatus() + ")");
@@ -325,17 +328,18 @@ public class TripService {
             throw new AppException(HttpStatus.BAD_REQUEST, 400,
                 "Chỉ chuyến STARTED mới có thể kết thúc (hiện tại: " + trip.getStatus() + ")");
         }
+        java.util.List<Booking> bookings = bookingRepository.findByTripIdAndStatusIn(tripId,
+            java.util.List.of(BookingStatus.CONFIRMED));
+        boolean cashUnconfirmed = bookings.stream().anyMatch(b -> b.getPayment() != null
+            && b.getPayment().getMethod() == PaymentMethod.CASH
+            && b.getPayment().getStatus() != PaymentStatus.PAID);
+        if (cashUnconfirmed) {
+            throw new AppException(ErrorCode.CASH_NOT_CONFIRMED);
+        }
+
         trip.setStatus(TripStatus.COMPLETED);
         trip = tripRepository.save(trip);
 
-        driverProfileRepository.findByUserId(driverUserId).ifPresent(p -> {
-            int rides = p.getTotalDriverRides() == null ? 0 : p.getTotalDriverRides();
-            p.setTotalDriverRides(rides + 1);
-            driverProfileRepository.save(p);
-        });
-
-        java.util.List<Booking> bookings = bookingRepository.findByTripIdAndStatusIn(tripId,
-            java.util.List.of(BookingStatus.CONFIRMED));
         for (Booking b : bookings) {
             if (b.getPayment() != null
                 && b.getPayment().getMethod() == PaymentMethod.STRIPE
@@ -350,6 +354,12 @@ public class TripService {
             bookingRepository.save(b);
             realtimeService.bookingChanged(b);
         }
+
+        driverProfileRepository.findByUserId(driverUserId).ifPresent(p -> {
+            int rides = p.getTotalDriverRides() == null ? 0 : p.getTotalDriverRides();
+            p.setTotalDriverRides(rides + 1);
+            driverProfileRepository.save(p);
+        });
 
         log.info("Driver {} completed trip {}", driverUserId, tripId);
         realtimeService.tripChanged(trip);

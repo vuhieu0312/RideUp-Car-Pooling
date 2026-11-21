@@ -2,6 +2,8 @@ package com.rideup.entity;
 
 import com.rideup.enums.StopType;
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -25,6 +27,8 @@ public class TripStop {
     Trip trip;
 
     @Enumerated(EnumType.STRING)
+
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     @Column(nullable = false, length = 20)
     StopType stopType;
 

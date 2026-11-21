@@ -50,6 +50,8 @@ const FILTERS = [
   { key: 'CANCELED', label: 'Đã hủy' },
 ];
 
+const CHAT_CLOSED_STATUSES = ['COMPLETED', 'CANCELLED_BY_USER', 'CANCELLED_BY_DRIVER', 'CANCELLED_PAYMENT_FAILED', 'EXPIRED', 'REJECTED_BY_DRIVER'];
+
 export default function MyBookingsScreen({ navigation }) {
   const { doLogout } = useAuth();
   const insets = useSafeAreaInsets();
@@ -311,9 +313,7 @@ export default function MyBookingsScreen({ navigation }) {
                 style={[styles.filter, complaintView === key && styles.filterActive]}
                 onPress={() => setComplaintView(key)}
               >
-                <Text
-                  numberOfLines={1}
-                  ellipsizeMode="clip"
+                <Text
                   style={[styles.filterText, complaintView === key && styles.filterTextActive]}
                 >
                   {label}<Text style={styles.filterCount}> {count}</Text>
@@ -360,9 +360,7 @@ export default function MyBookingsScreen({ navigation }) {
             style={[styles.filter, filter === f.key && styles.filterActive]}
             onPress={() => setFilter(f.key)}
           >
-            <Text
-              numberOfLines={1}
-              ellipsizeMode="clip"
+            <Text
               style={[styles.filterText, filter === f.key && styles.filterTextActive]}
             >
               {f.label}<Text style={styles.filterCount}> {counts[f.key]}</Text>
@@ -443,6 +441,13 @@ export default function MyBookingsScreen({ navigation }) {
                 <Text style={styles.cancelReason}>Lý do: {b.cancelReason}</Text>
               )}
 
+              {b.status === 'COMPLETED' && !!b.driverReviewRating && (
+                <View style={styles.reviewedRow} accessibilityLabel={`Đã đánh giá ${b.driverReviewRating} trên 5 sao`}>
+                  <Text style={styles.reviewedText}>Bạn đã đánh giá</Text>
+                  <RatingStars rating={b.driverReviewRating} />
+                </View>
+              )}
+
               <View style={styles.actionsRow}>
                   <TouchableOpacity
                     style={[styles.detailBtn, b.status === 'COMPLETED' && styles.completedActionButton]}
@@ -451,18 +456,7 @@ export default function MyBookingsScreen({ navigation }) {
                     <Text style={styles.detailBtnText}>Xem chi tiết</Text>
                   </TouchableOpacity>
                   {b.status === 'COMPLETED' && (
-                    b.driverReviewRating ? (
-                      <TouchableOpacity
-                        style={[styles.reviewButton, styles.reviewButtonDisabled, styles.reviewButtonReviewed, styles.completedActionButton]}
-                        disabled
-                        accessibilityRole="button"
-                        accessibilityState={{ disabled: true }}
-                        accessibilityLabel={`Đã đánh giá ${b.driverReviewRating} trên 5 sao`}
-                      >
-                        <Text style={styles.reviewButtonText}>Đã đánh giá</Text>
-                        <RatingStars rating={b.driverReviewRating} />
-                      </TouchableOpacity>
-                    ) : (
+                    b.driverReviewRating ? null : (
                       <TouchableOpacity
                         style={[styles.reviewButton, styles.completedActionButton]}
                         onPress={() => {
@@ -476,6 +470,7 @@ export default function MyBookingsScreen({ navigation }) {
                       </TouchableOpacity>
                     )
                   )}
+                  {!CHAT_CLOSED_STATUSES.includes(b.status) && (
                   <TouchableOpacity
                     style={[styles.chatBtn, !conversation && styles.chatBtnDisabled]}
                     disabled={!conversation}
@@ -488,6 +483,7 @@ export default function MyBookingsScreen({ navigation }) {
                     <Text style={styles.chatBtnText}>{conversation ? 'Chat tài xế' : 'Chat sau khi xác nhận'}</Text>
                     {chatUnread.has(b.id) && <View style={styles.unreadDot} />}
                   </TouchableOpacity>
+                  )}
                   {b.status === 'COMPLETED' && !!b.driverId && reportsLoaded && (
                     submittedComplaints.some((complaint) => complaint.bookingId === b.id) ? (
                       <TouchableOpacity style={[styles.detailBtn, styles.reportButtonDisabled]} disabled>
@@ -612,70 +608,68 @@ function categoryLabel(category) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   heading: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 16 },
-  kicker: { fontSize: 9, fontWeight: '800', color: colors.primaryAccent, letterSpacing: 1.5 },
-  title: { marginTop: 3, fontSize: 20, fontWeight: '700', color: colors.text },
-  refreshBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
-  sectionTabs: { flexDirection: 'row', marginHorizontal: 12, marginTop: 12, borderRadius: 9, padding: 3, backgroundColor: '#eaf0ed' },
-  sectionTab: { flex: 1, alignItems: 'center', paddingVertical: 9, borderRadius: 7 },
+  kicker: { fontSize: 10, fontWeight: '800', color: colors.primaryAccent, letterSpacing: 1.5 },
+  title: { marginTop: 3, fontSize: 20, fontWeight: '800', color: colors.text },
+  refreshBtn: { width: 30, height: 30, borderRadius: 15, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
+  sectionTabs: { flexDirection: 'row', marginHorizontal: 14, marginTop: 12, borderRadius: 12, padding: 3, backgroundColor: '#eaf0ed' },
+  sectionTab: { flex: 1, alignItems: 'center', paddingVertical: 7, borderRadius: 9 },
   sectionTabActive: { backgroundColor: '#fff' },
-  sectionTabText: { fontSize: 12, color: colors.textMuted, fontWeight: '600' },
+  sectionTabText: { fontSize: 13, color: colors.textMuted, fontWeight: '600' },
   sectionTabTextActive: { color: colors.primaryAccent },
-  filters: { marginTop: 10, marginBottom: 10, flexGrow: 0 },
-  filtersContent: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    gap: 6,
+  filters: { marginTop: 8, marginBottom: 8, flexGrow: 0, flexShrink: 0 },
+  filtersContent: { paddingHorizontal: 14, paddingVertical: 6, gap: 6,
     alignItems: 'center',
   },
   filter: {
     flexShrink: 0,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    height: 30,
+    paddingHorizontal: 13,
+    paddingVertical: 5,
+    minHeight: 32,
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#e1ebe7',
-    borderRadius: 14,
+    borderRadius: 16,
     backgroundColor: 'white',
     overflow: 'visible',       // đảm bảo border không bị parent clip
   },
   filterActive: { borderColor: colors.primaryAccent, backgroundColor: colors.primaryLight },
-  filterText: { fontSize: 11, lineHeight: 14, color: colors.textMuted, fontWeight: '500' },
+  filterText: { fontSize: 12, lineHeight: 18, color: colors.textMuted, fontWeight: '500' },
   filterTextActive: { color: colors.primaryAccent, fontWeight: '500' },  // không bold — giữ size chữ đồng đều
-  filterCount: { fontSize: 10, lineHeight: 13, fontWeight: '500' },
+  filterCount: { fontSize: 11, lineHeight: 18, fontWeight: '500' },
 
-  actionMsg: { padding: 9, backgroundColor: colors.primaryFaintest, borderRadius: 6, marginBottom: 10, fontSize: 11, color: colors.textDark },
-  listContent: { padding: 12, paddingBottom: 24 },
-  muted: { color: colors.textSubtle, fontSize: 12 },
-  emptyBox: { padding: 38, borderRadius: 10, backgroundColor: 'white', color: colors.textSubtle, fontSize: 12, textAlign: 'center' },
+  actionMsg: { padding: 12, backgroundColor: colors.primaryFaintest, borderRadius: 12, marginBottom: 10, fontSize: 13, color: colors.textDark },
+  listContent: { padding: 14, paddingBottom: 28 },
+  muted: { color: colors.textSubtle, fontSize: 14 },
+  emptyBox: { padding: 38, borderRadius: 16, backgroundColor: 'white', color: colors.textSubtle, fontSize: 14, textAlign: 'center' },
 
-  card: { marginBottom: 9, padding: 12, borderWidth: 1, borderColor: '#e3ece8', borderRadius: 10, backgroundColor: 'white', ...shadow(2, 0.07, 7) },
-  complaintCard: { marginBottom: 9, padding: 13, borderWidth: 1, borderColor: '#e3ece8', borderRadius: 10, backgroundColor: 'white', ...shadow(2, 0.07, 7) },
+  card: { marginBottom: 12, padding: 16, borderWidth: 1, borderColor: '#e3ece8', borderRadius: 18, backgroundColor: 'white', ...shadow(2, 0.07, 7) },
+  complaintCard: { marginBottom: 12, padding: 16, borderWidth: 1, borderColor: '#e3ece8', borderRadius: 18, backgroundColor: 'white', ...shadow(2, 0.07, 7) },
   complaintCardHead: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 },
-  complaintTitle: { flex: 1, fontSize: 14, fontWeight: '700', color: colors.textDark },
-  complaintStatus: { fontSize: 10, fontWeight: '700', color: colors.primaryAccent },
-  complaintMeta: { marginTop: 5, fontSize: 11, color: colors.textSubtle },
-  complaintDescription: { marginTop: 9, fontSize: 12, lineHeight: 18, color: colors.textDark },
-  evidenceText: { marginTop: 6, fontSize: 11, color: colors.primaryAccent },
+  complaintTitle: { flex: 1, fontSize: 15, fontWeight: '700', color: colors.textDark },
+  complaintStatus: { fontSize: 12, fontWeight: '700', color: colors.primaryAccent },
+  complaintMeta: { marginTop: 5, fontSize: 13, color: colors.textSubtle },
+  complaintDescription: { marginTop: 9, fontSize: 14, lineHeight: 20, color: colors.textDark },
+  evidenceText: { marginTop: 6, fontSize: 13, color: colors.primaryAccent },
   cardHead: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 },
   bookingSummary: { flex: 1, minWidth: 0 },
-  code: { fontSize: 10, color: colors.textSubtle, marginBottom: 4 },
+  code: { fontSize: 12, color: colors.textSubtle, marginBottom: 4 },
   tripTimeRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 },
-  tripTime: { fontSize: 13, fontWeight: '700', color: colors.textDark },
+  tripTime: { fontSize: 15, fontWeight: '800', color: colors.textDark },
   payStatusRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  badge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999, alignSelf: 'flex-start', flexShrink: 0 },
-  badgeText: { fontSize: 10, fontWeight: '700' },
-  separator: { height: 1, backgroundColor: colors.border, marginVertical: 10 },
-  metrics: { flexDirection: 'row', gap: 24 },
+  badge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999, alignSelf: 'flex-start', flexShrink: 0 },
+  badgeText: { fontSize: 12, fontWeight: '700' },
+  separator: { height: 1, backgroundColor: colors.border, marginVertical: 12 },
+  metrics: { flexDirection: 'row', gap: 12 },
   metric: { flex: 1 },
-  metricLabel: { fontSize: 10, color: colors.textSubtle, marginBottom: 2 },
-  metricValue: { fontSize: 12, fontWeight: '700' },
-  cancelReason: { marginTop: 8, fontSize: 11, color: colors.dangerText },
+  metricLabel: { fontSize: 12, color: colors.textSubtle, marginBottom: 3 },
+  metricValue: { fontSize: 14, fontWeight: '800' },
+  cancelReason: { marginTop: 8, fontSize: 13, color: colors.dangerText },
   ratingStars: { flexDirection: 'row', alignItems: 'center', gap: 1 },
-  reviewButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingVertical: 8, paddingHorizontal: 14, minWidth: 102, borderRadius: 6, backgroundColor: '#fff8e6' },
+  reviewButton: { flexDirection: 'row', gap: 5, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 6, borderWidth: 1, borderColor: colors.primary, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
   reviewButtonDisabled: { opacity: 0.75 },
-  reviewButtonReviewed: { flexDirection: 'column', gap: 2 },
-  reviewButtonText: { color: '#9a6700', fontSize: 11, fontWeight: '700' },
+  reviewedRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 },
+  reviewedText: { fontSize: 13, color: colors.textSubtle },
+  reviewButtonText: { color: colors.primary, fontSize: 14 },
   reviewOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.55)', justifyContent: 'center', alignItems: 'center', padding: 24 },
   reviewModal: { width: '100%', maxWidth: 380, padding: 22, borderRadius: 16, backgroundColor: colors.surface, alignItems: 'center' },
   reviewTitle: { fontSize: 18, fontWeight: '700', color: colors.text },
@@ -690,22 +684,22 @@ const styles = StyleSheet.create({
   reviewSubmitDisabled: { opacity: 0.5 },
   reviewSubmitText: { color: '#fff', fontWeight: '700' },
 
-  actionsRow: { marginTop: 12, flexDirection: 'row', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' },
-  route: { fontSize: 12, color: colors.textDark, marginTop: 3 },
-  detailBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 6, borderWidth: 1, borderColor: colors.primaryAccent, alignItems: 'center', justifyContent: 'center' },
-  completedActionButton: { width: 102, flexGrow: 0 },
-  detailBtnText: { color: colors.primaryAccent, fontSize: 11, fontWeight: '700' },
+  actionsRow: { marginTop: 12, flexDirection: 'row', justifyContent: 'flex-end', gap: 10, flexWrap: 'wrap' },
+  route: { fontSize: 13, color: colors.textDark, marginTop: 4 },
+  detailBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 6, borderWidth: 1, borderColor: '#d1d5db', backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
+  completedActionButton: {},
+  detailBtnText: { color: colors.textDark, fontSize: 14 },
   reportButtonDisabled: { opacity: 0.65 },
-  chatBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6, backgroundColor: colors.primaryLight, borderWidth: 1, borderColor: colors.primaryAccent },
+  chatBtn: { flexDirection: 'row', gap: 5, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 6, borderWidth: 1, borderColor: colors.primary, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
   chatBtnDisabled: { opacity: 0.55 },
-  chatBtnText: { color: colors.primaryAccent, fontSize: 11, fontWeight: '700' },
+  chatBtnText: { color: colors.primary, fontSize: 14 },
   unreadDot: { position: 'absolute', top: -4, right: -4, width: 11, height: 11, borderRadius: 6, backgroundColor: '#dc2626', borderWidth: 2, borderColor: 'white' },
-  dangerBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 6, backgroundColor: colors.dangerBg, borderWidth: 1, borderColor: '#fecaca' },
-  dangerBtnText: { color: colors.danger, fontSize: 11, fontWeight: '700' },
-  payBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 6, backgroundColor: colors.primary },
+  dangerBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 6, borderWidth: 1, borderColor: '#d1d5db', backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
+  dangerBtnText: { color: colors.textDark, fontSize: 14 },
+  payBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 6, borderWidth: 1, borderColor: colors.primary, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
   payBtnDisabled: { opacity: 0.6 },
-  payBtnText: { color: 'white', fontSize: 11, fontWeight: '700' },
+  payBtnText: { color: colors.primary, fontSize: 14 },
 
-  primaryBtn: { marginTop: 12, paddingVertical: 10, paddingHorizontal: 18, borderRadius: 6, backgroundColor: colors.primary, alignSelf: 'center' },
-  primaryBtnText: { color: 'white', fontSize: 12, fontWeight: '700' },
+  primaryBtn: { marginTop: 14, paddingVertical: 12, paddingHorizontal: 22, borderRadius: 12, backgroundColor: colors.primary, alignSelf: 'center' },
+  primaryBtnText: { color: 'white', fontSize: 14, fontWeight: '700' },
 });

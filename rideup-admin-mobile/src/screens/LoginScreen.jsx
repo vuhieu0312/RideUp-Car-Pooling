@@ -7,9 +7,11 @@ import { colors, HERO_IMAGE } from '../theme';
 import IconText from '../components/IconText';
 import { Text, TextInput } from '../components/Typography';
 import Logo from '../components/Logo';
+import { useLayout } from '../utils/useLayout';
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
+  const { wide } = useLayout();
   const { doLogin } = useAuth();
   const [email, setEmail] = useState('admin@rideup.com');
   const [password, setPassword] = useState('admin123');
@@ -28,6 +30,59 @@ export default function LoginScreen() {
     }
   }
 
+  const card = (
+    <View style={[styles.card, wide && styles.cardWide]}>
+      <View style={styles.heading}>
+        <Text style={styles.kicker}>QUẢN TRỊ</Text>
+        <Text style={styles.cardTitle}>Chào mừng trở lại</Text>
+        <Text style={styles.cardSubtitle}>Đăng nhập để duyệt hồ sơ và quản lý hệ thống.</Text>
+      </View>
+
+      {!!error && (
+        <View style={styles.alertError}>
+          <Text style={styles.alertErrorText}>{error}</Text>
+        </View>
+      )}
+
+      <View style={styles.field}>
+        <IconText name="email-outline" size={14} textStyle={styles.fieldLabel}>Email</IconText>
+        <TextInput
+          style={styles.input}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          value={email}
+          onChangeText={setEmail}
+        />
+      </View>
+      <View style={styles.field}>
+        <IconText name="lock-outline" size={14} textStyle={styles.fieldLabel}>Mật khẩu</IconText>
+        <TextInput
+          style={styles.input}
+          secureTextEntry
+          value={password}
+          onChangeText={setPassword}
+          onSubmitEditing={submit}
+        />
+      </View>
+
+      <TouchableOpacity style={styles.submit} onPress={submit} disabled={loading}>
+        <Text style={styles.submitText}>{loading ? 'Đang đăng nhập...' : 'Đăng nhập'}</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  if (wide) {
+    return (
+      <ImageBackground source={{ uri: HERO_IMAGE }} style={styles.wideRoot} imageStyle={{ resizeMode: 'cover' }}>
+        <View style={styles.heroOverlay} />
+        <View style={styles.wideColumn}>
+          <Logo tag="ADMIN" style={{ alignSelf: 'center', marginBottom: 24 }} />
+          {card}
+        </View>
+      </ImageBackground>
+    );
+  }
+
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={false}>
@@ -39,49 +94,16 @@ export default function LoginScreen() {
           <LinearGradient pointerEvents="none" colors={['rgba(247,250,249,0)', colors.bg]} style={styles.heroFade} />
         </ImageBackground>
 
-        <View style={styles.card}>
-          <View style={styles.heading}>
-            <Text style={styles.kicker}>QUẢN TRỊ</Text>
-            <Text style={styles.cardTitle}>Chào mừng trở lại</Text>
-            <Text style={styles.cardSubtitle}>Đăng nhập để duyệt hồ sơ và quản lý hệ thống.</Text>
-          </View>
-
-          {!!error && (
-            <View style={styles.alertError}>
-              <Text style={styles.alertErrorText}>{error}</Text>
-            </View>
-          )}
-
-          <View style={styles.field}>
-            <IconText name="email-outline" size={14} textStyle={styles.fieldLabel}>Email</IconText>
-            <TextInput
-              style={styles.input}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              value={email}
-              onChangeText={setEmail}
-            />
-          </View>
-          <View style={styles.field}>
-            <IconText name="lock-outline" size={14} textStyle={styles.fieldLabel}>Mật khẩu</IconText>
-            <TextInput
-              style={styles.input}
-              secureTextEntry
-              value={password}
-              onChangeText={setPassword}
-            />
-          </View>
-
-          <TouchableOpacity style={styles.submit} onPress={submit} disabled={loading}>
-            <Text style={styles.submitText}>{loading ? 'Đang đăng nhập...' : 'Đăng nhập'}</Text>
-          </TouchableOpacity>
-        </View>
+        {!wide && card}
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  wideRoot: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
+  wideColumn: { width: '100%', maxWidth: 440 },
+  cardWide: { marginTop: 0, marginHorizontal: 0 },
   hero: { minHeight: 245, paddingTop: 28, paddingHorizontal: 22, paddingBottom: 70, justifyContent: 'flex-start', overflow: 'hidden' },
   heroOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.authOverlay },
   heroFade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 76 },
