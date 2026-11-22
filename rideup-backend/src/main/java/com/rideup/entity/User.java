@@ -34,7 +34,6 @@ public class User {
     @Column(nullable = false, length = 150)
     String fullName;
 
-    Boolean verified;
 
     @Column(nullable = false, length = 20)
     String phone;

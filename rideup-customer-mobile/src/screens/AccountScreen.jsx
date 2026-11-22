@@ -102,12 +102,6 @@ export default function AccountScreen({ navigation }) {
           </View>
           <Text style={styles.name}>{profile?.fullName || 'Người dùng'}</Text>
           <Text style={styles.muted}>{profile?.email}</Text>
-          {!!profile?.verified && (
-            <View style={styles.verifiedRow}>
-              <MaterialCommunityIcons name="check-decagram" size={13} color={colors.success} />
-              <Text style={styles.verified}>Đã xác minh email</Text>
-            </View>
-          )}
         </View>
 
         {/* Info card */}
@@ -199,8 +193,6 @@ const styles = StyleSheet.create({
   },
   name: { marginTop: 12, fontSize: 17, fontWeight: '700', color: colors.text },
   muted: { marginTop: 2, fontSize: 12, color: colors.textSubtle },
-  verifiedRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 },
-  verified: { fontSize: 11, color: colors.success, fontWeight: '600' },
 
   card: { marginHorizontal: 14, padding: 14, borderRadius: 12, backgroundColor: 'white', borderWidth: 1, borderColor: colors.border },
   cardKicker: { fontSize: 9, color: colors.primaryAccent, letterSpacing: 1.5, fontWeight: '800', marginBottom: 8 },

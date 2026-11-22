@@ -28,7 +28,6 @@ public class UserResponse {
     LocalDate dateOfBirth;
     Gender gender;
     String avatarUrl;
-    Boolean verified;
     Set<Role> roles;
     LocalDateTime createdAt;
     LocalDateTime updatedAt;

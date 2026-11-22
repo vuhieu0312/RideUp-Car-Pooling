@@ -70,7 +70,6 @@ public class DriverService {
                 .dateOfBirth(data.getDateOfBirth())
                 .gender(data.getGender())
                 .password(passwordEncoder.encode(data.getPassword()))
-                .verified(true)
                 .role(Role.DRIVER)
                 .build());
 
