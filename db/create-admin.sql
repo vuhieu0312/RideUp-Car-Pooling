@@ -6,10 +6,10 @@ USE rideup;
 
 SET @admin_id := UUID();
 
-INSERT INTO app_user (id, full_name, email, phone, password, verified, role, created_at, updated_at)
+INSERT INTO app_user (id, full_name, email, phone, password, role, created_at, updated_at)
 VALUES (@admin_id, 'Quản trị viên', 'admin@rideup.vn', '0900000000',
         '$2a$10$Y.CDrzRTUCgrn49xQ/.rFuwrETosOIzrzanC0hz2VhU2Q5huZjTR.',  -- BCrypt của "Admin@123"
-        1, 'ADMIN', NOW(), NOW());
+        'ADMIN', NOW(), NOW());
 
 -- Kiểm tra
 SELECT email, role FROM app_user WHERE role = 'ADMIN';

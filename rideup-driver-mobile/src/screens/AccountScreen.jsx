@@ -115,12 +115,6 @@ export default function AccountScreen({ navigation }) {
           </View>
           <Text style={styles.name}>{profile?.fullName || 'Tài xế'}</Text>
           <Text style={styles.muted}>{profile?.email}</Text>
-          {!!profile?.verified && (
-            <View style={styles.verifiedRow}>
-              <MaterialCommunityIcons name="check-decagram" size={13} color={colors.success} />
-              <Text style={styles.verified}>Đã xác minh email</Text>
-            </View>
-          )}
         </View>
 
         {/* Rating + tổng chuyến */}
@@ -281,8 +275,6 @@ const styles = StyleSheet.create({
   },
   name: { fontFamily: FONT[800], marginTop: 12, fontSize: 21, fontWeight: '700', color: colors.text },
   muted: { marginTop: 2, fontSize: 14, color: colors.textSubtle },
-  verifiedRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 },
-  verified: { fontSize: 12, color: colors.success, fontWeight: '600' },
 
   ratingCard: {
     flexDirection: 'row', marginHorizontal: 14, marginBottom: 12, padding: 14,

@@ -72,7 +72,6 @@ public class AuthenticationService {
             .email(request.getEmail())
             .phone(request.getPhone())
             .password(passwordEncoder.encode(request.getPassword()))
-            .verified(true)
             .role(role)
             .build();
 
@@ -181,7 +180,6 @@ public class AuthenticationService {
                 .dateOfBirth(user.getDateOfBirth())
                 .gender(user.getGender())
                 .avatarUrl(user.getAvatarUrl())
-                .verified(user.getVerified())
                 .roles(java.util.Set.of(user.getRole()))
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
