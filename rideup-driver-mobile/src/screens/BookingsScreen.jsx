@@ -392,10 +392,9 @@ export default function BookingsScreen({ navigation, route }) {
               )}
 
               <View style={styles.actions}>
-                {!CHAT_CLOSED_STATUSES.includes(b.status) && (
+                {!!conversation && !CHAT_CLOSED_STATUSES.includes(b.status) && (
                 <TouchableOpacity
-                  style={[styles.btn, styles.btnChat, !conversation && styles.btnDisabled]}
-                  disabled={!conversation}
+                  style={[styles.btn, styles.btnChat]}
                   onPress={() => navigation.navigate('Chat', {
                     conversationId: conversation.conversationId,
                     bookingId: b.id,
@@ -403,7 +402,7 @@ export default function BookingsScreen({ navigation, route }) {
                   })}
                 >
                   <IconText name="message-text-outline" size={14} center textStyle={styles.btnChatText}>
-                    {conversation ? 'Chat với khách' : 'Chat sau khi duyệt'}
+                    Chat với khách
                   </IconText>
                   {chatUnread.has(b.id) && <View style={styles.unreadDot} />}
                 </TouchableOpacity>

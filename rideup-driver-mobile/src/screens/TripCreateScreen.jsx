@@ -1,16 +1,19 @@
-import { useEffect, useMemo, useState } from 'react';
-import { KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Button, HelperText, IconButton } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createTrip, listMyVehicles, listProvinces, listWards } from '../api/api';
-import { colors, FONT, shadow, typography } from '../theme';
+import { colors, FONT, typography } from '../theme';
 import WardMultiPicker from '../components/WardMultiPicker';
+import FullScreenPicker from '../components/FullScreenPicker';
 import DateField from '../components/DateField';
 import TimeField from '../components/TimeField';
 import { Text, TextInput } from '../components/Typography';
 import { vehicleTypeLabel } from '../utils/driverForm';
 import { useRealtimeRefresh } from '../realtime/useRealtime';
+
+const shortProvinceName = (name) => (name || '').replace(/^(Thành phố|Tỉnh)\s+/i, '').trim();
 
 export default function TripCreateScreen({ navigation }) {
   const insets = useSafeAreaInsets();
@@ -31,7 +34,13 @@ export default function TripCreateScreen({ navigation }) {
   });
 
   useEffect(() => {
-    listProvinces().then(setProvinces).catch(() => {});
+    listProvinces()
+      .then((list) => setProvinces(
+        (list || [])
+          .map((p) => ({ ...p, name: shortProvinceName(p.name) }))
+          .sort((a, b) => a.name.localeCompare(b.name, 'vi'))
+      ))
+      .catch(() => {});
     loadVehicles();
   }, []);
 
@@ -133,6 +142,7 @@ export default function TripCreateScreen({ navigation }) {
             onOpen={() => setOpenPicker('fromP')}
             onClose={() => setOpenPicker(null)}
             onSelect={(id) => { set('startProvinceId')(id); setOpenPicker(null); }}
+            recentKey="tripFrom"
           />
           <WardMultiPicker
             label="Khu vực đón"
@@ -149,6 +159,7 @@ export default function TripCreateScreen({ navigation }) {
             onOpen={() => setOpenPicker('toP')}
             onClose={() => setOpenPicker(null)}
             onSelect={(id) => { set('endProvinceId')(id); setOpenPicker(null); }}
+            recentKey="tripTo"
           />
           <WardMultiPicker
             label="Khu vực trả"
@@ -253,19 +264,8 @@ function Section({ title, children }) {
   );
 }
 
-function PickerField({ label, value, options, isOpen, onOpen, onClose, onSelect }) {
+function PickerField({ label, value, options, isOpen, onOpen, onClose, onSelect, recentKey }) {
   const selected = options.find((o) => o.id === value);
-  const [keyword, setKeyword] = useState('');
-
-  useEffect(() => {
-    if (!isOpen) setKeyword('');
-  }, [isOpen]);
-
-  const filtered = useMemo(() => {
-    const k = keyword.trim().toLowerCase();
-    if (!k) return options;
-    return options.filter((o) => o.name.toLowerCase().includes(k));
-  }, [options, keyword]);
 
   return (
     <View style={{ marginTop: 8 }}>
@@ -277,59 +277,16 @@ function PickerField({ label, value, options, isOpen, onOpen, onClose, onSelect 
         <MaterialCommunityIcons name="chevron-down" size={18} color={colors.primaryAccent} />
       </TouchableOpacity>
 
-      <Modal visible={isOpen} transparent animationType="fade" onRequestClose={onClose}>
-        <View style={styles.modalBackdrop}>
-          <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onClose} />
-          <KeyboardAvoidingView
-            style={styles.modalCenter}
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            pointerEvents="box-none"
-          >
-            <View style={styles.modalSheet}>
-              <Text style={styles.modalHeader}>{label}</Text>
-              <View style={styles.pickerSearchWrap}>
-                <MaterialCommunityIcons name="magnify" size={16} color={colors.textSubtle} style={styles.pickerSearchIcon} />
-                <TextInput
-                  value={keyword}
-                  onChangeText={setKeyword}
-                  placeholder="Tìm kiếm..."
-                  placeholderTextColor={colors.textSubtle}
-                  style={styles.pickerSearchInput}
-                  autoFocus
-                  underlineColorAndroid="transparent"
-                />
-                {keyword.length > 0 && (
-                  <TouchableOpacity onPress={() => setKeyword('')} hitSlop={8}>
-                    <MaterialCommunityIcons name="close-circle" size={16} color={colors.textSubtle} />
-                  </TouchableOpacity>
-                )}
-              </View>
-              <ScrollView style={styles.modalList} keyboardShouldPersistTaps="handled">
-                {filtered.length === 0 ? (
-                  <Text style={styles.modalEmpty}>
-                    {keyword ? `Không tìm thấy "${keyword}"` : 'Không có dữ liệu'}
-                  </Text>
-                ) : (
-                  filtered.map((opt) => (
-                    <TouchableOpacity
-                      key={opt.id}
-                      style={[styles.modalOption, value === opt.id && styles.modalOptionActive]}
-                      onPress={() => onSelect(opt.id)}
-                    >
-                      <Text style={[styles.modalOptionText, value === opt.id && styles.modalOptionTextActive]}>
-                        {opt.name}
-                      </Text>
-                      {value === opt.id && (
-                        <MaterialCommunityIcons name="check" size={18} color={colors.primaryAccent} />
-                      )}
-                    </TouchableOpacity>
-                  ))
-                )}
-              </ScrollView>
-            </View>
-          </KeyboardAvoidingView>
-        </View>
-      </Modal>
+      <FullScreenPicker
+        visible={isOpen}
+        onClose={onClose}
+        onSelect={onSelect}
+        options={options}
+        value={value}
+        title={`Chọn ${label.replace(/\s*\*$/, '').toLowerCase()}`}
+        recentKey={recentKey}
+        sectionTitle="Tất cả tỉnh/thành phố"
+      />
     </View>
   );
 }
@@ -386,59 +343,6 @@ const styles = StyleSheet.create({
   pickerText: { flex: 1, fontFamily: FONT[600], fontSize: 13, fontWeight: '600', color: colors.text },
   pickerPlaceholder: { color: colors.textSubtle, fontWeight: '400' },
 
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-  },
-  modalCenter: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 20,
-  },
-  modalSheet: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    overflow: 'hidden',
-    maxHeight: '70%',
-    ...shadow(4, 0.2, 12, '#000'),
-  },
-  modalHeader: {
-    paddingHorizontal: 16, paddingVertical: 12,
-    fontSize: 13, fontWeight: '700', color: colors.textDark,
-    borderBottomWidth: 1, borderColor: colors.border,
-  },
-  pickerSearchWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginHorizontal: 12,
-    marginTop: 10,
-    marginBottom: 6,
-    paddingHorizontal: 10,
-    borderWidth: 1,
-    borderColor: colors.borderDate,
-    borderRadius: 8,
-    backgroundColor: 'white',
-  },
-  pickerSearchIcon: { marginRight: 6 },
-  pickerSearchInput: {
-    flex: 1,
-    paddingVertical: 8,
-    fontSize: 13,
-    color: colors.text,
-    boxShadow: 'none',
-  },
-  modalList: { maxHeight: 380 },
-  modalEmpty: { padding: 24, textAlign: 'center', color: colors.textSubtle, fontSize: 13 },
-  modalOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 12,
-    borderBottomWidth: 1, borderColor: colors.border,
-  },
-  modalOptionActive: { backgroundColor: colors.primaryFaintest },
-  modalOptionText: { flex: 1, fontSize: 13, color: colors.text },
-  modalOptionTextActive: { color: colors.primaryAccent, fontWeight: '700' },
 
   error: { marginHorizontal: 14, paddingHorizontal: 10, borderRadius: 8, backgroundColor: colors.dangerLightBg },
   submit: { marginTop: 8, marginHorizontal: 14, borderRadius: 9 },

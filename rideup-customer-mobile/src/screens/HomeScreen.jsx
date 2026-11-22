@@ -17,6 +17,8 @@ import { useRealtimeRefresh } from '../realtime/useRealtime';
 
 const UPCOMING_STATUSES = ['PENDING_PAYMENT', 'WAITING_DRIVER_APPROVAL', 'CONFIRMED'];
 
+const shortProvinceName = (name) => (name || '').replace(/^(Thành phố|Tỉnh)\s+/i, '').trim();
+
 
 export default function HomeScreen({ navigation }) {
   const { user } = useAuth();
@@ -40,7 +42,13 @@ export default function HomeScreen({ navigation }) {
   const [totalCount, setTotalCount] = useState(0);
 
   useEffect(() => {
-    listProvinces().then(setProvinces).catch(() => {});
+    listProvinces()
+      .then((list) => setProvinces(
+        (list || [])
+          .map((p) => ({ ...p, name: shortProvinceName(p.name) }))
+          .sort((a, b) => a.name.localeCompare(b.name, 'vi'))
+      ))
+      .catch(() => {});
   }, []);
 
   const loadStats = useCallback(() => {
@@ -133,9 +141,9 @@ export default function HomeScreen({ navigation }) {
 
         {/* Stats */}
         <View style={styles.statsRow}>
-          <Stat icon="car-outline" value={String(upcomingCount)} label="Chuyến đã đặt" />
-          <Stat icon="clipboard-text-outline" value={String(completedCount)} label="Lượt đã đi" />
-          <Stat icon="ticket-confirmation-outline" value={String(totalCount)} label="Tổng lượt đặt" />
+          <Stat icon="car-outline" value={String(upcomingCount)} label="Sắp đi" />
+          <Stat icon="clipboard-text-outline" value={String(completedCount)} label="Đã hoàn thành" />
+          <Stat icon="ticket-confirmation-outline" value={String(totalCount)} label="Tổng đặt chỗ" />
         </View>
 
         {/* Search panel */}
@@ -148,6 +156,9 @@ export default function HomeScreen({ navigation }) {
           <PickerField
             icon="map-marker"
             label="TỈNH ĐÓN"
+            title="Chọn tỉnh/thành phố đón"
+            recentKey="from"
+            sectionTitle="Tất cả tỉnh/thành phố"
             value={fromProvinceId}
             options={provinces}
             isOpen={pickerOpen === 'from'}
@@ -159,6 +170,8 @@ export default function HomeScreen({ navigation }) {
           <PickerField
             icon="map-marker-radius"
             label="KHU VỰC ĐÓN (không bắt buộc)"
+            title="Chọn khu vực đón"
+            sectionTitle="Khu vực"
             value={pickupWardId}
             options={pickupWards.length ? [{ id: '', name: 'Tất cả khu vực' }, ...pickupWards] : []}
             isOpen={pickerOpen === 'pickup'}
@@ -170,6 +183,9 @@ export default function HomeScreen({ navigation }) {
           <PickerField
             icon="map-marker"
             label="TỈNH TRẢ"
+            title="Chọn tỉnh/thành phố trả"
+            recentKey="to"
+            sectionTitle="Tất cả tỉnh/thành phố"
             value={toProvinceId}
             options={provinces}
             isOpen={pickerOpen === 'to'}
@@ -181,6 +197,8 @@ export default function HomeScreen({ navigation }) {
           <PickerField
             icon="map-marker-radius"
             label="KHU VỰC TRẢ (không bắt buộc)"
+            title="Chọn khu vực trả"
+            sectionTitle="Khu vực"
             value={dropoffWardId}
             options={dropoffWards.length ? [{ id: '', name: 'Tất cả khu vực' }, ...dropoffWards] : []}
             isOpen={pickerOpen === 'dropoff'}
@@ -257,7 +275,7 @@ function Stat({ icon, value, label, accent }) {
   );
 }
 
-function PickerField({ icon, label, value, options, isOpen, onOpenMenu, onCloseMenu, onSelect, placeholder }) {
+function PickerField({ icon, label, title, recentKey, sectionTitle, value, options, isOpen, onOpenMenu, onCloseMenu, onSelect, placeholder }) {
   return (
     <View style={styles.selectRow}>
       <MaterialCommunityIcons name={icon} size={16} color={colors.primaryAccent} style={styles.rowIcon} />
@@ -271,6 +289,9 @@ function PickerField({ icon, label, value, options, isOpen, onOpenMenu, onCloseM
           onClose={onCloseMenu}
           onSelect={onSelect}
           placeholder={placeholder}
+          title={title}
+          recentKey={recentKey}
+          sectionTitle={sectionTitle}
         />
       </View>
     </View>
