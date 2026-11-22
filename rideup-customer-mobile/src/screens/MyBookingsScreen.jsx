@@ -313,7 +313,8 @@ export default function MyBookingsScreen({ navigation }) {
                 style={[styles.filter, complaintView === key && styles.filterActive]}
                 onPress={() => setComplaintView(key)}
               >
-                <Text
+                <Text
+
                   style={[styles.filterText, complaintView === key && styles.filterTextActive]}
                 >
                   {label}<Text style={styles.filterCount}> {count}</Text>
@@ -360,7 +361,8 @@ export default function MyBookingsScreen({ navigation }) {
             style={[styles.filter, filter === f.key && styles.filterActive]}
             onPress={() => setFilter(f.key)}
           >
-            <Text
+            <Text
+
               style={[styles.filterText, filter === f.key && styles.filterTextActive]}
             >
               {f.label}<Text style={styles.filterCount}> {counts[f.key]}</Text>
@@ -470,17 +472,16 @@ export default function MyBookingsScreen({ navigation }) {
                       </TouchableOpacity>
                     )
                   )}
-                  {!CHAT_CLOSED_STATUSES.includes(b.status) && (
+                  {!!conversation && !CHAT_CLOSED_STATUSES.includes(b.status) && (
                   <TouchableOpacity
-                    style={[styles.chatBtn, !conversation && styles.chatBtnDisabled]}
-                    disabled={!conversation}
+                    style={styles.chatBtn}
                     onPress={() => navigation.navigate('Chat', {
                       conversationId: conversation.conversationId,
                       bookingId: b.id,
                       name: b.driverName,
                     })}>
                     <MaterialCommunityIcons name="message-text-outline" size={14} color={colors.primaryAccent} />
-                    <Text style={styles.chatBtnText}>{conversation ? 'Chat tài xế' : 'Chat sau khi xác nhận'}</Text>
+                    <Text style={styles.chatBtnText}>Chat tài xế</Text>
                     {chatUnread.has(b.id) && <View style={styles.unreadDot} />}
                   </TouchableOpacity>
                   )}
@@ -691,7 +692,6 @@ const styles = StyleSheet.create({
   detailBtnText: { color: colors.textDark, fontSize: 14 },
   reportButtonDisabled: { opacity: 0.65 },
   chatBtn: { flexDirection: 'row', gap: 5, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 6, borderWidth: 1, borderColor: colors.primary, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
-  chatBtnDisabled: { opacity: 0.55 },
   chatBtnText: { color: colors.primary, fontSize: 14 },
   unreadDot: { position: 'absolute', top: -4, right: -4, width: 11, height: 11, borderRadius: 6, backgroundColor: '#dc2626', borderWidth: 2, borderColor: 'white' },
   dangerBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 6, borderWidth: 1, borderColor: '#d1d5db', backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },

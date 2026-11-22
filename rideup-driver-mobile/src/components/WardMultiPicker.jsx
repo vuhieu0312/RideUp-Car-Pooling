@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { FlatList, KeyboardAvoidingView, Modal, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { FlatList, Modal, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { colors, typography } from '../theme';
+import { colors, FONT, typography } from '../theme';
+import { normalizeText, useKeyboardHeight } from './FullScreenPicker';
 import { Text, TextInput } from './Typography';
 
 export default function WardMultiPicker({
@@ -15,14 +17,16 @@ export default function WardMultiPicker({
 }) {
   const [open, setOpen] = useState(false);
   const [keyword, setKeyword] = useState('');
+  const insets = useSafeAreaInsets();
+  const keyboardH = useKeyboardHeight();
 
   useEffect(() => {
     if (!open) setKeyword('');
   }, [open]);
 
   const filtered = useMemo(() => {
-    const k = keyword.trim().toLowerCase();
-    const matched = k ? wards.filter((w) => w.name.toLowerCase().includes(k)) : wards;
+    const k = normalizeText(keyword);
+    const matched = k ? wards.filter((w) => normalizeText(w.name).includes(k)) : wards;
     // ward đã chọn lên đầu
     return [
       ...matched.filter((w) => selectedIds.includes(w.id)),
@@ -63,92 +67,79 @@ export default function WardMultiPicker({
         <MaterialCommunityIcons name="chevron-down" size={18} color={colors.primaryAccent} />
       </TouchableOpacity>
 
-      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
-        <KeyboardAvoidingView
-          style={styles.backdrop}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        >
-          <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={() => setOpen(false)} />
-          <View style={styles.sheet}>
-            <View style={styles.header}>
-              <Text style={styles.title}>{label}{required ? ' *' : ''}</Text>
-              <TouchableOpacity onPress={() => setOpen(false)} hitSlop={8}>
-                <MaterialCommunityIcons name="close" size={22} color={colors.textDark} />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.searchWrap}>
-              <MaterialCommunityIcons name="magnify" size={16} color={colors.textSubtle} style={styles.searchIcon} />
+      <Modal visible={open} animationType="slide" onRequestClose={() => setOpen(false)}>
+        <View style={[styles.screen, { paddingTop: insets.top + 8, paddingBottom: keyboardH || insets.bottom }]}>
+          <View style={styles.topBar}>
+            <TouchableOpacity onPress={() => setOpen(false)} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} accessibilityLabel="Đóng">
+              <MaterialCommunityIcons name="close" size={26} color={colors.textDark} />
+            </TouchableOpacity>
+            <View style={styles.searchBox}>
+              <MaterialCommunityIcons name="magnify" size={20} color={colors.primaryAccent} />
               <TextInput
                 value={keyword}
                 onChangeText={setKeyword}
-                placeholder="Tìm phường/xã..."
-                placeholderTextColor={colors.textSubtle}
+                placeholder={`${label}: tìm phường/xã`}
+                placeholderTextColor="#a4b2ae"
                 style={styles.searchInput}
                 autoFocus
+                autoCorrect={false}
                 underlineColorAndroid="transparent"
               />
               {keyword.length > 0 && (
-                <TouchableOpacity onPress={() => setKeyword('')} hitSlop={8}>
-                  <MaterialCommunityIcons name="close-circle" size={16} color={colors.textSubtle} />
+                <TouchableOpacity onPress={() => setKeyword('')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                  <MaterialCommunityIcons name="close-circle" size={20} color="#9aaca6" />
                 </TouchableOpacity>
               )}
             </View>
-
-            <FlatList
-              data={filtered}
-              keyExtractor={(item) => item.id}
-              style={styles.list}
-              keyboardShouldPersistTaps="handled"
-              ListEmptyComponent={
-                <Text style={styles.empty}>
-                  {keyword ? `Không tìm thấy "${keyword}"` : 'Không có dữ liệu'}
-                </Text>
-              }
-              renderItem={({ item }) => {
-                const isSelected = selectedIds.includes(item.id);
-                const blocked = !isSelected && atMax;
-                return (
-                  <TouchableOpacity
-                    style={[styles.item, isSelected && styles.itemActive]}
-                    activeOpacity={0.7}
-                    disabled={blocked}
-                    onPress={() => onToggle(item.id)}
-                  >
-                    <Text
-                      style={[
-                        styles.itemText,
-                        isSelected && styles.itemTextActive,
-                        blocked && styles.itemTextDisabled,
-                      ]}
-                      numberOfLines={1}
-                    >
-                      {item.name}
-                    </Text>
-                    <MaterialCommunityIcons
-                      name={isSelected ? 'checkbox-marked' : 'checkbox-blank-outline'}
-                      size={20}
-                      color={isSelected ? colors.primaryAccent : colors.textSubtle}
-                    />
-                  </TouchableOpacity>
-                );
-              }}
-            />
-
-            <View style={styles.footer}>
-              <Text style={styles.footerHint}>
-                {atMax ? `Đã đạt tối đa ${max} khu vực` : `Có thể chọn tối đa ${max} khu vực`}
-              </Text>
-              <TouchableOpacity
-                style={styles.doneBtn}
-                activeOpacity={0.8}
-                onPress={() => setOpen(false)}
-              >
-                <Text style={styles.doneText}>Xong ({count})</Text>
-              </TouchableOpacity>
-            </View>
           </View>
-        </KeyboardAvoidingView>
+
+          <FlatList
+            data={filtered}
+            keyExtractor={(item) => item.id}
+            style={styles.list}
+            contentContainerStyle={styles.listContent}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            ListEmptyComponent={
+              <Text style={styles.empty}>
+                {keyword ? `Không tìm thấy "${keyword}"` : 'Không có dữ liệu'}
+              </Text>
+            }
+            renderItem={({ item }) => {
+              const isSelected = selectedIds.includes(item.id);
+              const blocked = !isSelected && atMax;
+              return (
+                <TouchableOpacity
+                  style={[styles.item, blocked && styles.itemBlocked]}
+                  activeOpacity={0.7}
+                  disabled={blocked}
+                  onPress={() => onToggle(item.id)}
+                >
+                  <View style={[styles.itemIcon, isSelected && styles.itemIconSelected]}>
+                    <MaterialCommunityIcons name="map-marker-outline" size={20} color={colors.primaryAccent} />
+                  </View>
+                  <Text style={[styles.itemText, isSelected && styles.itemTextActive]} numberOfLines={1}>
+                    {item.name}
+                  </Text>
+                  <MaterialCommunityIcons
+                    name={isSelected ? 'checkbox-marked' : 'checkbox-blank-outline'}
+                    size={22}
+                    color={isSelected ? colors.primaryAccent : colors.textSubtle}
+                  />
+                </TouchableOpacity>
+              );
+            }}
+          />
+
+          <View style={styles.footer}>
+            <Text style={styles.footerHint}>
+              {atMax ? `Đã đạt tối đa ${max} khu vực` : `Có thể chọn tối đa ${max} khu vực`}
+            </Text>
+            <TouchableOpacity style={styles.doneBtn} activeOpacity={0.8} onPress={() => setOpen(false)}>
+              <Text style={styles.doneText}>Xong ({count})</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </Modal>
     </View>
   );
@@ -174,83 +165,23 @@ const styles = StyleSheet.create({
   triggerText: { flex: 1, fontSize: 13, fontWeight: '600', color: colors.text },
   triggerPlaceholder: { color: colors.textSubtle, fontWeight: '400' },
 
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'center',
-    paddingHorizontal: 20,
-  },
-  sheet: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    maxHeight: '78%',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderColor: colors.border,
-  },
-  title: { fontSize: 14, fontWeight: '700', color: colors.textDark },
+  screen: { flex: 1, backgroundColor: 'white', paddingHorizontal: 16 },
+  topBar: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  searchBox: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, borderWidth: 1.5, borderColor: colors.primaryAccent, borderRadius: 24, backgroundColor: 'white' },
+  searchInput: { flex: 1, paddingVertical: 11, fontSize: 15, color: colors.text, boxShadow: 'none' },
 
-  searchWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginHorizontal: 16,
-    marginTop: 10,
-    marginBottom: 6,
-    paddingHorizontal: 10,
-    borderWidth: 1,
-    borderColor: colors.borderDate,
-    borderRadius: 8,
-    backgroundColor: 'white',
-  },
-  searchIcon: { marginRight: 6 },
-  searchInput: {
-    flex: 1,
-    paddingVertical: 9,
-    fontSize: 13,
-    color: colors.text,
-    boxShadow: 'none',
-  },
-
-  list: { maxHeight: 380 },
-  listContent: { paddingBottom: 4 },
-  item: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderColor: colors.border,
-  },
-  itemActive: { backgroundColor: colors.primaryFaintest },
-  itemText: { flex: 1, fontSize: 13, color: colors.text },
-  itemTextActive: { color: colors.primaryAccent },
-  itemTextDisabled: { color: colors.textSubtle },
+  list: { flex: 1, marginTop: 12 },
+  listContent: { paddingBottom: 12 },
+  item: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10 },
+  itemBlocked: { opacity: 0.45 },
+  itemIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center', marginRight: 14 },
+  itemIconSelected: { backgroundColor: colors.primaryLighter },
+  itemText: { flex: 1, marginRight: 10, fontSize: 15, color: colors.text },
+  itemTextActive: { fontFamily: FONT[700], color: colors.primaryDark },
   empty: { padding: 24, textAlign: 'center', color: colors.textSubtle, fontSize: 13 },
 
-  footer: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderColor: colors.border,
-  },
+  footer: { paddingTop: 10, borderTopWidth: 1, borderColor: colors.border },
   footerHint: { fontSize: 11, color: colors.textSubtle, marginBottom: 8, textAlign: 'center' },
-  doneBtn: {
-    marginHorizontal: 12,
-    marginBottom: 12,
-    paddingVertical: 12,
-    backgroundColor: colors.primary,
-    borderTopLeftRadius: 9,
-    borderTopRightRadius: 9,
-    borderBottomLeftRadius: 12,
-    borderBottomRightRadius: 12,
-    alignItems: 'center',
-  },
-  doneText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  doneBtn: { marginBottom: 8, paddingVertical: 14, backgroundColor: colors.primary, borderRadius: 12, alignItems: 'center' },
+  doneText: { color: '#fff', fontFamily: FONT[700], fontSize: 14 },
 });
