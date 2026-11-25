@@ -2,13 +2,16 @@ package com.rideup.controller;
 
 import com.rideup.exception.ApiResponse;
 import com.rideup.dto.request.DriverRejectRequest;
+import com.rideup.dto.request.UpdateAccountStatusRequest;
 import com.rideup.dto.request.UpdateCommissionRequest;
 import com.rideup.dto.request.UpdateDebtLimitRequest;
+import com.rideup.dto.response.AdminUserResponse;
 import com.rideup.dto.response.DriverDetailResponse;
 import com.rideup.dto.response.DriverResponse;
 import com.rideup.dto.response.VehicleResponse;
 import com.rideup.dto.response.AdminDashboardStats;
 import com.rideup.enums.DriverStatus;
+import com.rideup.enums.Role;
 import com.rideup.service.AdminService;
 import com.rideup.service.VehicleService;
 import jakarta.validation.Valid;
@@ -19,6 +22,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -50,6 +54,26 @@ public class AdminController {
         @RequestParam(required = false) DriverStatus status
     ) {
         return ApiResponse.success(adminService.listDrivers(status));
+    }
+
+    @GetMapping("/users")
+    public ApiResponse<List<AdminUserResponse>> listUsers(@RequestParam Role role) {
+        return ApiResponse.success(adminService.listManagedUsers(role));
+    }
+
+    @GetMapping("/users/{id}")
+    public ApiResponse<AdminUserResponse> getUser(@PathVariable("id") String userId) {
+        return ApiResponse.success(adminService.getManagedUser(userId));
+    }
+
+    @PatchMapping("/users/{id}/status")
+    public ApiResponse<AdminUserResponse> updateUserStatus(
+        @PathVariable("id") String userId,
+        @Valid @RequestBody UpdateAccountStatusRequest req,
+        Authentication auth
+    ) {
+        adminService.updateAccountStatus(userId, req.getStatus(), currentUserId(auth));
+        return ApiResponse.success("Đã cập nhật trạng thái tài khoản", adminService.getManagedUser(userId));
     }
 
 

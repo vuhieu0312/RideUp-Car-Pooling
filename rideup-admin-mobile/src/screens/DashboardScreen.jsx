@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Button, Dialog, IconButton, Portal, TextInput } from 'react-native-paper';
+import { Button, Dialog, IconButton, Portal, RadioButton, TextInput } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
-  approveDriver, approveVehicle, bulkReviewReports, getAdminDashboardStats, getCommissionSetting, getDebtLimitSetting, getDriverDetail,
+  approveDriver, approveVehicle, bulkReviewReports, getAdminDashboardStats, getAdminUser, getCommissionSetting, getDebtLimitSetting, getDriverDetail,
   getLocationStats, listDrivers, listPendingVehicles, listReports, rejectDriver, rejectVehicle, reviewReport,
-  unlockUser, updateCommissionSetting, updateDebtLimitSetting,
+  listAdminUsers, unlockUser, updateAdminUserStatus, updateCommissionSetting, updateDebtLimitSetting,
 } from '../api/api';
 import { useAuth } from '../auth/AuthContext';
 import DetailModal from '../components/DetailModal';
@@ -21,11 +21,13 @@ import ApprovalsTab from './tabs/ApprovalsTab';
 import OverviewTab from './tabs/OverviewTab';
 import ReportsTab from './tabs/ReportsTab';
 import SettingsTab from './tabs/SettingsTab';
+import UsersTab, { getAdminUserDetailRows } from './tabs/UsersTab';
 
 const TABS = [
   { key: 'overview', label: 'Tổng quan', icon: 'view-dashboard-outline', active: 'view-dashboard' },
   { key: 'approvals', label: 'Duyệt hồ sơ', icon: 'clipboard-check-outline', active: 'clipboard-check' },
   { key: 'reports', label: 'Khiếu nại', icon: 'shield-alert-outline', active: 'shield-alert' },
+  { key: 'users', label: 'Tài khoản', icon: 'account-group-outline', active: 'account-group' },
   { key: 'settings', label: 'Cấu hình', icon: 'cog-outline', active: 'cog' },
 ];
 
@@ -33,6 +35,7 @@ const TITLES = {
   overview: 'Tổng quan',
   approvals: 'Duyệt hồ sơ',
   reports: 'Khiếu nại',
+  users: 'Quản lý tài khoản',
   settings: 'Cấu hình',
 };
 
@@ -43,11 +46,14 @@ export default function DashboardScreen() {
   const [tab, setTab] = useState('overview');
   const [period, setPeriod] = useState('month');
   const [drivers, setDrivers] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [accountDrivers, setAccountDrivers] = useState([]);
   const [vehicles, setVehicles] = useState([]);
   const [reports, setReports] = useState([]);
   const [dashboard, setDashboard] = useState(null);
   const [locationStats, setLocationStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [accountsLoading, setAccountsLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [msg, setMsg] = useState('');
   const [rejectTarget, setRejectTarget] = useState(null);
@@ -61,6 +67,10 @@ export default function DashboardScreen() {
   const [debtLimit, setDebtLimit] = useState(null);
   const [debtLimitInput, setDebtLimitInput] = useState('');
   const [savingDebtLimit, setSavingDebtLimit] = useState(false);
+  const [accountDetail, setAccountDetail] = useState(null);
+  const [accountStatusTarget, setAccountStatusTarget] = useState(null);
+  const [accountStatusSelection, setAccountStatusSelection] = useState('');
+  const [savingAccountStatus, setSavingAccountStatus] = useState(false);
 
   async function loadAll() {
     setLoading(true);
@@ -92,7 +102,28 @@ export default function DashboardScreen() {
     }
   }
 
+  async function loadAccounts() {
+    setAccountsLoading(true);
+    try {
+      const [customerAccounts, driverAccounts] = await Promise.all([
+        listAdminUsers('CUSTOMER'),
+        listAdminUsers('DRIVER'),
+      ]);
+      setCustomers(customerAccounts);
+      setAccountDrivers(driverAccounts);
+    } catch (e) {
+      setMsg('Lỗi: ' + (e.response?.data?.message || e.message));
+    } finally {
+      setAccountsLoading(false);
+      setRefreshing(false);
+    }
+  }
+
   useEffect(() => { loadAll(); }, []);
+
+  useEffect(() => {
+    if (tab === 'users') loadAccounts();
+  }, [tab]);
 
   useRealtimeRefresh(() => { loadAll(); }, ['ADMIN_QUEUE_UPDATED']);
 
@@ -209,6 +240,35 @@ export default function DashboardScreen() {
     catch (e) { setMsg('Lỗi: ' + (e.response?.data?.message || e.message)); }
   }
 
+  async function openAccountDetail(account) {
+    try { setAccountDetail(await getAdminUser(account.id)); }
+    catch (e) { setMsg('Lỗi: ' + (e.response?.data?.message || e.message)); }
+  }
+
+  function askAccountStatusChange(account) {
+    setAccountStatusTarget(account);
+    setAccountStatusSelection(account.accountStatus);
+  }
+
+  async function saveAccountStatus() {
+    if (!accountStatusTarget || !accountStatusSelection || accountStatusSelection === accountStatusTarget.accountStatus) return;
+    setSavingAccountStatus(true);
+    try {
+      const result = await updateAdminUserStatus(accountStatusTarget.id, accountStatusSelection);
+      setMsg(result.message);
+      if (result.data.role === 'CUSTOMER') {
+        setCustomers((users) => users.map((user) => user.id === result.data.id ? result.data : user));
+      } else {
+        setAccountDrivers((users) => users.map((user) => user.id === result.data.id ? result.data : user));
+      }
+      setAccountStatusTarget(null);
+    } catch (e) {
+      setMsg('Lỗi: ' + (e.response?.data?.message || e.message));
+    } finally {
+      setSavingAccountStatus(false);
+    }
+  }
+
   const info = buildDetailInfo(detail);
   const pendingReports = reports.filter((r) => r.status === 'PENDING').length;
   const badges = { approvals: drivers.length + vehicles.length, reports: pendingReports };
@@ -251,6 +311,15 @@ export default function DashboardScreen() {
           onOpenEvidence={openEvidence}
         />
       )}
+      {tab === 'users' && (
+        <UsersTab
+          customers={customers}
+          drivers={accountDrivers}
+          loading={accountsLoading}
+          onDetail={openAccountDetail}
+          onChangeStatus={askAccountStatusChange}
+        />
+      )}
       {tab === 'settings' && (
         <SettingsTab
           commission={commission}
@@ -273,7 +342,11 @@ export default function DashboardScreen() {
     <ScrollView
       style={[{ flex: 1 }, wide && Platform.OS === 'web' && { overflowY: 'scroll' }]}
       contentContainerStyle={[{ padding: wide ? 28 : 14, paddingBottom: 24 }, wide && styles.wideContent]}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadAll(); }} />}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => {
+        setRefreshing(true);
+        if (tab === 'users') loadAccounts();
+        else loadAll();
+      }} />}
     >
       {wide && <Text style={styles.pageTitle}>{TITLES[tab]}</Text>}
       {wide && toast}
@@ -366,7 +439,43 @@ export default function DashboardScreen() {
         onApprove={() => { const old = detail; setDetail(null); old?.type === 'driver' ? approveD(old.item.id) : approveV(old.item.id); }}
         onReject={() => { const old = detail; setDetail(null); setRejectTarget({ type: old.type, id: old.item.id }); setRejectReason(''); }} />
 
+      <DetailModal
+        visible={!!accountDetail}
+        title="Thông tin tài khoản"
+        sections={accountDetail ? getAdminUserDetailRows(accountDetail) : []}
+        imageGroups={[]}
+        onClose={() => setAccountDetail(null)}
+      />
+
       <Portal>
+        <Dialog visible={!!accountStatusTarget} onDismiss={() => setAccountStatusTarget(null)}>
+          <Dialog.Title>Chỉnh trạng thái tài khoản</Dialog.Title>
+          <Dialog.Content>
+            <Text style={{ marginBottom: 8 }}>
+              {accountStatusTarget?.fullName}
+              {accountStatusSelection === 'ACTIVE'
+                ? ' sẽ có thể tiếp tục sử dụng dịch vụ.'
+                : ' sẽ không thể đăng nhập hoặc sử dụng dịch vụ.'}
+            </Text>
+            <RadioButton.Group onValueChange={setAccountStatusSelection} value={accountStatusSelection}>
+              <RadioButton.Item label="Đang hoạt động" value="ACTIVE" />
+              <RadioButton.Item label="Đã khóa" value="LOCKED" />
+              <RadioButton.Item label="Đã cấm" value="BANNED" />
+            </RadioButton.Group>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setAccountStatusTarget(null)}>Huỷ</Button>
+            <Button
+              mode="contained"
+              buttonColor={accountStatusSelection === 'ACTIVE' ? accent.green : colors.danger}
+              loading={savingAccountStatus}
+              disabled={savingAccountStatus || accountStatusSelection === accountStatusTarget?.accountStatus}
+              onPress={saveAccountStatus}
+            >
+              Lưu trạng thái
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
         <Dialog visible={!!rejectTarget} onDismiss={() => setRejectTarget(null)}>
           <Dialog.Title>Lý do từ chối</Dialog.Title>
           <Dialog.Content>

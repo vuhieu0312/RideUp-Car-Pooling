@@ -104,6 +104,15 @@ export const login = (email, password) =>
 export const listDrivers = (status) =>
   api.get(`/admin/drivers${status ? `?status=${status}` : ''}`).then((r) => r.data.data);
 
+export const listAdminUsers = (role) =>
+  api.get('/admin/users', { params: { role } }).then((r) => r.data.data);
+
+export const getAdminUser = (id) =>
+  api.get(`/admin/users/${id}`).then((r) => r.data.data);
+
+export const updateAdminUserStatus = (id, status) =>
+  api.patch(`/admin/users/${id}/status`, { status }).then((r) => r.data);
+
 export const getDriverDetail = (id) =>
   api.get(`/admin/drivers/${id}`).then((r) => r.data.data);
 
