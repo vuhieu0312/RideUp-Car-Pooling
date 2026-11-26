@@ -137,7 +137,7 @@ export default function BookingCreateScreen({ route, navigation }) {
         if (result.success) {
           dialog.alert(
             'Đặt cọc thành công',
-            'Booking của bạn đang chờ tài xế xác nhận.'
+            'Yêu cầu đặt chỗ của bạn đang chờ tài xế xác nhận.'
           );
         }
         // booking đã tạo dù thanh toán ok/lỗi/huỷ, luôn chuyển sang Chuyến xe của tôi

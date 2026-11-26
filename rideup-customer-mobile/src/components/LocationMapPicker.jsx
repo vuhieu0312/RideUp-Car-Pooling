@@ -618,6 +618,7 @@ export default function LocationMapPicker({
               ))}
             </View>
           )}
+
         </>
       ) : (
         <View style={styles.mapPlaceholder}>

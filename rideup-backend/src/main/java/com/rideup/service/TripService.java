@@ -379,6 +379,11 @@ public class TripService {
                 "Không thể huỷ chuyến đã hoàn thành hoặc đã huỷ");
         }
 
+        if (trip.getStatus() == TripStatus.STARTED) {
+            throw new AppException(HttpStatus.BAD_REQUEST, 400,
+                "Chuyến đã bắt đầu, không thể huỷ");
+        }
+
         String cancelReason = "Tài xế huỷ chuyến: " + (reason == null || reason.isBlank() ? "Không rõ" : reason);
         cancelTripAndBookings(trip, cancelReason);
         return toResponse(trip);

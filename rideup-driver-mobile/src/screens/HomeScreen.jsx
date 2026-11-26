@@ -83,7 +83,7 @@ export default function HomeScreen({ navigation }) {
 
         <View style={styles.statsRow}>
           <Stat icon="cash-multiple" value={todayNet == null ? '--' : shortMoney(todayNet)} label="Thu nhập ròng hôm nay" />
-          <Stat icon="clock-outline" value={pendingCount ?? '--'} label="Booking chờ duyệt" onPress={() => navigation.navigate('AllTripsTab')} />
+          <Stat icon="clock-outline" value={pendingCount ?? '--'} label="Yêu cầu đặt chỗ chờ duyệt" onPress={() => navigation.navigate('AllTripsTab')} />
           <Stat icon="star-outline" value={rating ?? '--'} label="Đánh giá" accent />
         </View>
 

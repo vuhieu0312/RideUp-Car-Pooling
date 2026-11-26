@@ -65,7 +65,7 @@ export default function ConversationsScreen({ navigation }) {
 						<MaterialCommunityIcons name="chat-processing-outline" size={30} color={colors.primaryAccent} />
 					</View>
 					<Text style={styles.emptyTitle}>Chưa có hội thoại</Text>
-					<Text style={styles.helper}>Tin nhắn với hành khách sẽ xuất hiện khi booking được xác nhận.</Text>
+					<Text style={styles.helper}>Tin nhắn với hành khách sẽ xuất hiện khi yêu cầu đặt chỗ được xác nhận.</Text>
 				</View>
 			) : (
 				<FlatList
@@ -92,7 +92,7 @@ export default function ConversationsScreen({ navigation }) {
 								<Text style={styles.preview} numberOfLines={1}>
 									{item.lastMessagePreview || 'Bắt đầu trò chuyện về chuyến đi'}
 								</Text>
-								<Text style={styles.booking}>Booking #{item.bookingId?.slice(-8).toUpperCase()}</Text>
+								<Text style={styles.booking}>Yêu cầu đặt chỗ #{item.bookingId?.slice(-8).toUpperCase()}</Text>
 							</View>
 							<MaterialCommunityIcons name="chevron-right" size={20} color={colors.textMuted} />
 						</TouchableOpacity>

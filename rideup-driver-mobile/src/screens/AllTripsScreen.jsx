@@ -354,7 +354,7 @@ export default function AllTripsScreen({ navigation }) {
                       style={[styles.actionBtn, styles.actionSecondary]}
                       onPress={() => navigation.navigate('Bookings', { tripId: t.id })}
                     >
-                      <IconText name="format-list-bulleted" size={14} center textStyle={styles.actionSecondaryText}>Xem booking</IconText>
+                      <IconText name="format-list-bulleted" size={14} center textStyle={styles.actionSecondaryText}>Xem yêu cầu đặt chỗ</IconText>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[styles.actionBtn, styles.actionPrimary]}
@@ -367,16 +367,10 @@ export default function AllTripsScreen({ navigation }) {
                 {t.status === 'STARTED' && (
                   <>
                     <TouchableOpacity
-                      style={[styles.actionBtn, styles.actionDanger]}
-                      onPress={() => doCancelTrip(t)}
-                    >
-                      <IconText name="close-circle-outline" size={14} center textStyle={styles.actionDangerText}>Huỷ chuyến</IconText>
-                    </TouchableOpacity>
-                    <TouchableOpacity
                       style={[styles.actionBtn, styles.actionSecondary]}
                       onPress={() => navigation.navigate('Bookings', { tripId: t.id })}
                     >
-                      <IconText name="format-list-bulleted" size={14} center textStyle={styles.actionSecondaryText}>Xem booking</IconText>
+                      <IconText name="format-list-bulleted" size={14} center textStyle={styles.actionSecondaryText}>Xem yêu cầu đặt chỗ</IconText>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[styles.actionBtn, styles.actionPrimary]}
@@ -391,7 +385,7 @@ export default function AllTripsScreen({ navigation }) {
                     style={[styles.actionBtn, styles.actionSecondary]}
                     onPress={() => navigation.navigate('Bookings', { tripId: t.id })}
                   >
-                    <IconText name="format-list-bulleted" size={14} center textStyle={styles.actionSecondaryText}>Xem booking</IconText>
+                    <IconText name="format-list-bulleted" size={14} center textStyle={styles.actionSecondaryText}>Xem yêu cầu đặt chỗ</IconText>
                   </TouchableOpacity>
                 )}
               </View>

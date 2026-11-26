@@ -73,7 +73,7 @@ public class DriverEarningsService {
 
         List<Payment> payments = paymentRepository.findCompletedForStats(
                 driverUserId, BookingStatus.COMPLETED,
-                List.of(PaymentStatus.VOIDED, PaymentStatus.VOID_FAILED, PaymentStatus.FAILED, PaymentStatus.REFUNDED),
+                List.of(PaymentStatus.VOIDED, PaymentStatus.VOID_FAILED, PaymentStatus.FAILED),
                 thisMonth.minusMonths(MONTHS - 1).atDay(1).atStartOfDay());
         for (Payment p : payments) {
             Booking b = p.getBooking();

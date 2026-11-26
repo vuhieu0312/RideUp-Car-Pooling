@@ -5,8 +5,6 @@ import lombok.*;
 import lombok.experimental.FieldDefaults;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.List;
 
 @Entity
 @Table(name = "province")
@@ -39,7 +37,4 @@ public class Province {
     @Column(name = "osmid")
     Long osmId;
 
-    @OneToMany(mappedBy = "province", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @Builder.Default
-    List<Ward> wards = new ArrayList<>();
 }
