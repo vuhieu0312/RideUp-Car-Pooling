@@ -25,22 +25,22 @@ public interface TripRepository extends JpaRepository<Trip, String> {
 
     @Query("""
                 SELECT d.id, d.fullName, COUNT(t)
-                FROM Trip t JOIN t.driver d
+                FROM Trip t JOIN t.driverProfile dp JOIN dp.user d
                 WHERE t.status = com.rideup.enums.TripStatus.COMPLETED
                 GROUP BY d.id, d.fullName
                 ORDER BY COUNT(t) DESC
             """)
     List<Object[]> findTopDriversByCompletedTrips(Pageable pageable);
 
-    @EntityGraph(attributePaths = {"driver"})
-    List<Trip> findByDriverIdOrderByDepartureTimeDesc(String driverId);
+    @EntityGraph(attributePaths = {"driverProfile", "driverProfile.user"})
+    List<Trip> findByDriverProfileUserIdOrderByDepartureTimeDesc(String driverUserId);
 
-    @EntityGraph(attributePaths = {"driver"})
-    List<Trip> findByDriverIdAndStatusIn(String driverId, List<TripStatus> statuses);
+    @EntityGraph(attributePaths = {"driverProfile", "driverProfile.user"})
+    List<Trip> findByDriverProfileUserIdAndStatusIn(String driverUserId, List<TripStatus> statuses);
 
     List<Trip> findByStatusInAndDepartureTimeBefore(List<TripStatus> statuses, LocalDateTime deadline);
 
-    @EntityGraph(attributePaths = {"driver"})
+    @EntityGraph(attributePaths = {"driverProfile", "driverProfile.user"})
     @Query("""
                 SELECT t FROM Trip t
                 WHERE t.status = :status
@@ -58,7 +58,7 @@ public interface TripRepository extends JpaRepository<Trip, String> {
             @Param("to") LocalDateTime to,
             @Param("seatRequired") Integer seatRequired);
 
-    @EntityGraph(attributePaths = {"driver"})
+    @EntityGraph(attributePaths = {"driverProfile", "driverProfile.user"})
     @Query("""
                 SELECT t FROM Trip t
                 WHERE t.status = :status

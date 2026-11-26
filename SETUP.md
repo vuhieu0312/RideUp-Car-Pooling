@@ -178,6 +178,7 @@ Hoa hồng tiền mặt: khi tài xế bấm *Đã nhận tiền* ở booking th
 21. `add-review-unique-booking-money.sql` (tắt backend rồi chạy 1 lần: xóa đánh giá trùng và thêm unique (trip_id, customer_id) cho review; đổi booking.price_per_seat, total_amount sang decimal(15,2))
 22. `drop-user-verified.sql` (xoá cột app_user.verified không còn dùng; chạy sau khi đã chạy backend mới 1 lần)
 23. `drop-refund.sql` (xoá bảng refund không còn dùng; chạy sau khi đã chạy backend mới 1 lần).
+24. `migrate-trip-driver-profile.sql` (tắt backend rồi chạy 1 lần, trước khi chạy backend mới: chuyển trip.driver_id → app_user sang trip.driver_profile_id → driver_profile; nếu còn chuyến không có hồ sơ tài xế thì script dừng và không xoá cột cũ)
 
 Sau đó chạy lại backend. Muốn làm sạch hoàn toàn: `DROP DATABASE rideup;` rồi làm lại từ Bước 1.
 

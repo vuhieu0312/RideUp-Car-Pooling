@@ -74,7 +74,7 @@ public class TripService {
         }
 
         Trip trip = Trip.builder()
-                .driver(driver.getUser())
+                .driverProfile(driver)
                 .vehicle(vehicle)
                 .startProvince(start)
                 .endProvince(end)
@@ -131,7 +131,7 @@ public class TripService {
 
     @Transactional(readOnly = true)
     public List<TripResponse> listMyTrips(String userId) {
-        return tripRepository.findByDriverIdOrderByDepartureTimeDesc(userId)
+        return tripRepository.findByDriverProfileUserIdOrderByDepartureTimeDesc(userId)
                 .stream().map(this::toResponse).toList();
     }
 

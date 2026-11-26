@@ -17,7 +17,7 @@ import java.util.List;
 @Entity
 @Table(name = "trip", indexes = {
     @Index(name = "idx_trip_status_departure", columnList = "status, departure_time"),
-    @Index(name = "idx_trip_driver_departure", columnList = "driver_id, departure_time")
+    @Index(name = "idx_trip_driver_departure", columnList = "driver_profile_id, departure_time")
 })
 @Getter
 @Setter
@@ -33,8 +33,9 @@ public class Trip {
     String id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "driver_id", nullable = false)
-    User driver;
+    @JoinColumn(name = "driver_profile_id", nullable = false,
+            foreignKey = @ForeignKey(name = "fk_trip_driver_profile"))
+    DriverProfile driverProfile;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "vehicle_id", nullable = false)
@@ -83,6 +84,10 @@ public class Trip {
     @OneToMany(mappedBy = "trip", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default
     List<TripStop> stops = new ArrayList<>();
+
+    public User getDriver() {
+        return driverProfile != null ? driverProfile.getUser() : null;
+    }
 
     public void addStop(TripStop stop) {
         if (stops == null) stops = new ArrayList<>();

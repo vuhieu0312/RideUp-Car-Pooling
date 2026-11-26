@@ -15,10 +15,10 @@ import java.util.List;
 public interface BookingRepository extends JpaRepository<Booking, String> {
 
     @EntityGraph(attributePaths = {"customer", "payment", "trip", "trip.startProvince", "trip.endProvince",
-        "trip.driver", "trip.vehicle", "pickupWard", "dropoffWard"})
+        "trip.driverProfile", "trip.driverProfile.user", "trip.vehicle", "pickupWard", "dropoffWard"})
     List<Booking> findByCustomerIdOrderByCreatedAtDesc(String customerId);
 
-    @EntityGraph(attributePaths = { "customer", "trip", "trip.driver" })
+    @EntityGraph(attributePaths = { "customer", "trip", "trip.driverProfile", "trip.driverProfile.user" })
     List<Booking> findByCustomerIdAndStatusOrderByCreatedAtDesc(String customerId, BookingStatus status);
 
     List<Booking> findByTripId(String tripId);
@@ -42,7 +42,7 @@ public interface BookingRepository extends JpaRepository<Booking, String> {
     );
 
     @EntityGraph(attributePaths = {"customer", "payment", "trip", "trip.startProvince", "trip.endProvince",
-        "trip.driver", "trip.vehicle", "pickupWard", "dropoffWard"})
+        "trip.driverProfile", "trip.driverProfile.user", "trip.vehicle", "pickupWard", "dropoffWard"})
     List<Booking> findByTripIdAndStatusIn(String tripId, List<BookingStatus> statuses);
 
     List<Booking> findByStatusAndExpiresAtBefore(BookingStatus status, LocalDateTime time);
@@ -50,16 +50,16 @@ public interface BookingRepository extends JpaRepository<Booking, String> {
     boolean existsByCustomerIdAndTripIdAndStatusIn(String customerId, String tripId, List<BookingStatus> statuses);
 
     @EntityGraph(attributePaths = {"customer", "payment", "trip", "trip.startProvince", "trip.endProvince",
-        "trip.driver", "trip.vehicle", "pickupWard", "dropoffWard"})
+        "trip.driverProfile", "trip.driverProfile.user", "trip.vehicle", "pickupWard", "dropoffWard"})
     @org.springframework.data.jpa.repository.Query(
-        "SELECT b FROM Booking b WHERE b.trip.driver.id = :driverId ORDER BY b.createdAt DESC"
+        "SELECT b FROM Booking b WHERE b.trip.driverProfile.user.id = :driverId ORDER BY b.createdAt DESC"
     )
     List<Booking> findAllByDriverId(@org.springframework.data.repository.query.Param("driverId") String driverId);
 
     @EntityGraph(attributePaths = {"customer", "payment", "trip", "trip.startProvince", "trip.endProvince",
-        "trip.driver", "trip.vehicle", "pickupWard", "dropoffWard"})
+        "trip.driverProfile", "trip.driverProfile.user", "trip.vehicle", "pickupWard", "dropoffWard"})
     @org.springframework.data.jpa.repository.Query(
-        "SELECT b FROM Booking b WHERE b.trip.driver.id = :driverId AND b.status IN :statuses ORDER BY b.createdAt DESC"
+        "SELECT b FROM Booking b WHERE b.trip.driverProfile.user.id = :driverId AND b.status IN :statuses ORDER BY b.createdAt DESC"
     )
     List<Booking> findByDriverIdAndStatusIn(
         @org.springframework.data.repository.query.Param("driverId") String driverId,
