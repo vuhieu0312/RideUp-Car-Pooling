@@ -74,7 +74,7 @@ public class TripService {
         }
 
         Trip trip = Trip.builder()
-                .driver(driver.getUser())
+                .driverProfile(driver)
                 .vehicle(vehicle)
                 .startProvince(start)
                 .endProvince(end)
@@ -131,7 +131,7 @@ public class TripService {
 
     @Transactional(readOnly = true)
     public List<TripResponse> listMyTrips(String userId) {
-        return tripRepository.findByDriverIdOrderByDepartureTimeDesc(userId)
+        return tripRepository.findByDriverProfileUserIdOrderByDepartureTimeDesc(userId)
                 .stream().map(this::toResponse).toList();
     }
 
@@ -377,6 +377,11 @@ public class TripService {
         if (trip.getStatus() == TripStatus.COMPLETED || trip.getStatus() == TripStatus.CANCELED) {
             throw new AppException(HttpStatus.BAD_REQUEST, 400,
                 "Không thể huỷ chuyến đã hoàn thành hoặc đã huỷ");
+        }
+
+        if (trip.getStatus() == TripStatus.STARTED) {
+            throw new AppException(HttpStatus.BAD_REQUEST, 400,
+                "Chuyến đã bắt đầu, không thể huỷ");
         }
 
         String cancelReason = "Tài xế huỷ chuyến: " + (reason == null || reason.isBlank() ? "Không rõ" : reason);

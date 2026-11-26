@@ -178,6 +178,8 @@ Hoa hồng tiền mặt: khi tài xế bấm *Đã nhận tiền* ở booking th
 21. `fix-more-enum-columns.sql` (tắt backend rồi chạy 1 lần: đổi các cột ENUM còn lại sang VARCHAR và thu gọn cột refresh_token.token; chỉ cần với DB tạo từ code cũ)
 22. `add-review-unique-booking-money.sql` (tắt backend rồi chạy 1 lần: xóa đánh giá trùng và thêm unique (trip_id, customer_id) cho review; đổi booking.price_per_seat, total_amount sang decimal(15,2))
 23. `drop-user-verified.sql` (xoá cột app_user.verified không còn dùng; chạy sau khi đã chạy backend mới 1 lần)
+24. `drop-refund.sql` (xoá bảng refund không còn dùng; chạy sau khi đã chạy backend mới 1 lần).
+25. `migrate-trip-driver-profile.sql` (tắt backend rồi chạy 1 lần, trước khi chạy backend mới: chuyển trip.driver_id → app_user sang trip.driver_profile_id → driver_profile; nếu còn chuyến không có hồ sơ tài xế thì script dừng và không xoá cột cũ)
 
 Sau đó chạy lại backend. Muốn làm sạch hoàn toàn: `DROP DATABASE rideup;` rồi làm lại từ Bước 1.
 

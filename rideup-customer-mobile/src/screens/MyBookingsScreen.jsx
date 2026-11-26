@@ -159,7 +159,7 @@ export default function MyBookingsScreen({ navigation }) {
     );
     if (b.note) lines.push(`Ghi chú: ${b.note}`);
     if (b.cancelReason) lines.push(`Lý do huỷ: ${b.cancelReason}`);
-    dialog.alert('Chi tiết booking', lines.join('\n'));
+    dialog.alert('Chi tiết yêu cầu đặt chỗ', lines.join('\n'));
   }
 
   function matchesFilter(b) {
@@ -193,17 +193,17 @@ export default function MyBookingsScreen({ navigation }) {
 
     const isStripe = b.paymentMethod === 'STRIPE';
     const hasMoney = ['HOLDING', 'PAID'].includes(b.paymentStatus);
-    let detail = 'Bạn có chắc muốn huỷ booking này?';
+    let detail = 'Bạn có chắc muốn huỷ yêu cầu đặt chỗ này?';
     if (isStripe && hasMoney) {
       detail = 'Bạn sẽ được hoàn lại toàn bộ tiền đặt cọc.';
     } else if (isStripe && b.paymentStatus === 'PENDING') {
-      detail = 'Bạn chưa thanh toán. Booking sẽ được huỷ và không có giao dịch nào xảy ra.';
+      detail = 'Bạn chưa thanh toán. Yêu cầu đặt chỗ sẽ được huỷ và không có giao dịch nào xảy ra.';
     }
 
     const ok = await dialog.confirm({
-      title: 'Xác nhận huỷ booking',
+      title: 'Xác nhận huỷ yêu cầu đặt chỗ',
       message: detail,
-      confirmText: hasMoney ? 'Huỷ & hoàn tiền' : 'Huỷ booking',
+      confirmText: hasMoney ? 'Huỷ & hoàn tiền' : 'Huỷ yêu cầu đặt chỗ',
       cancelText: 'Không',
       danger: true,
     });
@@ -214,7 +214,7 @@ export default function MyBookingsScreen({ navigation }) {
       setActionMsg(
         isStripe && hasMoney
           ? 'Đã huỷ. Tiền sẽ được hoàn về trong vài ngày.'
-          : 'Đã huỷ booking'
+          : 'Đã huỷ yêu cầu đặt chỗ'
       );
       load();
     } catch (e) {
@@ -382,7 +382,7 @@ export default function MyBookingsScreen({ navigation }) {
             {loading && <Text style={styles.muted}>Đang tải...</Text>}
             {!loading && bookings.length === 0 && (
               <View style={styles.emptyBox}>
-                <Text style={styles.muted}>Bạn chưa có booking nào.</Text>
+                <Text style={styles.muted}>Bạn chưa có yêu cầu đặt chỗ nào.</Text>
                 <TouchableOpacity style={styles.primaryBtn} onPress={() => navigation.navigate('HomeTab')}>
                   <Text style={styles.primaryBtnText}>Tìm chuyến ngay</Text>
                 </TouchableOpacity>
@@ -512,7 +512,7 @@ export default function MyBookingsScreen({ navigation }) {
                   )}
                   {canCancel && (
                     <TouchableOpacity style={styles.dangerBtn} onPress={() => doCancel(b)}>
-                      <Text style={styles.dangerBtnText}>Huỷ booking</Text>
+                      <Text style={styles.dangerBtnText}>Huỷ yêu cầu đặt chỗ</Text>
                     </TouchableOpacity>
                   )}
                 </View>

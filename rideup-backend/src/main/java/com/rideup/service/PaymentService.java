@@ -143,8 +143,7 @@ public class PaymentService {
             return payment;
         }
         if (payment.getStatus() == PaymentStatus.FAILED
-            || payment.getStatus() == PaymentStatus.VOIDED
-            || payment.getStatus() == PaymentStatus.REFUNDED) {
+            || payment.getStatus() == PaymentStatus.VOIDED) {
             throw new AppException(ErrorCode.PAYMENT_STATUS_INVALID);
         }
         if (payment.getMethod() != PaymentMethod.STRIPE) {

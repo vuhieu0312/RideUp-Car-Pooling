@@ -20,15 +20,16 @@ FROM booking
 WHERE status IN ('PENDING', 'PICKED_UP', 'CANCELLED_USER')
 GROUP BY status;
 
--- (2) DELETE refund (nếu bảng tồn tại)
-DELETE FROM refund
-WHERE payment_id IN (
-    SELECT id FROM payment
-    WHERE booking_id IN (
-        SELECT id FROM booking
-        WHERE status IN ('PENDING', 'PICKED_UP', 'CANCELLED_USER')
-    )
-);
+-- (2) DELETE refund: bỏ qua, bảng refund đã bị xoá (xem drop-refund.sql).
+-- Chỉ bỏ comment khối dưới nếu DB của bạn vẫn còn bảng refund.
+-- DELETE FROM refund
+-- WHERE payment_id IN (
+--     SELECT id FROM payment
+--     WHERE booking_id IN (
+--         SELECT id FROM booking
+--         WHERE status IN ('PENDING', 'PICKED_UP', 'CANCELLED_USER')
+--     )
+-- );
 
 -- (2b) Bỏ liên kết giao dịch ví (wallet_transaction) tới các booking sắp xóa, giữ nguyên dòng ví
 UPDATE wallet_transaction

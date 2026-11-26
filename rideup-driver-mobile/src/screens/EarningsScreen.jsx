@@ -137,7 +137,7 @@ export default function EarningsScreen({ navigation }) {
                 <View style={styles.line}>
                   <View>
                     <Text style={styles.bold}>{b.label}</Text>
-                    <Text style={styles.sub}>{b.bookings} booking · cước {vnd(b.gross)}</Text>
+                    <Text style={styles.sub}>{b.bookings} yêu cầu đặt chỗ · cước {vnd(b.gross)}</Text>
                   </View>
                   <Text style={{ color: '#059669', fontWeight: '700' }}>+{vnd(b.net)}</Text>
                 </View>

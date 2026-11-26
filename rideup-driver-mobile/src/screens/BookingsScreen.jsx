@@ -45,7 +45,7 @@ const FILTERS = [
     key: 'CANCELLED',
     label: 'Huỷ / từ chối',
     statuses: ['REJECTED_BY_DRIVER', 'CANCELLED_BY_USER', 'CANCELLED_BY_DRIVER', 'CANCELLED_PAYMENT_FAILED', 'EXPIRED'],
-    empty: 'Không có booking bị huỷ hoặc từ chối.',
+    empty: 'Không có yêu cầu đặt chỗ bị huỷ hoặc từ chối.',
   },
 ];
 
@@ -91,7 +91,7 @@ export default function BookingsScreen({ navigation, route }) {
       setReceivedComplaints(received || []);
       setReportsLoaded(true);
     } catch (e) {
-      setActionMsg(`${e.response?.data?.message || 'Lỗi tải booking'}`);
+      setActionMsg(`${e.response?.data?.message || 'Lỗi tải yêu cầu đặt chỗ'}`);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -145,7 +145,7 @@ export default function BookingsScreen({ navigation, route }) {
   async function doConfirm(b) {
     try {
       await confirmBooking(b.id);
-      setActionMsg('Đã xác nhận booking');
+      setActionMsg('Đã xác nhận yêu cầu đặt chỗ');
       load();
     } catch (e) {
       setActionMsg(`${e.response?.data?.message || 'Lỗi'}`);
@@ -157,8 +157,8 @@ export default function BookingsScreen({ navigation, route }) {
       ? '\n\nKhách sẽ được hoàn lại tiền nếu đã thanh toán.'
       : '';
     const reason = await dialog.prompt({
-      title: 'Từ chối booking',
-      message: `Lý do từ chối booking ${b.bookingCode}?${refundNote}`,
+      title: 'Từ chối yêu cầu đặt chỗ',
+      message: `Lý do từ chối yêu cầu đặt chỗ ${b.bookingCode}?${refundNote}`,
       defaultValue: 'Tài xế không nhận',
       confirmText: 'Từ chối',
       cancelText: 'Không',
@@ -171,7 +171,7 @@ export default function BookingsScreen({ navigation, route }) {
       setActionMsg(
         b.paymentMethod === 'STRIPE' && b.paymentStatus === 'HOLDING'
           ? 'Đã từ chối. Tiền sẽ được hoàn về cho khách.'
-          : 'Đã từ chối booking'
+          : 'Đã từ chối yêu cầu đặt chỗ'
       );
       load();
     } catch (e) {
@@ -222,7 +222,7 @@ export default function BookingsScreen({ navigation, route }) {
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={styles.kicker}>RIDEUP</Text>
-          <Text style={styles.title}>{tripId ? 'Booking của chuyến này' : 'Booking của tôi'}</Text>
+          <Text style={styles.title}>{tripId ? 'Yêu cầu đặt chỗ của chuyến này' : 'Yêu cầu đặt chỗ của tôi'}</Text>
         </View>
         <TouchableOpacity onPress={() => { setRefreshing(true); load(); }} style={styles.refreshBtn}>
           <MaterialCommunityIcons name="refresh" size={18} color={colors.primaryAccent} />
@@ -363,11 +363,17 @@ export default function BookingsScreen({ navigation, route }) {
                 <View style={styles.metric}><Text style={styles.metricLabel}>Tổng</Text><Text style={[styles.metricValue, { color: colors.success }]}>{fmtMoney(b.totalAmount)}</Text></View>
               </View>
 
+              {!!b.pickupWardName && (
+                <IconText name="map-marker-outline" size={14} textStyle={styles.muted}>Phường/xã đón: {[b.pickupWardName, b.tripStartProvince].filter(Boolean).join(', ')}</IconText>
+              )}
               {!!b.pickupAddressText && (
-                <IconText name="map-marker-outline" size={14} textStyle={styles.muted}>Đón: {b.pickupAddressText}</IconText>
+                <IconText name="home-map-marker" size={14} textStyle={styles.muted}>Địa chỉ đón chi tiết: {b.pickupAddressText}</IconText>
+              )}
+              {!!b.dropoffWardName && (
+                <IconText name="flag-outline" size={14} textStyle={styles.muted}>Phường/xã trả: {[b.dropoffWardName, b.tripEndProvince].filter(Boolean).join(', ')}</IconText>
               )}
               {!!b.dropoffAddressText && (
-                <IconText name="flag-outline" size={14} textStyle={styles.muted}>Trả: {b.dropoffAddressText}</IconText>
+                <IconText name="home-map-marker" size={14} textStyle={styles.muted}>Địa chỉ trả chi tiết: {b.dropoffAddressText}</IconText>
               )}
               <BookingMap
                 pickup={hasPoint(b.pickupLat, b.pickupLng) ? { lat: Number(b.pickupLat), lng: Number(b.pickupLng) } : null}
@@ -427,7 +433,7 @@ export default function BookingsScreen({ navigation, route }) {
                       <Text style={styles.btnDangerText}>Từ chối</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={[styles.btn, styles.btnPrimary]} onPress={() => doConfirm(b)}>
-                      <Text style={styles.btnPrimaryText}>Duyệt booking</Text>
+                      <Text style={styles.btnPrimaryText}>Duyệt</Text>
                     </TouchableOpacity>
                   </>
                 )}

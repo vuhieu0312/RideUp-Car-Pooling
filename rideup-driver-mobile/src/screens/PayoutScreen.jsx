@@ -143,7 +143,7 @@ export default function PayoutScreen({ navigation }) {
               <View style={styles.alert}>
                 <MaterialCommunityIcons name="lock-alert-outline" size={20} color="#b91c1c" />
                 <Text style={styles.alertText}>
-                  Hoa hồng đang nợ đã vượt hạn mức nên bạn không thể tạo chuyến, bắt đầu chuyến hay duyệt booking mới. Hãy nạp tiền để tiếp tục.
+                  Hoa hồng đang nợ đã vượt hạn mức nên bạn không thể tạo chuyến, bắt đầu chuyến hay duyệt yêu cầu đặt chỗ mới. Hãy nạp tiền để tiếp tục.
                 </Text>
               </View>
             )}
