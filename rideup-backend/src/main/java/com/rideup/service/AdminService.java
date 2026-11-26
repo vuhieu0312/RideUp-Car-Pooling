@@ -2,10 +2,12 @@ package com.rideup.service;
 
 import com.rideup.dto.response.DriverDetailResponse;
 import com.rideup.dto.response.DriverResponse;
+import com.rideup.dto.response.AdminUserResponse;
 import com.rideup.dto.response.AdminDashboardStats;
 import com.rideup.entity.DriverProfile;
 import com.rideup.entity.User;
 import com.rideup.entity.Vehicle;
+import com.rideup.enums.Gender;
 import com.rideup.enums.DriverStatus;
 import com.rideup.enums.NotificationType;
 import com.rideup.enums.Role;
@@ -24,6 +26,7 @@ import com.rideup.repository.TripRepository;
 import com.rideup.repository.BookingRepository;
 import com.rideup.repository.PaymentRepository;
 import com.rideup.repository.ReportRepository;
+import com.rideup.repository.AdminUserProjection;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -69,6 +72,36 @@ public class AdminService {
                 ? driverProfileRepository.findAll()
                 : driverProfileRepository.findByStatus(status);
         return profiles.stream().map(p -> DriverService.toResponse(p, null)).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<AdminUserResponse> listManagedUsers(Role role) {
+        requireManagedRole(role);
+        return userRepository.findAdminAccountsByRole(role.name()).stream()
+                .map(this::toAdminUserResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public AdminUserResponse getManagedUser(String userId) {
+        return userRepository.findAdminAccountById(userId)
+                .map(this::toAdminUserResponse)
+                .orElseThrow(() -> AppException.notFound("Không tìm thấy người dùng"));
+    }
+
+    @Transactional
+    public void updateAccountStatus(String userId, AccountStatus status, String adminUserId) {
+        if (status == null) {
+            throw AppException.badRequest("Trạng thái tài khoản là bắt buộc");
+        }
+        AdminUserResponse user = getManagedUser(userId);
+        int updated = userRepository.updateManagedAccountStatus(userId, status.name());
+        if (updated != 1) {
+            throw AppException.notFound("Không tìm thấy người dùng");
+        }
+        log.info("Admin {} changed account status user={} {} -> {}",
+                adminUserId, userId, user.getAccountStatus(), status);
+        realtimeService.adminQueueChanged();
     }
 
     @Transactional(readOnly = true)
@@ -187,6 +220,32 @@ public class AdminService {
     private DriverProfile requireProfile(String driverProfileId) {
         return driverProfileRepository.findById(driverProfileId)
                 .orElseThrow(() -> AppException.notFound("Không tìm thấy hồ sơ tài xế"));
+    }
+
+    private void requireManagedRole(Role role) {
+        if (role != Role.CUSTOMER && role != Role.DRIVER) {
+            throw AppException.badRequest("Chỉ hỗ trợ tài khoản khách hàng và tài xế");
+        }
+    }
+
+    private AdminUserResponse toAdminUserResponse(AdminUserProjection user) {
+        return AdminUserResponse.builder()
+                .id(user.getId())
+                .fullName(user.getFullName())
+                .email(user.getEmail())
+                .phone(user.getPhone())
+                .dateOfBirth(user.getDateOfBirth())
+                .gender(user.getGender() == null ? null : Gender.valueOf(user.getGender()))
+                .avatarUrl(user.getAvatarUrl())
+                .role(Role.valueOf(user.getRole()))
+                .accountStatus(AccountStatus.valueOf(user.getAccountStatus()))
+                .violationCount(user.getViolationCount())
+                .driverStatus(null)
+                .driverRating(null)
+                .totalDriverRides(null)
+                .createdAt(user.getCreatedAt())
+                .updatedAt(user.getUpdatedAt())
+                .build();
     }
 
     @Transactional(readOnly = true)

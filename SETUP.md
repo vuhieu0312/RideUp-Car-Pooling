@@ -155,30 +155,31 @@ Hoa hồng tiền mặt: khi tài xế bấm *Đã nhận tiền* ở booking th
 
 `ddl-auto: update` không tự xoá/sửa cột cũ. Nếu DB của bạn tạo từ code cũ, **tắt backend** rồi chạy các script trong `db/` theo thứ tự (lỗi "đã tồn tại / không tồn tại" ở script nào thì bỏ qua script đó):
 
-1. `migrate-booking-status.sql`
-2. `fix-enum-columns.sql`
-3. `drop-booking-active-constraint.sql`
-4. `insert-missing-wards.sql`
-5. `add-indexes.sql`
-6. `drop-dead-columns.sql`
-7. `drop-redundant-columns.sql`
-8. `fix-cash-pending-bookings.sql`
-9. `add-vehicle-fk.sql`
-10. `drop-trip-pickup-coords.sql`
-11. `drop-vehicle-insurance.sql`
-12. `drop-ward-display-name.sql`
-13. `drop-ward-code.sql`
-14. `drop-vehicle-driver-unique.sql` (cho phép 1 tài xế có nhiều xe và dùng lại biển số của xe đã ngừng dùng; chạy trước khi chạy backend mới)
-15. `fix-notification-columns.sql` (chức năng thông báo: đổi cột type/status của bảng notification sang VARCHAR, thêm dedup_key; chỉ cần chạy nếu bảng notification đã tồn tại từ trước)
-16. `add-driver-wallet.sql` (ví hoa hồng tài xế: thêm cột wallet_balance vào driver_profile; chạy 1 lần trước khi chạy backend mới)
-17. `merge-payout-into-payment.sql` (chạy sau khi đã chạy backend mới 1 lần: chuyển hoa hồng / nợ đã bù / mã chuyển tiền / trạng thái chi trả từ bảng driver_payout_transaction (hoặc 2 cột cũ payment.platform_fee, payment.transfer_id) sang 4 cột mới của bảng payment rồi xoá bảng và cột cũ)
-18. `rename-wallet-stripe-reference.sql` (nạp ví bằng PaymentSheet: đổi tên cột wallet_transaction.stripe_session_id thành stripe_reference; chạy sau khi đã chạy backend mới 1 lần)
-19. `add-wallet-booking-fk.sql` (chạy sau khi đã chạy backend mới 1 lần: thêm khóa ngoại wallet_transaction.booking_id → booking.id, ON DELETE SET NULL)
-20. `fix-more-enum-columns.sql` (tắt backend rồi chạy 1 lần: đổi các cột ENUM còn lại sang VARCHAR và thu gọn cột refresh_token.token; chỉ cần với DB tạo từ code cũ)
-21. `add-review-unique-booking-money.sql` (tắt backend rồi chạy 1 lần: xóa đánh giá trùng và thêm unique (trip_id, customer_id) cho review; đổi booking.price_per_seat, total_amount sang decimal(15,2))
-22. `drop-user-verified.sql` (xoá cột app_user.verified không còn dùng; chạy sau khi đã chạy backend mới 1 lần)
-23. `drop-refund.sql` (xoá bảng refund không còn dùng; chạy sau khi đã chạy backend mới 1 lần).
-24. `migrate-trip-driver-profile.sql` (tắt backend rồi chạy 1 lần, trước khi chạy backend mới: chuyển trip.driver_id → app_user sang trip.driver_profile_id → driver_profile; nếu còn chuyến không có hồ sơ tài xế thì script dừng và không xoá cột cũ)
+1. `migrate-user-role-1-1.sql` (**nếu DB còn bảng `user_roles`**; chép role cũ sang `app_user.role`, kể cả khi Hibernate đã tạo cột nhưng để trống)
+2. `migrate-booking-status.sql`
+3. `fix-enum-columns.sql`
+4. `drop-booking-active-constraint.sql`
+5. `insert-missing-wards.sql`
+6. `add-indexes.sql`
+7. `drop-dead-columns.sql`
+8. `drop-redundant-columns.sql`
+9. `fix-cash-pending-bookings.sql`
+10. `add-vehicle-fk.sql`
+11. `drop-trip-pickup-coords.sql`
+12. `drop-vehicle-insurance.sql`
+13. `drop-ward-display-name.sql`
+14. `drop-ward-code.sql`
+15. `drop-vehicle-driver-unique.sql` (cho phép 1 tài xế có nhiều xe và dùng lại biển số của xe đã ngừng dùng; chạy trước khi chạy backend mới)
+16. `fix-notification-columns.sql` (chức năng thông báo: đổi cột type/status của bảng notification sang VARCHAR, thêm dedup_key; chỉ cần chạy nếu bảng notification đã tồn tại từ trước)
+17. `add-driver-wallet.sql` (ví hoa hồng tài xế: thêm cột wallet_balance vào driver_profile; chạy 1 lần trước khi chạy backend mới)
+18. `merge-payout-into-payment.sql` (chạy sau khi đã chạy backend mới 1 lần: chuyển hoa hồng / nợ đã bù / mã chuyển tiền / trạng thái chi trả từ bảng driver_payout_transaction (hoặc 2 cột cũ payment.platform_fee, payment.transfer_id) sang 4 cột mới của bảng payment rồi xoá bảng và cột cũ)
+19. `rename-wallet-stripe-reference.sql` (nạp ví bằng PaymentSheet: đổi tên cột wallet_transaction.stripe_session_id thành stripe_reference; chạy sau khi đã chạy backend mới 1 lần)
+20. `add-wallet-booking-fk.sql` (chạy sau khi đã chạy backend mới 1 lần: thêm khóa ngoại wallet_transaction.booking_id → booking.id, ON DELETE SET NULL)
+21. `fix-more-enum-columns.sql` (tắt backend rồi chạy 1 lần: đổi các cột ENUM còn lại sang VARCHAR và thu gọn cột refresh_token.token; chỉ cần với DB tạo từ code cũ)
+22. `add-review-unique-booking-money.sql` (tắt backend rồi chạy 1 lần: xóa đánh giá trùng và thêm unique (trip_id, customer_id) cho review; đổi booking.price_per_seat, total_amount sang decimal(15,2))
+23. `drop-user-verified.sql` (xoá cột app_user.verified không còn dùng; chạy sau khi đã chạy backend mới 1 lần)
+24. `drop-refund.sql` (xoá bảng refund không còn dùng; chạy sau khi đã chạy backend mới 1 lần).
+25. `migrate-trip-driver-profile.sql` (tắt backend rồi chạy 1 lần, trước khi chạy backend mới: chuyển trip.driver_id → app_user sang trip.driver_profile_id → driver_profile; nếu còn chuyến không có hồ sơ tài xế thì script dừng và không xoá cột cũ)
 
 Sau đó chạy lại backend. Muốn làm sạch hoàn toàn: `DROP DATABASE rideup;` rồi làm lại từ Bước 1.
 
