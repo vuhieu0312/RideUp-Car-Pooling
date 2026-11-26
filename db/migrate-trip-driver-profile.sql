@@ -7,9 +7,12 @@ USE rideup;
 ALTER TABLE trip ADD COLUMN driver_profile_id VARCHAR(36) NULL;
 
 -- 2. Điền hồ sơ tài xế tương ứng với tài khoản đang lưu ở driver_id
+-- (tắt Safe Updates của MySQL Workbench, nếu không câu UPDATE bị chặn với lỗi 1175)
+SET SQL_SAFE_UPDATES = 0;
 UPDATE trip t
 JOIN driver_profile dp ON dp.user_id = t.driver_id
 SET t.driver_profile_id = dp.id;
+SET SQL_SAFE_UPDATES = 1;
 
 -- 3. Kiểm tra: phải bằng 0 thì các bước sau mới chạy
 SET @missing := (SELECT COUNT(*) FROM trip WHERE driver_profile_id IS NULL);
